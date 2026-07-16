@@ -6,7 +6,7 @@
 
 - Task ID：TASK-0003
 - Task Name：建立防过度规划、过度设计和过度开发门禁
-- Status：READY_FOR_RETEST
+- Status：COMPLETED
 - Owner：Codex Architect
 - Reviewer：Codex Reviewer
 - Branch：chore/anti-overdevelopment-guardrails
@@ -14,7 +14,7 @@
 - Requirement Source：hangyu 明确要求所有项目避免过度开发
 - Product Baseline：只建立流程门禁，不开发机房业务功能
 - Architecture Reference：docs/architecture/AGENT-WORKFLOW.md
-- Module Lock：全部 TASK-0003 路径为 HANDED_OFF，等待 AO-001/AO-002 定向复审
+- Module Lock：tasks/MODULE-LOCKS.md 中 TASK-0003 的 7 条模块锁已全部 RELEASED
 
 ## 当前约束
 
@@ -81,3 +81,26 @@ Codex Architect 已完成 TASK-0003 的最小范围实现并交给 Codex Reviewe
 - 禁止文件检查：PASS；未修改 Reviewer 报告、校验脚本、业务代码或其他禁止文件
 - 定向复审：请 Codex Reviewer 核验已批准 API/数据模型变更无需重复审批的六项条件，以及 FR/NFR 追踪矩阵语义
 - 最终开发状态：READY_FOR_RETEST；不得在 Reviewer 复审通过前标记 `COMPLETED`
+
+## TASK-0003 关闭记录
+
+- 最终状态：COMPLETED
+- 状态迁移：READY_FOR_RETEST → COMPLETED
+- 最终 Reviewer：Codex Reviewer
+- 最终复审结论：PASS
+- 最终复审报告：reviews/architecture/ANTI-OVERDEVELOPMENT-RETEST-TASK-0003.md
+- 最终复审提交：1c4031190d5955288015f8012cc75b2cb530af38
+- AO-001：RESOLVED
+- AO-002：RESOLVED
+- AC-01：PASS
+- AC-03：PASS
+- AC-06：PASS
+- 其他验收标准：无回归
+- 新增缺陷：0
+- 工作流校验：20/20 PASS，退出码 0
+- 模块锁：7 条，全部 RELEASED
+- 关闭批准者：hangyu
+- 关闭时间：2026-07-16 21:40:28 +08:00
+- 关闭提交：以本次关闭操作提交后的 Git 哈希为准
+
+TASK-0003 已完成。本次关闭不包含 main 合并，也不包含机房业务功能开发。
