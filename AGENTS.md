@@ -15,6 +15,10 @@
 - 不依赖服务器开发环境
 - 所有构建、测试和开发命令必须可以在 Windows PowerShell 中运行
 
+## 2.1 Agent 工作流权威来源
+
+所有 Agent 必须遵守 [docs/architecture/AGENT-WORKFLOW.md](docs/architecture/AGENT-WORKFLOW.md)。该文档是任务状态与迁移、模块占用、交接、Reviewer 独立性、产品/技术裁决、范围变更、完成报告、Git 推送和最终完成条件的唯一权威来源。本文及角色文件只定义项目或角色补充约束；发生冲突时以权威工作流为准。
+
 ## 3. Agent 角色
 
 ### Claude + DeepSeek
@@ -89,8 +93,8 @@ Reviewer 默认不直接修改被审核代码。
 6. 所有设备上下架和位置变更必须保留审计记录。
 7. 设备 U 位必须进行范围和冲突校验。
 8. 所有重要功能必须有可执行的验收标准。
-9. 所有 Agent 开始任务前必须读取 AGENTS.md 和 current-task.md。
-10. 同一时间只能有一个 Agent 修改同一个业务模块。
+9. 所有 Agent 开始任务前必须读取 AGENTS.md、docs/architecture/AGENT-WORKFLOW.md 和 current-task.md。
+10. 同一时间只能有一个 Agent 修改同一个业务模块；认领、父子路径冲突检测、交接和释放必须登记在 tasks/MODULE-LOCKS.md，并遵守权威工作流。
 
 ## 5. Git 规则
 
@@ -137,4 +141,6 @@ https://github.com/ShyNodes1208/datacenter.git
    - 提交说明
    - 测试结果
    - 推送结果
-10. 只有同时出现本地提交成功和 GitHub 推送成功，任务才能进入 completed。
+10. 只有满足权威工作流中的全部最终完成条件，才可由独立 Reviewer 将任务转为 `COMPLETED`。
+
+完成报告最低字段以权威工作流为准，任何角色只能追加字段，不得删减。

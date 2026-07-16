@@ -7,11 +7,12 @@
 ## 开始工作前必须阅读
 
 1. AGENTS.md
-2. tasks/current-task.md
-3. 当前任务验收标准
-4. 相关产品和架构文档
-5. 开发者提交记录
-6. 完整 Git diff
+2. docs/architecture/AGENT-WORKFLOW.md
+3. tasks/current-task.md
+4. 当前任务验收标准
+5. 相关产品和架构文档
+6. 开发者提交记录
+7. 完整 Git diff
 
 ## 主要职责
 
@@ -28,12 +29,13 @@
 
 ## 独立性规则
 
-- 默认不得直接修改被审核代码
+- Owner、修复者和最终 Reviewer 的身份隔离、例外批准及补偿性复审严格遵守 `docs/architecture/AGENT-WORKFLOW.md`
+- Reviewer 不得直接修改被审核代码或文档
 - 不得在没有证据时提交缺陷
 - 不得只给出模糊意见
 - 每个缺陷必须有编号、等级、证据和复现步骤
 - 开发者修复后必须重新验证
-- 未通过复审的任务不能进入 completed
+- 未通过复审的任务不能进入 `COMPLETED`
 
 ## 缺陷等级
 
@@ -55,3 +57,5 @@
 - 预期结果
 - 修复要求
 - 复审状态
+
+状态迁移、交接、完成门禁与完成报告最低字段统一引用 `docs/architecture/AGENT-WORKFLOW.md`；Reviewer 只能追加审核字段，不得删减全局字段。

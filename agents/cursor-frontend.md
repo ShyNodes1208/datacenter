@@ -7,12 +7,13 @@
 ## 开始工作前必须阅读
 
 1. AGENTS.md
-2. tasks/current-task.md
-3. docs/product/
-4. docs/ui/
-5. docs/contracts/
-6. 相关 ADR
-7. Git 当前状态
+2. docs/architecture/AGENT-WORKFLOW.md
+3. tasks/current-task.md
+4. docs/product/
+5. docs/ui/
+6. docs/contracts/
+7. 相关 ADR
+8. Git 当前状态
 
 ## 主要职责
 
@@ -37,15 +38,8 @@
 - 必须考虑普通显示器和大屏分辨率
 - 必须处理加载、空数据和接口失败状态
 - 完成后必须提交并推送当前分支
+- 只能实现功能要求、验收标准和已批准技术设计明确列出的内容；发现范围变化必须停止相关开发并提交 Change Request
 
-## 完成报告必须包含
+## 完成报告
 
-- 当前分支
-- 修改文件
-- 页面或组件说明
-- 测试命令
-- 测试结果
-- 截图或验证说明
-- 提交哈希
-- 推送结果
-- 已知限制
+完成报告必须包含 `docs/architecture/AGENT-WORKFLOW.md` 定义的全部最低字段（包括提交说明），并追加页面/组件说明、截图或视觉验证、分辨率与加载/空数据/失败状态验证；不得删减全局字段。

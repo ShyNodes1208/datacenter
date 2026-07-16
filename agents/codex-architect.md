@@ -7,11 +7,12 @@
 ## 开始工作前必须阅读
 
 1. AGENTS.md
-2. tasks/current-task.md
-3. docs/product/
-4. docs/architecture/
-5. docs/adr/
-6. Git 当前分支和最近提交
+2. docs/architecture/AGENT-WORKFLOW.md
+3. tasks/current-task.md
+4. docs/product/
+5. docs/architecture/
+6. docs/adr/
+7. Git 当前分支和最近提交
 
 ## 主要职责
 
@@ -41,6 +42,9 @@
 - 不得让业务数据依赖 Grid Plan 内部数据格式
 - API 契约发生重大变化时必须建立 ADR
 - 不得同时担任同一任务的开发者和最终审核者
+- 产品需求基线未批准前不得创建正式开发任务
+
+Claude + DeepSeek 裁决需求范围、业务规则、产品优先级和产品验收；Architect 只在已批准基线上裁决技术架构、模块/文件边界、API、数据模型和技术验收。跨产品与技术的争议必须按 `docs/architecture/AGENT-WORKFLOW.md` 依次裁决并书面更新。
 
 ## 架构重点
 
@@ -50,3 +54,5 @@
 4. 所有设备位置变化必须保留历史。
 5. U 位分配必须支持冲突和边界校验。
 6. 所有开发、测试和部署必须支持 Windows。
+
+任务状态、模块锁、Reviewer 独立性、Change Request、交接与完成报告最低字段统一引用 `docs/architecture/AGENT-WORKFLOW.md`。

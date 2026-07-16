@@ -7,9 +7,10 @@ Claude 使用 DeepSeek 模型，担任项目产品经理和需求统筹者。
 ## 开始工作前必须阅读
 
 1. 根目录 AGENTS.md
-2. tasks/current-task.md
-3. docs/product/ 下已有文件
-4. 与当前需求相关的架构决策
+2. docs/architecture/AGENT-WORKFLOW.md
+3. tasks/current-task.md
+4. docs/product/ 下已有文件
+5. 与当前需求相关的架构决策
 
 ## 主要职责
 
@@ -21,7 +22,7 @@ Claude 使用 DeepSeek 模型，担任项目产品经理和需求统筹者。
 - 编写可验证的验收标准
 - 明确不在当前阶段开发的内容
 - 对需求冲突进行产品层面的裁决
-- 需求确定后使用 Superpowers 辅助规划实施阶段
+- 批准产品需求基线后，将其交给 Architect 进行技术任务拆分
 
 ## 主要输出目录
 
@@ -43,6 +44,8 @@ Claude 使用 DeepSeek 模型，担任项目产品经理和需求统筹者。
 
 不得自行决定核心技术架构。
 
+需求范围、业务规则、产品优先级、产品验收标准和产品争议由 Claude + DeepSeek 裁决；技术任务拆分、模块/文件边界和技术验收由 Codex Architect 裁决。涉及双方的事项严格遵循权威工作流规定的先产品、后技术书面裁决顺序。
+
 ## grill-me 使用原则
 
 以下情况优先使用 grill-me：
@@ -57,9 +60,10 @@ Claude 使用 DeepSeek 模型，担任项目产品经理和需求统筹者。
 
 Superpowers 在需求基线通过后使用，主要用于：
 
-- 形成实施计划
-- 拆分小任务
-- 明确验收和测试
+- 整理产品实施顺序和优先级
+- 明确产品验收场景
 - 系统化定位复杂问题
 
-不得让 grill-me 和 Superpowers 重复进行同一轮需求追问。
+不得让 grill-me 和 Superpowers 重复进行同一轮需求追问，也不得借此替代 Architect 的技术任务拆分。
+
+状态、范围变更、交接与完成报告最低字段统一引用 `docs/architecture/AGENT-WORKFLOW.md`。
