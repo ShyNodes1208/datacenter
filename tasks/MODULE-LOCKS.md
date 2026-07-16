@@ -4,14 +4,14 @@
 
 | Task ID | Module or Path | Owner | Claimed At | Status | Release Condition | Released At |
 |---|---|---|---|---|---|---|
-| TASK-0002 | AGENTS.md | Codex Architect | 2026-07-16 +08:00 | HANDED_OFF | TASK-0002 进入 COMPLETED 或 CANCELLED | N/A：等待独立复审 |
-| TASK-0002 | agents/ | Codex Architect | 2026-07-16 +08:00 | HANDED_OFF | TASK-0002 进入 COMPLETED 或 CANCELLED | N/A：等待独立复审 |
-| TASK-0002 | docs/architecture/AGENT-WORKFLOW.md | Codex Architect | 2026-07-16 +08:00 | HANDED_OFF | TASK-0002 进入 COMPLETED 或 CANCELLED | N/A：等待独立复审 |
-| TASK-0002 | tasks/TASK-TEMPLATE.md | Codex Architect | 2026-07-16 +08:00 | HANDED_OFF | TASK-0002 进入 COMPLETED 或 CANCELLED | N/A：等待独立复审 |
-| TASK-0002 | tasks/current-task.md | Codex Architect | 2026-07-16 +08:00 | HANDED_OFF | TASK-0002 进入 COMPLETED 或 CANCELLED | N/A：等待独立复审 |
-| TASK-0002 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-16 +08:00 | HANDED_OFF | TASK-0002 进入 COMPLETED 或 CANCELLED | N/A：等待独立复审 |
-| TASK-0002 | tasks/TASK-EXAMPLE.md | Codex Architect | 2026-07-16 +08:00 | HANDED_OFF | TASK-0002 进入 COMPLETED 或 CANCELLED | N/A：等待独立复审 |
-| TASK-0002 | scripts/validate-agent-workflow.ps1 | Codex Architect | 2026-07-16 +08:00 | HANDED_OFF | TASK-0002 进入 COMPLETED 或 CANCELLED | N/A：等待独立复审 |
+| TASK-0002 | AGENTS.md | Codex Architect | 2026-07-16 +08:00 | HANDED_OFF | TASK-0002 进入 COMPLETED 或 CANCELLED | N/A：等待 T2-AWF-001 独立复审 |
+| TASK-0002 | agents/ | Codex Architect | 2026-07-16 +08:00 | HANDED_OFF | TASK-0002 进入 COMPLETED 或 CANCELLED | N/A：等待 T2-AWF-001 独立复审 |
+| TASK-0002 | docs/architecture/AGENT-WORKFLOW.md | Codex Architect | 2026-07-16 +08:00 | HANDED_OFF | TASK-0002 进入 COMPLETED 或 CANCELLED | N/A：等待 T2-AWF-001 独立复审 |
+| TASK-0002 | tasks/TASK-TEMPLATE.md | Codex Architect | 2026-07-16 +08:00 | HANDED_OFF | TASK-0002 进入 COMPLETED 或 CANCELLED | N/A：等待 T2-AWF-001 独立复审 |
+| TASK-0002 | tasks/current-task.md | Codex Architect | 2026-07-16 +08:00 | HANDED_OFF | TASK-0002 进入 COMPLETED 或 CANCELLED | N/A：等待 T2-AWF-001 独立复审 |
+| TASK-0002 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-16 +08:00 | HANDED_OFF | TASK-0002 进入 COMPLETED 或 CANCELLED | N/A：等待 T2-AWF-001 独立复审 |
+| TASK-0002 | tasks/TASK-EXAMPLE.md | Codex Architect | 2026-07-16 +08:00 | HANDED_OFF | TASK-0002 进入 COMPLETED 或 CANCELLED | N/A：等待 T2-AWF-001 独立复审 |
+| TASK-0002 | scripts/validate-agent-workflow.ps1 | Codex Architect | 2026-07-16 +08:00 | HANDED_OFF | TASK-0002 进入 COMPLETED 或 CANCELLED | N/A：等待 T2-AWF-001 独立复审 |
 
 ## 冲突处理示例
 

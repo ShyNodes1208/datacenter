@@ -10,7 +10,7 @@
 - Owner：Codex Backend
 - Reviewer：Codex Reviewer
 - Branch：feature/example-rack-label-query
-- Requirement Source：docs/product/PRD.md#rack-label-query
+- Requirement Source：docs/product/PRD.md#rack-label-query-rev2
 - Product Baseline：PB-EXAMPLE-001，Claude 于 2026-07-10 批准
 - Architecture Reference：docs/contracts/RACKS.md#find-by-label
 - Module Lock：`src/backend/Racks/`，详见本文件模块占用记录
@@ -45,6 +45,7 @@
 
 1. 提供已批准契约中的只读机柜标签精确查询。
 2. 未找到时返回契约定义的 404 响应。
+3. 每次完成有效标签查询时，将既有 `rack_query_total` 查询计数增加 1。
 
 ## 非功能要求
 
@@ -56,6 +57,7 @@
 - [x] AC-01：有效标签返回对应机柜及 200。
 - [x] AC-02：未知标签返回契约规定的 404。
 - [x] AC-03：自动化测试覆盖成功与未找到路径。
+- [x] AC-04：执行一次有效标签查询后，`rack_query_total` 相比查询前恰好增加 1。
 
 ## 构建命令
 
@@ -79,7 +81,7 @@ dotnet test .\tests\DatacenterLayout.Backend.Tests.csproj --filter RackLabel
 
 - 命令：`dotnet test .\tests\DatacenterLayout.Backend.Tests.csproj --filter RackLabel`
 - 退出码：0
-- 摘要/证据：Passed 4，Failed 0，Skipped 0
+- 摘要/证据：Passed 5，Failed 0，Skipped 0；包含 `rack_query_total` 单次增量断言
 
 ## 模块占用记录
 
@@ -93,7 +95,7 @@ dotnet test .\tests\DatacenterLayout.Backend.Tests.csproj --filter RackLabel
 ## 开发完成证据
 
 - 修改文件：`src/backend/Racks/RackQueryService.cs`、`tests/backend/Racks/RackQueryServiceTests.cs`
-- 验收证据：AC-01 至 AC-03 均由 4 个自动化测试和 Reviewer 重跑结果覆盖
+- 验收证据：AC-01 至 AC-04 均由 5 个自动化测试和 Reviewer 重跑结果覆盖，包括 `rack_query_total` 单次增量断言
 - 模块锁状态：开发交审和修复交复审时为 `HANDED_OFF`，完成前已改为 `RELEASED`
 - 已知限制：仅支持精确匹配；模糊查询明确不在产品基线内
 
@@ -115,7 +117,7 @@ dotnet test .\tests\DatacenterLayout.Backend.Tests.csproj --filter RackLabel
 
 - Reviewer：Codex Reviewer
 - 结论：首次审核不通过，记录 EX-DEFECT-01 并转 `CHANGES_REQUESTED`
-- 审核命令和证据：重跑构建和 4 个测试；响应快照显示错误码缺失
+- 审核命令和证据：重跑构建和 5 个测试；指标增量断言通过，响应快照显示错误码缺失
 
 ## 缺陷清单
 
@@ -127,7 +129,7 @@ dotnet test .\tests\DatacenterLayout.Backend.Tests.csproj --filter RackLabel
 
 | 缺陷 ID | 修复者 | 修改说明 | 回归证据 | 提交 |
 |---|---|---|---|---|
-| EX-DEFECT-01 | Codex Backend | 使用既有错误响应工厂返回 `RACK_NOT_FOUND` | 4/4 tests passed，Reviewer 独立重跑通过 | `1111111111111111111111111111111111111111` |
+| EX-DEFECT-01 | Codex Backend | 使用既有错误响应工厂返回 `RACK_NOT_FOUND` | 5/5 tests passed（含指标断言），Reviewer 独立重跑通过 | `1111111111111111111111111111111111111111` |
 
 ## 复审结果
 
