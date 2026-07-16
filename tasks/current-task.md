@@ -1,19 +1,25 @@
 ﻿# Current Task
 
-## 当前状态
+## 当前任务
 
-IDLE
+- Task ID：TASK-0001
+- Task Name：审核 Agent 工作规范和任务流程
+- Status：READY
+- Owner：Codex Reviewer
+- Branch：chore/agent-workspaces
+- Task File：tasks/TASK-0001-REVIEW-AGENT-WORKFLOW.md
 
-## 说明
+## 执行规则
 
-目前没有激活的开发任务。
+Codex Reviewer 开始工作前必须阅读：
 
-任何 Agent 在本文件状态为 IDLE 时：
+1. AGENTS.md
+2. agents/codex-reviewer.md
+3. tasks/TASK-0001-REVIEW-AGENT-WORKFLOW.md
+4. 本分支相对于 main 的完整差异
 
-- 可以阅读和分析项目
-- 可以提出建议
-- 不得修改业务代码
-- 不得自行创建功能
-- 不得擅自扩大项目范围
+本任务只允许创建或修改：
 
-新任务必须基于 TASK-TEMPLATE.md 创建，并将本文件更新为 READY 后才能开始开发。
+- reviews/architecture/AGENT-WORKFLOW-REVIEW.md
+
+不得修改任何被审核文件。
