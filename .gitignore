@@ -1,0 +1,53 @@
+﻿# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# Node / Vue
+node_modules/
+dist/
+.vite/
+coverage/
+
+# IDE
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Logs
+logs/
+*.log
+
+# Local configuration
+.env
+.env.*
+!.env.example
+appsettings.Development.json
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+*.bak
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Test results
+TestResults/
+playwright-report/
+test-results/
+
+# Build packages
+artifacts/
+packages/
