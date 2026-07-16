@@ -6,7 +6,7 @@
 
 - Task ID：TASK-0002
 - Task Name：修复 Agent 工作规范和任务流程缺陷
-- Status：READY_FOR_RETEST
+- Status：COMPLETED
 - Owner：Codex Architect
 - Reviewer：Codex Reviewer
 - Branch：chore/agent-workspaces
@@ -15,7 +15,7 @@
 - Review Source：reviews/architecture/AGENT-WORKFLOW-REVIEW-TASK-0002.md
 - Product Baseline：用户批准的 TASK-0002 完整任务说明
 - Architecture Reference：docs/architecture/AGENT-WORKFLOW.md
-- Module Lock：tasks/MODULE-LOCKS.md 中 TASK-0002 的 HANDED_OFF 待复审记录
+- Module Lock：tasks/MODULE-LOCKS.md 中 TASK-0002 的锁已全部 RELEASED
 
 ## 当前允许修改
 
@@ -67,3 +67,20 @@ Codex Architect 已完成 AWF-001 至 AWF-007 的规范修复并交给 Codex Rev
 | 2026-07-16 | Codex Reviewer | READY_FOR_REVIEW | CHANGES_REQUESTED | `reviews/architecture/AGENT-WORKFLOW-REVIEW-TASK-0002.md` 结论 FAIL，仅记录 T2-AWF-001 |
 | 2026-07-16 | Codex Architect | CHANGES_REQUESTED | IN_FIX | 修复范围仅限三个允许文件；TASK-0002 模块锁重新认领为 CLAIMED |
 | 2026-07-16 | Codex Architect | IN_FIX | READY_FOR_RETEST | 已对齐示例的 Requirement Source、查询计数功能、AC-04、测试证据与交接记录；锁恢复为 HANDED_OFF |
+
+## 任务关闭记录
+
+- 最终状态：COMPLETED
+- 状态迁移：READY_FOR_RETEST → COMPLETED
+- 最终 Reviewer：Codex Reviewer
+- 最终复审结论：PASS
+- 最终复审报告：reviews/architecture/AGENT-WORKFLOW-RETEST-TASK-0002.md
+- 最终复审提交：d187c32cd48538183d7b1efe0b2a71885c67c615
+- T2-AWF-001：RESOLVED
+- 工作流校验：10/10 PASS，退出码 0
+- 模块锁：全部 RELEASED
+- 关闭批准者：hangyu
+- 关闭时间：2026-07-16 16:48:08 +08:00
+- 关闭提交：以本次关闭操作提交后的 Git 哈希为准
+
+TASK-0002 已完成。本次关闭不包含 main 合并，也不包含后续防过度开发门禁任务。
