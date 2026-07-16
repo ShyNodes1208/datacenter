@@ -13,10 +13,10 @@
 | TASK-0002 | tasks/TASK-EXAMPLE.md | Codex Architect | 2026-07-16 +08:00 | RELEASED | TASK-0002 进入 COMPLETED 或 CANCELLED | 2026-07-16 16:48:08 +08:00 |
 | TASK-0002 | scripts/validate-agent-workflow.ps1 | Codex Architect | 2026-07-16 +08:00 | RELEASED | TASK-0002 进入 COMPLETED 或 CANCELLED | 2026-07-16 16:48:08 +08:00 |
 | TASK-0003 | AGENTS.md | Codex Architect | 2026-07-16 17:12:50 +08:00 | HANDED_OFF | TASK-0003 进入 COMPLETED 或 CANCELLED | N/A：等待独立复审 |
-| TASK-0003 | docs/architecture/AGENT-WORKFLOW.md | Codex Architect | 2026-07-16 17:12:50 +08:00 | HANDED_OFF | TASK-0003 进入 COMPLETED 或 CANCELLED | N/A：等待独立复审 |
-| TASK-0003 | tasks/TASK-TEMPLATE.md | Codex Architect | 2026-07-16 17:12:50 +08:00 | HANDED_OFF | TASK-0003 进入 COMPLETED 或 CANCELLED | N/A：等待独立复审 |
-| TASK-0003 | tasks/current-task.md | Codex Architect | 2026-07-16 17:12:50 +08:00 | HANDED_OFF | TASK-0003 进入 COMPLETED 或 CANCELLED | N/A：等待独立复审 |
-| TASK-0003 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-16 17:12:50 +08:00 | HANDED_OFF | TASK-0003 进入 COMPLETED 或 CANCELLED | N/A：等待独立复审 |
+| TASK-0003 | docs/architecture/AGENT-WORKFLOW.md | Codex Architect | 2026-07-16 17:12:50 +08:00 | HANDED_OFF | TASK-0003 进入 COMPLETED 或 CANCELLED | N/A：等待 AO-001/AO-002 定向复审 |
+| TASK-0003 | tasks/TASK-TEMPLATE.md | Codex Architect | 2026-07-16 17:12:50 +08:00 | HANDED_OFF | TASK-0003 进入 COMPLETED 或 CANCELLED | N/A：等待 AO-001/AO-002 定向复审 |
+| TASK-0003 | tasks/current-task.md | Codex Architect | 2026-07-16 17:12:50 +08:00 | HANDED_OFF | TASK-0003 进入 COMPLETED 或 CANCELLED | N/A：等待 AO-001/AO-002 定向复审 |
+| TASK-0003 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-16 17:12:50 +08:00 | HANDED_OFF | TASK-0003 进入 COMPLETED 或 CANCELLED | N/A：等待 AO-001/AO-002 定向复审 |
 | TASK-0003 | agents/ | Codex Architect | 2026-07-16 17:12:50 +08:00 | HANDED_OFF | TASK-0003 进入 COMPLETED 或 CANCELLED | N/A：等待独立复审 |
 | TASK-0003 | scripts/validate-agent-workflow.ps1 | Codex Architect | 2026-07-16 17:12:50 +08:00 | HANDED_OFF | TASK-0003 进入 COMPLETED 或 CANCELLED | N/A：等待独立复审 |
 

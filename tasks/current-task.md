@@ -6,7 +6,7 @@
 
 - Task ID：TASK-0003
 - Task Name：建立防过度规划、过度设计和过度开发门禁
-- Status：READY_FOR_REVIEW
+- Status：READY_FOR_RETEST
 - Owner：Codex Architect
 - Reviewer：Codex Reviewer
 - Branch：chore/anti-overdevelopment-guardrails
@@ -14,7 +14,7 @@
 - Requirement Source：hangyu 明确要求所有项目避免过度开发
 - Product Baseline：只建立流程门禁，不开发机房业务功能
 - Architecture Reference：docs/architecture/AGENT-WORKFLOW.md
-- Module Lock：tasks/MODULE-LOCKS.md 中 TASK-0003 的 HANDED_OFF 记录
+- Module Lock：全部 TASK-0003 路径为 HANDED_OFF，等待 AO-001/AO-002 定向复审
 
 ## 当前约束
 
@@ -32,6 +32,9 @@
 |---|---|---|---|---|
 | 2026-07-16 17:12:50 +08:00 | Codex Architect | READY | IN_PROGRESS | 无活跃父子路径冲突；已按实际修改范围登记 TASK-0003 CLAIMED 锁 |
 | 2026-07-16 17:15:43 +08:00 | Codex Architect | IN_PROGRESS | READY_FOR_REVIEW | 规则、模板、角色引用和轻量校验完成；校验通过；锁改为 HANDED_OFF |
+| 2026-07-16 17:49:29 +08:00 | Codex Reviewer | READY_FOR_REVIEW | CHANGES_REQUESTED | `reviews/architecture/ANTI-OVERDEVELOPMENT-REVIEW-TASK-0003.md` 结论 FAIL；仅 AO-001、AO-002 |
+| 2026-07-16 17:49:29 +08:00 | Codex Architect | CHANGES_REQUESTED | IN_FIX | 仅重新认领工作流、模板、current-task、锁表四个路径；其他锁保持 HANDED_OFF |
+| 2026-07-16 17:51:19 +08:00 | Codex Architect | IN_FIX | READY_FOR_RETEST | AO-001、AO-002 最小修复完成；20/20 校验通过；本轮四条锁恢复为 HANDED_OFF |
 
 ## 实际修改文件
 
@@ -57,11 +60,24 @@
 
 ## 当前提交信息
 
-- 提交说明：docs: add anti-overdevelopment guardrails
-- 提交基线：8383f76003fc37bc667974802df9ed277cb108c6
+- 初始实现提交说明：docs: add anti-overdevelopment guardrails
+- 初始实现提交基线：8383f76003fc37bc667974802df9ed277cb108c6
+- 提交说明：docs: refine anti-overdevelopment approval boundaries
+- 提交基线：ed533d37ebf7681bd01570ac342648388e3e5dc2
 - 交付提交哈希：以推送后 `git rev-parse HEAD` 和最终报告为准（提交内容无法预先包含自身哈希）
 - 推送目标：origin/chore/anti-overdevelopment-guardrails
 
 ## 交接说明
 
-Codex Architect 已完成 TASK-0003 的最小范围实现并交给 Codex Reviewer。Reviewer 应定向核验实现可追踪性、最小范围、最简单可行方案、停止条件、抽象门禁、POC 隔离、MEDIUM/HIGH 分级、模板字段及新增 10 项轻量校验。当前状态为 `READY_FOR_REVIEW`，不得在独立复审通过前标记 `COMPLETED`。
+Codex Architect 已完成 TASK-0003 的最小范围实现并交给 Codex Reviewer。Reviewer 应定向核验实现可追踪性、最小范围、最简单可行方案、停止条件、抽象门禁、POC 隔离、MEDIUM/HIGH 分级、模板字段及新增 10 项轻量校验。初始交审状态为 `READY_FOR_REVIEW`；不得在独立复审通过前标记 `COMPLETED`。
+
+## AO-001/AO-002 最小修复记录
+
+- Reviewer 报告：reviews/architecture/ANTI-OVERDEVELOPMENT-REVIEW-TASK-0003.md
+- 修复缺陷：AO-001、AO-002
+- 实际修改文件：docs/architecture/AGENT-WORKFLOW.md、tasks/TASK-TEMPLATE.md、tasks/current-task.md、tasks/MODULE-LOCKS.md
+- `git diff --check`：PASS，退出码 0
+- Windows PowerShell 5.1 校验：PASS，20/20，`$LASTEXITCODE` 为 0
+- 禁止文件检查：PASS；未修改 Reviewer 报告、校验脚本、业务代码或其他禁止文件
+- 定向复审：请 Codex Reviewer 核验已批准 API/数据模型变更无需重复审批的六项条件，以及 FR/NFR 追踪矩阵语义
+- 最终开发状态：READY_FOR_RETEST；不得在 Reviewer 复审通过前标记 `COMPLETED`
