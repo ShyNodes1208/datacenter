@@ -6,7 +6,7 @@
 
 - Task ID：TASK-0003
 - Task Name：建立防过度规划、过度设计和过度开发门禁
-- Status：READY
+- Status：READY_FOR_REVIEW
 - Owner：Codex Architect
 - Reviewer：Codex Reviewer
 - Branch：chore/anti-overdevelopment-guardrails
@@ -14,7 +14,7 @@
 - Requirement Source：hangyu 明确要求所有项目避免过度开发
 - Product Baseline：只建立流程门禁，不开发机房业务功能
 - Architecture Reference：docs/architecture/AGENT-WORKFLOW.md
-- Module Lock：进入 IN_PROGRESS 前由 Codex Architect 认领
+- Module Lock：tasks/MODULE-LOCKS.md 中 TASK-0003 的 HANDED_OFF 记录
 
 ## 当前约束
 
@@ -25,3 +25,43 @@
 - 不重写现有工作流
 - 不实现复杂自动度量平台
 - 不提前开发机房落位业务功能
+
+## 状态迁移记录
+
+| 时间 | 发起者 | 原状态 | 新状态 | 证据/说明 |
+|---|---|---|---|---|
+| 2026-07-16 17:12:50 +08:00 | Codex Architect | READY | IN_PROGRESS | 无活跃父子路径冲突；已按实际修改范围登记 TASK-0003 CLAIMED 锁 |
+| 2026-07-16 17:15:43 +08:00 | Codex Architect | IN_PROGRESS | READY_FOR_REVIEW | 规则、模板、角色引用和轻量校验完成；校验通过；锁改为 HANDED_OFF |
+
+## 实际修改文件
+
+- AGENTS.md
+- docs/architecture/AGENT-WORKFLOW.md
+- tasks/TASK-TEMPLATE.md
+- tasks/current-task.md
+- tasks/MODULE-LOCKS.md
+- agents/claude-product-manager.md
+- agents/codex-architect.md
+- agents/codex-backend.md
+- agents/codex-reviewer.md
+- agents/cursor-frontend.md
+- scripts/validate-agent-workflow.ps1
+
+## 校验结果
+
+- 业务构建：N/A：本任务只修改工作流文档和轻量校验脚本，不涉及业务代码
+- `git diff --check`：PASS，退出码 0
+- Windows PowerShell 5.1 校验：PASS，20/20，`$LASTEXITCODE` 为 0
+- 人工范围检查：PASS，仅修改 TASK-0003 允许的 11 个文件
+- 禁止文件检查：PASS，未修改业务代码、历史证据或 TASK-0003 任务定义文件
+
+## 当前提交信息
+
+- 提交说明：docs: add anti-overdevelopment guardrails
+- 提交基线：8383f76003fc37bc667974802df9ed277cb108c6
+- 交付提交哈希：以推送后 `git rev-parse HEAD` 和最终报告为准（提交内容无法预先包含自身哈希）
+- 推送目标：origin/chore/anti-overdevelopment-guardrails
+
+## 交接说明
+
+Codex Architect 已完成 TASK-0003 的最小范围实现并交给 Codex Reviewer。Reviewer 应定向核验实现可追踪性、最小范围、最简单可行方案、停止条件、抽象门禁、POC 隔离、MEDIUM/HIGH 分级、模板字段及新增 10 项轻量校验。当前状态为 `READY_FOR_REVIEW`，不得在独立复审通过前标记 `COMPLETED`。

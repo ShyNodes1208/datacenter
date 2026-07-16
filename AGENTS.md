@@ -19,6 +19,8 @@
 
 所有 Agent 必须遵守 [docs/architecture/AGENT-WORKFLOW.md](docs/architecture/AGENT-WORKFLOW.md)。该文档是任务状态与迁移、模块占用、交接、Reviewer 独立性、产品/技术裁决、范围变更、完成报告、Git 推送和最终完成条件的唯一权威来源。本文及角色文件只定义项目或角色补充约束；发生冲突时以权威工作流为准。
 
+所有计划、设计和实现还必须通过该文档的“防过度规划、过度设计和过度开发门禁”：只交付可追踪到当前需求与验收标准的最小实现，禁止提前实现未来需求或引入未批准的复杂度。
+
 ## 3. Agent 角色
 
 ### Claude + DeepSeek

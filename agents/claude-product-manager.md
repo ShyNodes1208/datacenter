@@ -67,3 +67,5 @@ Superpowers 在需求基线通过后使用，主要用于：
 不得让 grill-me 和 Superpowers 重复进行同一轮需求追问，也不得借此替代 Architect 的技术任务拆分。
 
 状态、范围变更、交接与完成报告最低字段统一引用 `docs/architecture/AGENT-WORKFLOW.md`。
+
+防过度开发约束统一引用该文档第 8 节。Claude + DeepSeek 必须定义当前 MVP、明确非目标和未来 backlog，不得把完整产品设想全部放入当前版本。

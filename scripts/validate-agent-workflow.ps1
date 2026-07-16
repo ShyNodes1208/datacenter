@@ -135,6 +135,17 @@ $reviewTokens = @(
 )
 Write-Check 10 (Test-ContainsAll $workflow $reviewTokens) "权威工作流包含 Reviewer 独立性与例外规则"
 
+Write-Check 11 ($template.IndexOf("最小实现范围", [System.StringComparison]::Ordinal) -ge 0) "TASK-TEMPLATE.md 包含最小实现范围"
+Write-Check 12 ($template.IndexOf("明确不实现范围", [System.StringComparison]::Ordinal) -ge 0) "TASK-TEMPLATE.md 包含明确不实现范围"
+Write-Check 13 ($template.IndexOf("复杂度预算", [System.StringComparison]::Ordinal) -ge 0) "TASK-TEMPLATE.md 包含复杂度预算"
+Write-Check 14 ($template.IndexOf("需求追踪矩阵", [System.StringComparison]::Ordinal) -ge 0) "TASK-TEMPLATE.md 包含需求追踪矩阵"
+Write-Check 15 ($template.IndexOf("防过度开发检查", [System.StringComparison]::Ordinal) -ge 0) "TASK-TEMPLATE.md 包含防过度开发检查"
+Write-Check 16 ($workflow.IndexOf("防过度规划、过度设计和过度开发门禁", [System.StringComparison]::Ordinal) -ge 0) "权威工作流包含防过度开发门禁章节"
+Write-Check 17 ($workflow.IndexOf("最简单可行方案", [System.StringComparison]::Ordinal) -ge 0) "权威工作流包含最简单可行方案原则"
+Write-Check 18 (Test-ContainsAll $workflow @("新增未批准依赖", "必须停止相关工作", "Change Request")) "权威工作流包含未批准依赖停止规则"
+Write-Check 19 ($workflow.IndexOf("Reviewer 专项检查", [System.StringComparison]::Ordinal) -ge 0) "权威工作流包含 Reviewer 专项检查"
+Write-Check 20 ($workflow.IndexOf("防过度开发完成门禁", [System.StringComparison]::Ordinal) -ge 0) "权威工作流包含防过度开发完成门禁"
+
 Write-Host ("SUMMARY PASS={0} FAIL={1} TOTAL={2}" -f
     $script:PassCount, $script:FailCount, ($script:PassCount + $script:FailCount))
 if ($script:FailCount -gt 0) { exit 1 }
