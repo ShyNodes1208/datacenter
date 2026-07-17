@@ -11,7 +11,7 @@
 | Requirement Source | hangyu 提出的企业机房服务器落位可视化需求 |
 | 产品基线 | docs/product/MVP-PRODUCT-BASELINE.md（TASK-0004，COMPLETED，PASS） |
 | 作者 | Claude + DeepSeek Product Manager |
-| 状态 | READY_FOR_REVIEW |
+| 状态 | READY_FOR_RETEST |
 | 对应分支 | docs/task-0005-architecture-baseline |
 
 ## 2. 架构目标
@@ -115,7 +115,7 @@ SQLite (单文件数据库，WAL 模式)
 | 参数校验 | ASP.NET Core 内置模型验证 + 业务层显式校验 | — | 内置能力即可覆盖 MVP 校验需求 |
 | 对象映射 | 手动（无映射框架） | — | MVP 实体数量少（6 个），手动映射可控且透明 |
 | 日志 | ASP.NET Core 内置 `ILogger<T>` | — | 开发环境输出到控制台，满足 MVP 最小日志需求 |
-| 测试（后端） | xUnit + EF Core InMemory / SQLite | — | .NET 生态标准测试框架 |
+| 测试（后端） | xUnit（单元测试 + SQLite 集成测试） | — | .NET 生态标准测试框架 |
 | 测试（前端） | Vitest | — | 与 Vite 原生集成 |
 
 ### 5.1 明确排除的依赖
@@ -262,17 +262,42 @@ API 风格裁决：**ASP.NET Core Controllers**。理由：资源边界、授权
 - 前端不得绕过：即使前端不发送校验请求，后端对每个修改操作独立执行全部相关 BR
 - BR 违反时返回 `400 Bad Request` + 明确错误消息（如 "U 位 10-11 已被服务器 X 占用"）
 
-### 8.3 位置操作原子性
+### 8.3 位置操作原子性与并发控制
 
-上架、移动、下架均为短事务，每个操作在单个数据库事务内完成：
+上架、移动、下架均为短事务。所有位置操作遵循统一的写事务流程：
 
-**上架事务：** 在事务内重新校验目标 U 位空闲（SQLite 写锁保证并发安全）→ 占用 U 位 → 更新机柜容量 → 写入操作记录 → 提交。事务冲突（并发上架同一 U 位）由 SQLite 写锁和数据库约束拒绝，后端将冲突映射为可识别业务错误（如 "U 位 10-11 已被占用"）。
+**事务流程：**
 
-**移动事务（BR-014/BR-015）：** 校验新位置 → 占用新 U 位 → 释放原 U 位 → 更新两个机柜的容量 → 写入操作记录 → 提交。任何步骤失败时回滚整个事务，服务器保持原位置不变。
+1. 在读取目标机柜占用情况之前，先取得 SQLite 写事务（语义等价于 `BEGIN IMMEDIATE`：事务开始时即获取写入保留锁，不允许先在事务外查询再进入写事务）。
+2. 在同一个写事务中重新读取：
+   - 服务器当前状态
+   - 当前所在位置（移动/下架时）
+   - 目标机房和机柜状态（上架/移动时）
+   - 目标 U 位区间内所有当前在架服务器的占用区间
+3. 在同一事务中执行全部业务规则校验——包括逐区间检查目标 U 位区间与已在架区间的重叠。不依赖普通唯一索引检测区间重叠。
+4. 校验通过后，在同一事务中：
+   - 更新服务器位置状态
+   - 写入或更新 ServerPosition 记录
+   - 更新机柜容量统计
+   - 写入 AuditRecord
+5. 提交事务。
+6. 任一步骤失败必须回滚整个事务，不得产生部分更新。
 
-**下架事务（BR-016）：** 释放全部 U 位 → 更新服务器位置状态 → 更新机柜容量 → 写入操作记录 → 提交。
+**上架事务：** 按上述流程：获取写事务 → 重读目标机柜 U 位区间占用 → 逐区间检查重叠 → 通过后占用 U 位 → 写 AuditRecord → 提交。
 
-并发竞争时，最终由数据库事务写锁和唯一约束拒绝冲突写入，不允许仅依赖"先查后写"而没有最终拒绝机制。
+**移动事务（BR-014/BR-015）：** 按上述流程：获取写事务 → 重读服务器当前位置和目标机柜 U 位区间占用 → 检查新区间重叠（排除服务器自身当前位置）→ 通过后占用新 U 位、释放原 U 位 → 更新两个机柜容量 → 写 AuditRecord → 提交。任何步骤失败时回滚，服务器保持原位置不变。
+
+**下架事务（BR-016）：** 按上述流程：获取写事务 → 重读服务器当前位置 → 通过后释放全部 U 位 → 更新服务器位置状态 → 更新机柜容量 → 写 AuditRecord → 提交。
+
+**并发竞争处理：**
+
+1. 如果无法取得写事务并出现 `SQLITE_BUSY` 或 `SQLITE_LOCKED`：本次操作失败。不执行隐藏的无限重试。返回可识别的"系统繁忙或并发冲突"业务结果。用户可稍后重新发起操作。
+2. 如果事务内重读发现目标 U 位区间已被其他操作占用：本次操作被拒绝。回滚事务。返回 U 位冲突业务结果。
+3. SQLite 的单写入者约束加上 `BEGIN IMMEDIATE` 写事务和事务内重读校验，是 U 位区间并发冲突的最终保护。
+
+**资产编号并发：** 资产编号非空唯一由后端校验和 SQLite 部分唯一索引（`CREATE UNIQUE INDEX ... WHERE AssetNumber IS NOT NULL`）共同保证。
+
+不预先实现：分布式锁、消息队列、重试框架、多实例协调或多数据库抽象。
 
 ### 8.4 错误响应约定
 
@@ -294,9 +319,9 @@ HTTP 状态码：
 
 ### 8.5 认证与角色
 
-**账号来源：** MVP 用户账号保存在 SQLite User 表中。首个管理员账号通过受控种子数据或首次部署时凭据注入创建（不将密码提交到 Git）。后续账号由已认证管理员通过系统界面创建。不实现自注册。
+**账号来源：** MVP 用户账号保存在 SQLite User 表中。所有账号通过受控部署初始化过程预置（初始凭据通过不进入 Git 的安全配置提供）。MVP 不提供用户管理页面或 API，不实现用户 CRUD、角色配置、密码重置或用户导入。不实现自注册。后续确需用户管理功能时须通过 Change Request。
 
-**密码处理：** 使用 `Microsoft.AspNetCore.Identity.PasswordHasher<TUser>`（`Microsoft.Extensions.Identity.Core` 包中的独立哈希组件）或直接使用 `Rfc2898DeriveBytes`（PBKDF2）配合随机盐和高迭代次数（≥ 100,000）。不使用 ASP.NET Core Identity 完整框架（UserManager、RoleManager、SignInManager 等）。禁止明文存储。
+**密码处理：** 使用 `Microsoft.AspNetCore.Identity.PasswordHasher<TUser>`（`Microsoft.Extensions.Identity.Core` 包中的独立哈希组件）。不使用 ASP.NET Core Identity 完整框架（UserManager、RoleManager、SignInManager 等）。禁止明文存储。密码验证只使用 `PasswordHasher<TUser>` 提供的哈希和验证能力。
 
 **User 实体最小数据：** 唯一标识、登录名、密码哈希、启用状态、角色（字符串：`机房管理员`、`运维人员`、`DBA/应用运维人员`、`只读查看人员`）。
 
@@ -311,7 +336,7 @@ HTTP 状态码：
 - 会话有效期：绝对过期 + 滑动过期策略（具体值由 TASK-0007 定义，建议滑动过期 30 分钟，绝对过期 8 小时）
 - 认证票据包含用户标识和角色声明，每次请求由 Cookie 中间件解析
 
-**CSRF 最小策略：** ASP.NET Core Cookie Authentication + 同源 SPA 部署 + `SameSite=Lax` 提供基础 CSRF 防护。如果 TASK-0008 采用前后端分离开发（不同端口），需在 TASK-0008 中评估是否需要 antiforgery 头部方案。
+**CSRF 防护：** 使用 ASP.NET Core 内置 Antiforgery 机制。服务端向同源 SPA 签发防伪令牌；前端在所有状态变更请求（POST/PUT/PATCH/DELETE）中通过约定请求头提交令牌；服务端必须验证令牌。登录、注销以及所有新增、编辑、上架、移动、下架等状态变更请求均须验证 Antiforgery Token。查询类只读请求（GET）不要求防伪令牌。验证失败时拒绝请求，不执行任何状态变更。`SameSite=Lax` 作为纵深防御补充，不替代服务端防伪验证。
 
 - 角色校验在 API 端点层执行：修改端点要求 `机房管理员` 或 `运维人员` 角色
 - 匿名用户访问任意非登录端点返回 `401`；访问任意非登录页面被路由守卫重定向到 `/login`
@@ -340,7 +365,7 @@ HTTP 状态码：
 - 启用 WAL 模式（`PRAGMA journal_mode=WAL;`）
 - 上架、移动、下架均使用短事务（参见第 8.3 节），事务内重新校验并处理 SQLite 写竞争
 - 资产编号可空唯一性由 SQLite 部分唯一索引实现（`CREATE UNIQUE INDEX ... WHERE AssetNumber IS NOT NULL`），配合后端校验形成双重保证
-- U 位冲突由后端业务校验和事务内数据库约束/写锁共同最终拒绝
+- U 位区间冲突由 `BEGIN IMMEDIATE` 写事务、事务内逐区间重读校验和 SQLite 写锁共同最终拒绝；普通唯一索引无法检测 U 位区间重叠
 - 所有时间字段使用 UTC 存储
 - 不建立多数据库兼容层（无 repository interface、无数据库抽象）
 - 不使用 SQLite 不支持的 Schema、Sequence 或数据库生成并发令牌
@@ -489,7 +514,7 @@ datacenter-layout/
 │   │       └── useApi.test.ts
 │   └── backend/                       # 后端测试（xUnit）
 │       ├── backend-tests.csproj
-│       ├── UnitTests/                 # 单元测试（EF Core InMemory）
+│       ├── UnitTests/                 # 单元测试（纯逻辑，无数据库依赖）
 │       │   └── PlacementServiceTests.cs
 │       └── IntegrationTests/          # 集成测试（SQLite 文件）
 │           └── PlacementApiTests.cs
@@ -609,9 +634,9 @@ pwsh --version          # 或 powershell
 
 ### 14.2 后端单元测试
 
-框架：xUnit + EF Core InMemory 数据库（仅用于纯逻辑测试，不涉及数据库唯一性或事务语义）。
+框架：xUnit（无数据库 Provider）。
 
-范围（纯计算和逻辑校验，无需真实 SQLite）：
+范围（纯计算和逻辑校验，不依赖数据库）：
 - U 位范围计算（BR-008, BR-009 的数学计算）
 - 容量统计计算（BR-019, BR-020, BR-021）
 - 输入参数校验逻辑
@@ -746,11 +771,9 @@ TASK-0005 本身不引入任何依赖（纯文档任务）。以下为后续 MVP
 | `vite` | 构建工具和开发服务器 | 替换构建工具（中） |
 | `@vitejs/plugin-vue` | Vite 的 Vue 3 官方插件 | 随 Vite 替换 |
 | `typescript` | TypeScript 编译器 | 降级为 JavaScript（高） |
-| `vitest` | 前端测试框架 | 替换测试框架（中） |
-| `@vue/test-utils` | Vue 组件测试辅助（如需） | 替换测试辅助（低） |
-| `jsdom` 或 `happy-dom` | Vitest 浏览器环境模拟 | 替换 DOM 模拟（低） |
+| `vitest` | 前端测试框架（纯函数、composable 逻辑、不含组件挂载测试） | 替换测试框架（中） |
 
-前端测试通过 `package.json` 中的 `vitest run` 脚本执行，使用已安装的本地 Vitest，不依赖 `npx` 临时下载。
+前端测试通过 `package.json` 中的 `vitest run` 脚本执行，使用已安装的本地 Vitest。当前基线不执行 Vue 组件挂载测试或 DOM 仿真测试，因此不引入 `@vue/test-utils`、`jsdom` 或 `happy-dom`。后续需要自动化组件或浏览器测试时须通过 Change Request。
 
 ### 18.3 后端运行时依赖
 
@@ -774,8 +797,9 @@ TASK-0005 本身不引入任何依赖（纯文档任务）。以下为后续 MVP
 | `xunit` | 测试框架 | 替换测试框架（中） |
 | `Microsoft.NET.Test.Sdk` | .NET 测试运行基础设施 | 随 xUnit 替换 |
 | `xunit.runner.visualstudio` | Visual Studio / `dotnet test` 集成 | 低 |
-| `Microsoft.AspNetCore.Mvc.Testing` | 集成测试 ASP.NET Core 测试主机（如需） | 替换为手动自托管（中） |
-| `Microsoft.EntityFrameworkCore.InMemory` | 纯逻辑单元测试的轻量数据库替代 | 替换为真实 SQLite（低） |
+| `Microsoft.AspNetCore.Mvc.Testing` | 集成测试 ASP.NET Core 测试主机 | 替换为手动自托管（中） |
+
+后端单元测试只测试纯业务逻辑（计算、校验），不依赖任何数据库 Provider。集成测试使用真实临时 SQLite。因此不引入 `Microsoft.EntityFrameworkCore.InMemory`。
 
 ### 18.6 明确不引入的依赖
 

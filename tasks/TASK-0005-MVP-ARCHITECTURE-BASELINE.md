@@ -4,7 +4,7 @@
 
 - Task ID：TASK-0005
 - Task Name：机房服务器落位图 MVP 技术架构与开发基线
-- Status：READY_FOR_REVIEW
+- Status：READY_FOR_RETEST
 - Owner：Claude + DeepSeek Product Manager
 - Reviewer：Codex Reviewer
 - Branch：docs/task-0005-architecture-baseline
@@ -182,9 +182,15 @@
 | 时间 | 发起者 | 原状态 | 新状态 | 接收者 | 证据/说明 |
 |---|---|---|---|---|---|
 | 2026-07-17 | Claude + DeepSeek Product Manager | IDLE | DRAFT | — | TASK-0004 COMPLETED；创建 TASK-0005 草案 |
-| 2026-07-17 | Codex Reviewer | READY_FOR_REVIEW | CHANGES_REQUESTED | Claude + DeepSeek Product Manager | 审核报告 bdd5a38：8 MAJOR / 1 MINOR |
+| 2026-07-17 | Claude + DeepSeek Product Manager | DRAFT | READY | — | 架构基线完成；15 条 AC 可验证；工作流 20/20 PASS |
+| 2026-07-17 | Claude + DeepSeek Product Manager | READY | IN_PROGRESS | — | 模块冲突检查通过；三项锁 CLAIMED |
+| 2026-07-17 | Claude + DeepSeek Product Manager | IN_PROGRESS | READY_FOR_REVIEW | Codex Reviewer | 架构基线交审（提交 fc576de）；三项锁 HANDED_OFF |
+| 2026-07-17 | Codex Reviewer | READY_FOR_REVIEW | CHANGES_REQUESTED | Claude + DeepSeek Product Manager | 初次审核 bdd5a38：8 MAJOR / 1 MINOR（A-001~A-009） |
 | 2026-07-17 | Claude + DeepSeek Product Manager | CHANGES_REQUESTED | IN_FIX | — | 确认 A-001 至 A-009 修复范围；重新 CLAIMED |
-| 2026-07-17 | Claude + DeepSeek Product Manager | IN_FIX | READY_FOR_RETEST | Codex Reviewer | 全部 9 项修复完成；CR-0001 已记录；三项锁 HANDED_OFF |
+| 2026-07-17 | Claude + DeepSeek Product Manager | IN_FIX | READY_FOR_RETEST | Codex Reviewer | 第一轮修复（提交 5a88157）；CR-0001 已记录；三项锁 HANDED_OFF |
+| 2026-07-17 | Codex Reviewer | READY_FOR_RETEST | CHANGES_REQUESTED | Claude + DeepSeek Product Manager | 第一次复审 bfc2735：4 MAJOR / 1 MINOR（R-001~R-005） |
+| 2026-07-17 | Claude + DeepSeek Product Manager | CHANGES_REQUESTED | IN_FIX | — | 确认 R-001 至 R-005 修复范围；重新 CLAIMED |
+| 2026-07-17 | Claude + DeepSeek Product Manager | IN_FIX | READY_FOR_RETEST | Codex Reviewer | 第二轮修复完成；A-001~A-005 全部 RESOLVED；三项锁 HANDED_OFF |
 
 ## 审核结论
 

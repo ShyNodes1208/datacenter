@@ -5,7 +5,7 @@
 - Change Request ID：CR-0001
 - 发现者：Claude + DeepSeek Product Manager
 - 原任务：TASK-0005（MVP 技术架构与开发基线）
-- 变更原因：原 `AGENTS.md` 第 2 节禁止使用 WSL 和 Linux，要求所有命令在 Windows PowerShell 运行。TASK-0005 架构基线采用 WSL 2 Ubuntu 24.04 作为开发环境。经 hangyu/项目负责人评估，WSL 2 作为 Windows 宿主上的 Linux 开发环境是当前团队的实际工作方式，且 Codex Reviewer 在 A-002 中确认 WSL 2 是合理的开发环境选择。需要更新 AGENTS.md 以反映实际开发环境。
+- 变更原因：原 `AGENTS.md` 第 2 节禁止使用 WSL 和 Linux，要求所有命令在 Windows PowerShell 运行。TASK-0005 架构基线采用 WSL 2 Ubuntu 24.04 作为开发环境。经 hangyu/项目负责人评估并批准，WSL 2 作为 Windows 宿主上的 Linux 开发环境是当前团队的实际工作方式。需要更新 AGENTS.md 以反映实际开发环境。
 - 产品范围影响：无。开发环境变更不影响 MVP 功能范围、用户角色、业务流程或验收标准。
 - 技术影响：AGENTS.md 第 2 节需更新；架构基线文档中的开发环境描述已基于 WSL 2。Windows PowerShell 脚本保留，但 WSL 中统一通过 `pwsh` 执行。
 - 文件影响：
