@@ -4,14 +4,14 @@
 
 - Task ID：TASK-0006
 - Task Name：MVP 项目脚手架
-- Status：READY_FOR_RETEST
+- Status：CHANGES_REQUESTED
 - Owner：Cursor Developer（AGENTS.md 第 3 节；CR-0002 批准的全栈实施角色）
 - Reviewer：Codex Reviewer
 - Branch：chore/task-0006-project-scaffold
 - Requirement Source：hangyu 提出的企业机房服务器落位可视化需求
 - Product Baseline：docs/product/MVP-PRODUCT-BASELINE.md（TASK-0004，COMPLETED，PASS）
 - Architecture Reference：docs/architecture/MVP-ARCHITECTURE-BASELINE.md（TASK-0005，COMPLETED，PASS）
-- Module Lock：HANDED_OFF（9 项实施锁全部 HANDED_OFF；未释放；等待 Codex Reviewer 复审）
+- Module Lock：HANDED_OFF（9 项实施锁全部 HANDED_OFF；CHANGES_REQUESTED 保持 HANDED_OFF；修复时由 Cursor Developer 重新认领为 CLAIMED）
 
 ## Reviewer 独立性检查
 
@@ -845,13 +845,11 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 ## 开发完成证据
 
 - 修改文件：Datacenter.sln；src/frontend/**；src/backend/Datacenter.Api/**；tests/backend/Datacenter.Api.Tests/**；scripts/verify-project.ps1；README.md；tasks/TASK-0006-PROJECT-SCAFFOLD.md；tasks/current-task.md；tasks/MODULE-LOCKS.md。.gitignore 未改。
-- 验收证据：AC-SC-01..17、AC-SC-19 共 18 项 PASS；AC-SC-18 和 AC-SC-20 FAIL（见实现审核报告 IR-001、IR-002）。
+- 验收证据：19 PASS / 1 FAIL（AC-SC-17 FAIL per RT-001）。IR-001/IR-002 CLOSED（复审确认）。
 - 模块锁状态：HANDED_OFF（9 项，CHANGES_REQUESTED 保持 HANDED_OFF）
 - 已知限制：
-  - verify-project.ps1 门禁不完整（IR-003），需补齐 20 项全部门禁
-  - launchSettings.json 含 weatherforecast 残留（IR-004），需删除两处 launchUrl
-  - AC-SC-18 原 grep 命令与 lockfile optional peer metadata 冲突（IR-001），规格已修正为三层验证
-  - AC-SC-20 原目录存在性检查与验证序列冲突（IR-002），规格已修正为 Git 跟踪检查
+  - RT-001（IR-003 继续）：verify-project.ps1 中 grep exit 2 被当成"无匹配"接受；Git 管道可能掩盖 git 命令失败。修复：grep 要求恰好 exit 1；git ls-files 独立检查成功后再 pip 到 grep
+  - RT-002（IR-004 继续）：launchSettings.json 含 UTF-8 BOM，`python3 -m json.tool` 退出码 1。修复：保存为 UTF-8 without BOM，保持 JSON 内容不变
 
 ## 交接记录
 
@@ -871,14 +869,18 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | 2026-07-17 | Codex Reviewer | READY_FOR_REVIEW | CHANGES_REQUESTED | — | 实现审核 NEEDS_CHANGES（提交 d6d8455）；IR-001（AC-SC-18 grep 命中 lockfile optional peer metadata）、IR-002（AC-SC-20 与验证序列冲突）、IR-003（verify-project.ps1 缺失门禁）、IR-004（launchSettings.json weatherforecast 残留）。MAJOR 3 / MINOR 1。修复后由同一 Reviewer 复审。 |
 | 2026-07-18 00:11:24 +08:00 | Cursor Developer | CHANGES_REQUESTED | IN_FIX | — | CR-0003 已批准；重新认领 scripts/verify-project.ps1、src/backend/Datacenter.Api、tasks/TASK-0006-PROJECT-SCAFFOLD.md、tasks/current-task.md、tasks/MODULE-LOCKS.md 为 CLAIMED；其余锁保持 HANDED_OFF；开始修复 IR-001 至 IR-004 |
 | 2026-07-18 00:13:00 +08:00 | Cursor Developer | IN_FIX | READY_FOR_RETEST | Codex Reviewer | IR-001..004 已修复并 CLOSED；verify-project 0 / ALL CHECKS PASSED；工作流 20/20；git diff --check PASS；weatherforecast 零命中；Git 未跟踪构建产物；5 项 CLAIMED 锁改回 HANDED_OFF；待同一 Reviewer 复审 |
+| 2026-07-18 | Codex Reviewer | READY_FOR_RETEST | CHANGES_REQUESTED | — | 复审 NEEDS_CHANGES（提交 1124339；报告：TASK-0006-PROJECT-SCAFFOLD-IMPLEMENTATION-RETEST.md）。AC-SC-17 FAIL（RT-001：grep/Git 管道错误处理不严格；grep exit 2 被当成"无匹配"；Git 失败可被掩盖）。RT-002：launchSettings.json UTF-8 BOM 导致 python3 json.tool 失败。IR-001 CLOSED、IR-002 CLOSED、IR-003/RT-001 OPEN、IR-004/RT-002 OPEN。19 AC PASS / 1 FAIL。修复后由同一 Reviewer 复审。 |
 
 ## 审核结论
 
-- 实施前规格审查结论：NEEDS_CHANGES（报告：reviews/tasks/TASK-0006-PROJECT-SCAFFOLD-SPEC-REVIEW.md，提交 6a1b4a9；SC-001 至 SC-009，全部已通过规格修正解决）
-- 实施后代码审核结论：NEEDS_CHANGES（报告：reviews/tasks/TASK-0006-PROJECT-SCAFFOLD-IMPLEMENTATION-REVIEW.md，提交 d6d8455；IR-001 至 IR-004）
-- 规格审查发现：BLOCKER 2 / MAJOR 6 / MINOR 1 = 9 项，全部 CLOSED
-- 实现审核发现：MAJOR 3 / MINOR 1 = 4 项，状态见下方缺陷清单
-- 当前任务状态：READY_FOR_RETEST；IR-001 至 IR-004 已 CLOSED；等待 Codex Reviewer 复审
+- 实施前规格审查结论：NEEDS_CHANGES（报告：reviews/tasks/TASK-0006-PROJECT-SCAFFOLD-SPEC-REVIEW.md，提交 6a1b4a9；SC-001 至 SC-009，全部 CLOSED）
+- 第一次实现审核结论：NEEDS_CHANGES（报告：reviews/tasks/TASK-0006-PROJECT-SCAFFOLD-IMPLEMENTATION-REVIEW.md，提交 d6d8455；IR-001 至 IR-004）
+- 第二次实现审核（复审）结论：NEEDS_CHANGES（报告：reviews/tasks/TASK-0006-PROJECT-SCAFFOLD-IMPLEMENTATION-RETEST.md，提交 1124339）
+- 复审发现：MAJOR 1（RT-001）/ MINOR 1（RT-002）
+- AC 结果：19 PASS / 1 FAIL（AC-SC-17 FAIL）
+- 已关闭：IR-001 CLOSED、IR-002 CLOSED
+- 仍开放：IR-003 OPEN（RT-001）、IR-004 OPEN（RT-002）
+- 当前任务状态：CHANGES_REQUESTED，待 Cursor Developer 修复后重新进入 IN_FIX → READY_FOR_RETEST
 
 ## 缺陷清单
 
@@ -893,35 +895,39 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | SC-007 | MAJOR | 规格审核报告第 14 节 | 所有路径、名称、脚本固定为唯一值 | CLOSED（solution 根目录；项目名固定；恰好 1 个脚本；无"可选"） |
 | SC-008 | MAJOR | 规格审核报告第 14 节 | 20 条 AC 全部重写为可执行格式 | CLOSED（AC-SC-01 至 AC-SC-20 全部含精确命令和期望输出） |
 | SC-009 | MINOR | 规格审核报告第 14 节 | 追踪矩阵映射到正确 AC | CLOSED（需求追踪矩阵已更正 AC 映射） |
-| IR-001 | MAJOR | 实现审核报告 §6、§14；`package-lock.json:1537-1579` | AC-SC-18 改为三层验证；CR-0003 批准 | CLOSED（verify-project.ps1 实现 A/B/C；A=none、B=三目录不存在、C=源码/配置无引用；不扫描 package-lock.json） |
-| IR-002 | MAJOR | 实现审核报告 §12、§14；`TASK-0006` AC-SC-20 | AC-SC-20 改为 Git 跟踪检查；CR-0003 批准 | CLOSED（verify-project.ps1 用 `git ls-files \| grep` 检查 node_modules/dist/bin/obj/TestResults；无跟踪；允许本地存在） |
-| IR-003 | MAJOR | 实现审核报告 §10、§14；`scripts/verify-project.ps1` | verify-project.ps1 补齐 20 项门禁；CR-0003 批准 | CLOSED（脚本重构：npm ci + 20 项门禁；verify 退出码 0；ALL CHECKS PASSED） |
-| IR-004 | MINOR | 实现审核报告 §4、§14；`launchSettings.json:16,25` | 删除两处 weatherforecast launchUrl | CLOSED（已删除两处 launchUrl；`grep -ni weatherforecast launchSettings.json` 退出码 1） |
+| IR-001 | MAJOR | 实现审核报告 §6、§14；`package-lock.json:1537-1579` | AC-SC-18 改为三层验证；CR-0003 批准 | CLOSED（复审确认：A/B/C 三层全部 PASS；不扫描 package-lock.json） |
+| IR-002 | MAJOR | 实现审核报告 §12、§14；`TASK-0006` AC-SC-20 | AC-SC-20 改为 Git 跟踪检查；CR-0003 批准 | CLOSED（复审确认：git ls-files 无输出；允许本地存在 node_modules/dist） |
+| IR-003 | MAJOR | 实现审核报告 §10、§14；复审报告 RT-001；`scripts/verify-project.ps1:107-113,130-136,200-208` | 补齐 20 项门禁；grep 必须区分退出码 1（无匹配）与 2+（执行错误）；Git 管道必须独立验证 git ls-files 成功 | OPEN（grep 退出码 2 被当成"无匹配"接受；Git 管道可能掩盖 git 命令自身失败。修复：grep 要求恰好退出码 1；git ls-files 独立检查后再 grep） |
+| IR-004 | MINOR | 实现审核报告 §4、§14；复审报告 RT-002；`launchSettings.json:1` | 删除两处 weatherforecast；保存为 UTF-8 without BOM | OPEN（weatherforecast 已删除；但文件含 UTF-8 BOM 导致 `python3 -m json.tool` 退出码 1。修复：去除 BOM，保持 JSON 内容不变） |
+| RT-001 | MAJOR | 复审报告 §7、§14；`scripts/verify-project.ps1:107-113,130-136,200-208` | 同 IR-003 | OPEN（见 IR-003；grep/Git 管道错误处理不严格） |
+| RT-002 | MINOR | 复审报告 §8、§14；`launchSettings.json:1` | 同 IR-004 | OPEN（见 IR-004；UTF-8 BOM 导致 JSON 语法校验失败） |
 
 ## 缺陷修复记录
 
 | 缺陷 ID | 修复者 | 修改说明 | 回归证据 | 提交 |
 |---|---|---|---|---|
-| SC-001 至 SC-009 | Claude + DeepSeek Product Manager | 见上方缺陷清单各行的修复说明 | 工作流 20/20 PASS；git diff --check PASS | 见本轮提交 |
-| IR-001 | Cursor Developer | verify-project.ps1 实现 AC-SC-18 A/B/C 三层验证；不扫描 package-lock.json optional peer metadata | A: Forbidden direct dependencies: none；B: 顶层 jsdom/happy-dom/@vue/test-utils 不存在；C: 源码/配置无引用；verify 退出码 0 | 待本轮提交 |
-| IR-002 | Cursor Developer | verify-project.ps1 按 git ls-files 检查构建产物跟踪状态 | `git ls-files \| grep ...(node_modules\|dist\|bin\|obj\|TestResults)...` 无输出；verify 退出码 0 | 待本轮提交 |
-| IR-003 | Cursor Developer | 全面重构 verify-project.ps1：npm ci + 20 项门禁；失败非零退出 | verify-project.ps1 ALL CHECKS PASSED；工作流 20/20；git diff --check PASS | 待本轮提交 |
-| IR-004 | Cursor Developer | 删除 launchSettings.json 两处 launchUrl weatherforecast | `grep -ni weatherforecast .../launchSettings.json` 退出码 1 | 待本轮提交 |
+| SC-001 至 SC-009 | Claude + DeepSeek Product Manager | 见上方缺陷清单各行的修复说明 | 工作流 20/20 PASS；git diff --check PASS | 见规格修正提交 |
+| IR-001 | Cursor Developer | verify-project.ps1 实现 AC-SC-18 A/B/C 三层验证 | 复审确认 CLOSED。A/B/C 全部 PASS | 提交 1bfcc54 |
+| IR-002 | Cursor Developer | verify-project.ps1 按 git ls-files 检查构建产物跟踪状态 | 复审确认 CLOSED。git ls-files 无输出 | 提交 1bfcc54 |
+| IR-003/RT-001 | Cursor Developer（待修复） | verify-project.ps1 grep/Git 管道错误处理：grep exit 2 被当成无匹配；Git 命令失败可能被掩盖 | 待 IN_FIX：grep 要求恰好 exit 1；git ls-files 独立检查成功后再 grep | 待下一轮提交 |
+| IR-004/RT-002 | Cursor Developer（待修复） | launchSettings.json 去除 UTF-8 BOM | 待 IN_FIX：保存为 UTF-8 without BOM；`python3 -m json.tool` 退出码 0 | 待下一轮提交 |
 
-## 实现审核（IR-001 至 IR-004）修复矩阵
+## 实现审核（IR-001 至 IR-004）及复审（RT-001、RT-002）修复矩阵
 
 | Finding | 等级 | 规格修正位置 | Cursor 实现修复位置 | 复验命令 | 闭环条件 |
 |---------|------|-------------|-------------------|---------|---------|
-| IR-001 | MAJOR | AC-SC-18（A/B/C 三层验证）；CR-0003 | `verify-project.ps1` 新增步骤 5-7（AC-SC-18 A/B/C 层命令） | A层：`node -e` 直接依赖检查退出码 0；B层：`test ! -d` 三个目录不存在；C层：grep 退出码 1 | A/B/C 三层全部 PASS |
-| IR-002 | MAJOR | AC-SC-20（`git ls-files` 替换 `test -d`）；CR-0003 | verify-project.ps1 新增步骤 18（`git ls-files ... node_modules dist bin obj`） | `git ls-files src/frontend/node_modules/ src/frontend/dist/ ...` 无输出 | Git 未跟踪任何构建产物目录 |
-| IR-003 | MAJOR | AC-SC-17（20 项门禁清单）；CR-0003 | `scripts/verify-project.ps1` 全面重构：`npm ci` 替换 `npm install`；新增步骤 1-9、16-20 | `pwsh ... verify-project.ps1` 退出码 0 | 20 项全部 PASS；任一失败时非零退出码且不输出 ALL CHECKS PASSED |
-| IR-004 | MINOR | 步骤 11b（launchSettings.json 清理命令）；缺陷清单 | `src/backend/Datacenter.Api/Properties/launchSettings.json` 第 16、25 行删除 `launchUrl` | `grep -ri "weatherforecast" ... launchSettings.json` 退出码 1 | launchSettings.json 零命中 weatherforecast |
+| IR-001 | MAJOR | AC-SC-18（A/B/C 三层验证）；CR-0003 | `verify-project.ps1` A/B/C 层 | A/B/C 全部 PASS | **CLOSED**（复审确认） |
+| IR-002 | MAJOR | AC-SC-20（`git ls-files` 替换 `test -d`）；CR-0003 | verify-project.ps1 Git 跟踪检查 | git ls-files 无输出 | **CLOSED**（复审确认） |
+| IR-003/RT-001 | MAJOR | AC-SC-17（20 项门禁清单 + 严格错误处理） | `scripts/verify-project.ps1` grep gate：`$LASTEXITCODE -eq 1` 而非 `-ne 0`；git ls-files 独立检查后再 grep | grep 对不存在的目标返回 exit 2 时脚本非零退出；git 管道在 git 失败时非零退出 | AC-SC-17 PASS（verify-project.ps1 0 且所有内置负测试通过） |
+| IR-004/RT-002 | MINOR | 步骤 11b（launchSettings.json 清理 + BOM 去除） | `launchSettings.json` 保存为 UTF-8 without BOM | `python3 -m json.tool launchSettings.json >/dev/null` 退出码 0 | JSON 语法校验通过 |
 
 ## 复审结果
 
-- 最终 Reviewer：Codex Reviewer（待复审）
-- 复审结论：待 Codex Reviewer 对 IR-001 至 IR-004 执行 READY_FOR_RETEST 复审
-- 关闭缺陷及证据：IR-001..004 已由 Owner 标记 CLOSED（证据见缺陷修复记录）；待 Reviewer 确认
+- 最终 Reviewer：Codex Reviewer
+- 复审结论：NEEDS_CHANGES（19 PASS / 1 FAIL；IR-001/IR-002 CLOSED；IR-003/IR-004 重新 OPEN 为 RT-001/RT-002）
+- RT-001（MAJOR）：verify-project.ps1 中 grep 退出码 2 被当成"无匹配"通过；Git 管道可掩盖 git ls-files 失败
+- RT-002（MINOR）：launchSettings.json 含 UTF-8 BOM，导致 `python3 -m json.tool` 退出码 1
+- 下一步：Cursor Developer 进入 IN_FIX 修复 RT-001 和 RT-002；完成后进入 READY_FOR_RETEST；Codex Reviewer 执行第三次复审
 
 ## 防过度开发检查
 
