@@ -4,42 +4,50 @@
 
 ## 当前任务
 
-- Task ID：TASK-0005
-- Task Name：机房服务器落位图 MVP 技术架构与开发基线
-- Status：COMPLETED
-- Owner：Claude + DeepSeek Product Manager
+- Task ID：TASK-0006
+- Task Name：MVP 项目脚手架
+- Status：DRAFT
+- Owner：Claude + DeepSeek Product Manager（任务规划）；Cursor Frontend（后续实施）
 - Reviewer：Codex Reviewer
-- Branch：docs/task-0005-architecture-baseline
-- Task File：tasks/TASK-0005-MVP-ARCHITECTURE-BASELINE.md
+- Branch：chore/task-0006-project-scaffold
+- Task File：tasks/TASK-0006-PROJECT-SCAFFOLD.md
 - Requirement Source：hangyu 提出的企业机房服务器落位可视化需求
 - Product Baseline：docs/product/MVP-PRODUCT-BASELINE.md（TASK-0004，COMPLETED，PASS）
-- Architecture Reference：docs/architecture/MVP-ARCHITECTURE-BASELINE.md（本任务产出）
-- Module Lock：TASK-0005 三条模块锁已 RELEASED；任务已关闭
+- Architecture Reference：docs/architecture/MVP-ARCHITECTURE-BASELINE.md（TASK-0005，COMPLETED，PASS）
+- Module Lock：TASK-0006 三条模块锁已 CLAIMED；Product Manager 正在编写任务规格
 
 ## 当前目标
 
 产出：
 
-- docs/architecture/MVP-ARCHITECTURE-BASELINE.md
+- tasks/TASK-0006-PROJECT-SCAFFOLD.md
 
-该文档基于已批准的 TASK-0004 产品基线，建立支撑 MVP 开发的最小技术架构基线，包括：系统边界、技术栈、前后端职责、数据持久化方向、项目目录结构、开发流程、测试基线、后续任务拆分。
+该任务规格定义 MVP 项目脚手架的最小范围、依赖预算、验收标准和防过度开发约束。后续由 Cursor Frontend 实施。
 
-## 上一任务摘要（TASK-0004）
+## 上一任务摘要
 
-- 产品基线文件：docs/product/MVP-PRODUCT-BASELINE.md
+### TASK-0005（MVP 技术架构与开发基线）
+
+- 架构基线文件：docs/architecture/MVP-ARCHITECTURE-BASELINE.md
 - 最终状态：COMPLETED
-- 审核结论：PASS（三次审核：初次 NEEDS_CHANGES → 复审 NEEDS_CHANGES → 第二次复审 PASS）
-- 最终复审报告：reviews/product/MVP-PRODUCT-BASELINE-RETEST-2-TASK-0004.md
-- 最终复审提交：ecf2b689f3a0193a88de03e33da7c1452ffadea8
-- 产品基线：FR 12 / NFR 7 / AC 37 / BR 30 / PAGE 9 / 角色 4
+- 审核结论：PASS（四轮审核：初次 NEEDS_CHANGES → 复审 NEEDS_CHANGES → 第二次复审 NEEDS_CHANGES → 最终复审 PASS）
+- 最终复审报告：reviews/architecture/MVP-ARCHITECTURE-BASELINE-RETEST-3-TASK-0005.md
+- 最终复审提交：030098ad42fe4129739fbb915a49a605683ea8d7
+- 架构裁决：单体应用、SQLite、Controllers、Cookie Auth + PasswordHasher + Antiforgery、HTML/CSS 二维视图
+- 后续任务拆分：TASK-0006 至 TASK-0016（11 个独立任务）
 - 关闭日期：2026-07-17
+
+### TASK-0004（MVP 产品基线）
+
+- 最终状态：COMPLETED
+- 最终复审：PASS
 
 ## 当前约束
 
-- 只定义 MVP 技术架构基线
-- 不编写业务功能代码
-- 不创建完整项目脚手架
-- 不设计完整 API 清单或数据库 DDL
-- 不引入未批准的第三方依赖
-- 不提前设计 3D、微服务、集群、高可用或云部署方案
+- 本轮只创建任务规格和工作流记录
+- 不创建项目脚手架
+- 不安装依赖
+- 不生成 package.json、csproj、sln、代码、数据库或 Migration
+- 不启动 Cursor 开发
+- 不修改产品基线或架构裁决
 - 必须遵守防过度规划和防过度开发门禁
