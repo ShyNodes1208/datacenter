@@ -4,14 +4,14 @@
 
 - Task ID：TASK-0006
 - Task Name：MVP 项目脚手架
-- Status：CHANGES_REQUESTED
+- Status：READY_FOR_RETEST
 - Owner：Cursor Developer（AGENTS.md 第 3 节；CR-0002 批准的全栈实施角色）
 - Reviewer：Codex Reviewer
 - Branch：chore/task-0006-project-scaffold
 - Requirement Source：hangyu 提出的企业机房服务器落位可视化需求
 - Product Baseline：docs/product/MVP-PRODUCT-BASELINE.md（TASK-0004，COMPLETED，PASS）
 - Architecture Reference：docs/architecture/MVP-ARCHITECTURE-BASELINE.md（TASK-0005，COMPLETED，PASS）
-- Module Lock：HANDED_OFF（Cursor Developer 9 项实施锁；CHANGES_REQUESTED 保持 HANDED_OFF；修复时由 Cursor Developer 重新认领为 CLAIMED）
+- Module Lock：HANDED_OFF（9 项实施锁全部 HANDED_OFF；未释放；等待 Codex Reviewer 复审）
 
 ## Reviewer 独立性检查
 
@@ -869,6 +869,8 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | 2026-07-17 | Claude + DeepSeek Product Manager | BLOCKED | IN_PROGRESS | Cursor Developer | 技术澄清：`typeof(global::Program)`；规格已更新；9 项锁保持 CLAIMED |
 | 2026-07-17 | Cursor Developer | IN_PROGRESS | READY_FOR_REVIEW | Codex Reviewer | 脚手架实施完成；`global::Program` 修复验证通过；verify-project 0；前后端构建测试通过；工作流 20/20；git diff --check PASS；9 项锁 CLAIMED→HANDED_OFF；待独立审核实际脚手架 |
 | 2026-07-17 | Codex Reviewer | READY_FOR_REVIEW | CHANGES_REQUESTED | — | 实现审核 NEEDS_CHANGES（提交 d6d8455）；IR-001（AC-SC-18 grep 命中 lockfile optional peer metadata）、IR-002（AC-SC-20 与验证序列冲突）、IR-003（verify-project.ps1 缺失门禁）、IR-004（launchSettings.json weatherforecast 残留）。MAJOR 3 / MINOR 1。修复后由同一 Reviewer 复审。 |
+| 2026-07-18 00:11:24 +08:00 | Cursor Developer | CHANGES_REQUESTED | IN_FIX | — | CR-0003 已批准；重新认领 scripts/verify-project.ps1、src/backend/Datacenter.Api、tasks/TASK-0006-PROJECT-SCAFFOLD.md、tasks/current-task.md、tasks/MODULE-LOCKS.md 为 CLAIMED；其余锁保持 HANDED_OFF；开始修复 IR-001 至 IR-004 |
+| 2026-07-18 00:13:00 +08:00 | Cursor Developer | IN_FIX | READY_FOR_RETEST | Codex Reviewer | IR-001..004 已修复并 CLOSED；verify-project 0 / ALL CHECKS PASSED；工作流 20/20；git diff --check PASS；weatherforecast 零命中；Git 未跟踪构建产物；5 项 CLAIMED 锁改回 HANDED_OFF；待同一 Reviewer 复审 |
 
 ## 审核结论
 
@@ -876,7 +878,7 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 - 实施后代码审核结论：NEEDS_CHANGES（报告：reviews/tasks/TASK-0006-PROJECT-SCAFFOLD-IMPLEMENTATION-REVIEW.md，提交 d6d8455；IR-001 至 IR-004）
 - 规格审查发现：BLOCKER 2 / MAJOR 6 / MINOR 1 = 9 项，全部 CLOSED
 - 实现审核发现：MAJOR 3 / MINOR 1 = 4 项，状态见下方缺陷清单
-- 当前任务状态：CHANGES_REQUESTED，待 Cursor Developer 修复后进入 IN_FIX → READY_FOR_RETEST
+- 当前任务状态：READY_FOR_RETEST；IR-001 至 IR-004 已 CLOSED；等待 Codex Reviewer 复审
 
 ## 缺陷清单
 
@@ -891,16 +893,20 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | SC-007 | MAJOR | 规格审核报告第 14 节 | 所有路径、名称、脚本固定为唯一值 | CLOSED（solution 根目录；项目名固定；恰好 1 个脚本；无"可选"） |
 | SC-008 | MAJOR | 规格审核报告第 14 节 | 20 条 AC 全部重写为可执行格式 | CLOSED（AC-SC-01 至 AC-SC-20 全部含精确命令和期望输出） |
 | SC-009 | MINOR | 规格审核报告第 14 节 | 追踪矩阵映射到正确 AC | CLOSED（需求追踪矩阵已更正 AC 映射） |
-| IR-001 | MAJOR | 实现审核报告 §6、§14；`package-lock.json:1537-1579` | AC-SC-18 改为三层验证；CR-0003 批准 | SPEC_CLARIFIED（AC-SC-18 已重写为三层验证；CR-0003 已批准；待 Cursor Developer 实现新验证命令） |
-| IR-002 | MAJOR | 实现审核报告 §12、§14；`TASK-0006:375-378` | AC-SC-20 改为 Git 跟踪检查；CR-0003 批准 | SPEC_CLARIFIED（AC-SC-20 已重写为 Git 跟踪检查；CR-0003 已批准；待 Cursor Developer 更新验证序列） |
-| IR-003 | MAJOR | 实现审核报告 §10、§14；`scripts/verify-project.ps1:7-41` | verify-project.ps1 补齐 20 项门禁；CR-0003 批准 | SPEC_CLARIFIED（AC-SC-17 已扩展为 20 项门禁清单；CR-0003 已批准；待 Cursor Developer 修改脚本） |
-| IR-004 | MINOR | 实现审核报告 §4、§14；`launchSettings.json:16,25` | 删除两处 weatherforecast launchUrl | IMPLEMENTATION_PENDING（规格已明确修复要求；待 Cursor Developer 修改 launchSettings.json） |
+| IR-001 | MAJOR | 实现审核报告 §6、§14；`package-lock.json:1537-1579` | AC-SC-18 改为三层验证；CR-0003 批准 | CLOSED（verify-project.ps1 实现 A/B/C；A=none、B=三目录不存在、C=源码/配置无引用；不扫描 package-lock.json） |
+| IR-002 | MAJOR | 实现审核报告 §12、§14；`TASK-0006` AC-SC-20 | AC-SC-20 改为 Git 跟踪检查；CR-0003 批准 | CLOSED（verify-project.ps1 用 `git ls-files \| grep` 检查 node_modules/dist/bin/obj/TestResults；无跟踪；允许本地存在） |
+| IR-003 | MAJOR | 实现审核报告 §10、§14；`scripts/verify-project.ps1` | verify-project.ps1 补齐 20 项门禁；CR-0003 批准 | CLOSED（脚本重构：npm ci + 20 项门禁；verify 退出码 0；ALL CHECKS PASSED） |
+| IR-004 | MINOR | 实现审核报告 §4、§14；`launchSettings.json:16,25` | 删除两处 weatherforecast launchUrl | CLOSED（已删除两处 launchUrl；`grep -ni weatherforecast launchSettings.json` 退出码 1） |
 
 ## 缺陷修复记录
 
 | 缺陷 ID | 修复者 | 修改说明 | 回归证据 | 提交 |
 |---|---|---|---|---|
 | SC-001 至 SC-009 | Claude + DeepSeek Product Manager | 见上方缺陷清单各行的修复说明 | 工作流 20/20 PASS；git diff --check PASS | 见本轮提交 |
+| IR-001 | Cursor Developer | verify-project.ps1 实现 AC-SC-18 A/B/C 三层验证；不扫描 package-lock.json optional peer metadata | A: Forbidden direct dependencies: none；B: 顶层 jsdom/happy-dom/@vue/test-utils 不存在；C: 源码/配置无引用；verify 退出码 0 | 待本轮提交 |
+| IR-002 | Cursor Developer | verify-project.ps1 按 git ls-files 检查构建产物跟踪状态 | `git ls-files \| grep ...(node_modules\|dist\|bin\|obj\|TestResults)...` 无输出；verify 退出码 0 | 待本轮提交 |
+| IR-003 | Cursor Developer | 全面重构 verify-project.ps1：npm ci + 20 项门禁；失败非零退出 | verify-project.ps1 ALL CHECKS PASSED；工作流 20/20；git diff --check PASS | 待本轮提交 |
+| IR-004 | Cursor Developer | 删除 launchSettings.json 两处 launchUrl weatherforecast | `grep -ni weatherforecast .../launchSettings.json` 退出码 1 | 待本轮提交 |
 
 ## 实现审核（IR-001 至 IR-004）修复矩阵
 
@@ -913,19 +919,19 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 
 ## 复审结果
 
-- 最终 Reviewer：Codex Reviewer
-- 复审结论：NEEDS_CHANGES（IR-001 至 IR-004，详见缺陷清单）
-- 下一步：Cursor Developer 进入 IN_FIX 修复 IR-001 至 IR-004；完成后进入 READY_FOR_RETEST；Codex Reviewer 执行复审
+- 最终 Reviewer：Codex Reviewer（待复审）
+- 复审结论：待 Codex Reviewer 对 IR-001 至 IR-004 执行 READY_FOR_RETEST 复审
+- 关闭缺陷及证据：IR-001..004 已由 Owner 标记 CLOSED（证据见缺陷修复记录）；待 Reviewer 确认
 
 ## 防过度开发检查
 
-- 是否存在验收标准以外的实现：否（仅脚手架、占位壳、占位测试、verify 脚本、README Development）
-- 是否提前实现未来需求：否（无 EF Core、认证、业务页面、Router、Pinia、Axios）
-- 是否新增未批准依赖：否（前端直接依赖与预算一致；后端无额外 PackageReference；测试仅 xunit / Test.Sdk / runner.visualstudio；已移除 coverlet）
+- 是否存在验收标准以外的实现：否（仅修复验证门禁与 launchSettings 残留）
+- 是否提前实现未来需求：否
+- 是否新增未批准依赖：否
 - 是否存在无实际需求的抽象：否
-- 是否存在无关重构：N/A（新建项目）
-- 是否采用最简单可行方案：是（Vite 默认模板 + dotnet new webapi + xUnit 模板）
-- Reviewer 结论：待 Codex Reviewer 独立检查
+- 是否存在无关重构：否（仅重构批准的 verify-project.ps1）
+- 是否采用最简单可行方案：是
+- Reviewer 结论：待 Codex Reviewer 复审确认
 
 ## Change Request
 
@@ -945,8 +951,8 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 
 ## Git 提交与推送
 
-- 提交说明：feat: establish task-0006 project scaffold
-- 提交哈希：待提交后回填
+- 提交说明：fix: address task-0006 implementation review findings
+- 提交哈希：待本轮提交后由 push 结果确认
 - 推送结果：待推送
 - 本地哈希：待提交
 - 远端哈希：待推送
