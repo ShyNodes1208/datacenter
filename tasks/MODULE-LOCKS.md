@@ -20,6 +20,10 @@
 | TASK-0003 | agents/ | Codex Architect | 2026-07-16 17:12:50 +08:00 | RELEASED | TASK-0003 进入 COMPLETED 或 CANCELLED | 2026-07-16 21:40:28 +08:00 |
 | TASK-0003 | scripts/validate-agent-workflow.ps1 | Codex Architect | 2026-07-16 17:12:50 +08:00 | RELEASED | TASK-0003 进入 COMPLETED 或 CANCELLED | 2026-07-16 21:40:28 +08:00 |
 
+| TASK-0004 | docs/product/MVP-PRODUCT-BASELINE.md | Claude + DeepSeek Product Manager | 2026-07-17 09:00:00 +08:00 | HANDED_OFF | TASK-0004 进入 COMPLETED 或 CANCELLED 时释放 |  |
+| TASK-0004 | tasks/current-task.md | Claude + DeepSeek Product Manager | 2026-07-17 09:00:00 +08:00 | HANDED_OFF | TASK-0004 进入 COMPLETED 或 CANCELLED 时释放 |  |
+| TASK-0004 | tasks/MODULE-LOCKS.md | Claude + DeepSeek Product Manager | 2026-07-17 09:00:00 +08:00 | HANDED_OFF | TASK-0004 进入 COMPLETED 或 CANCELLED 时释放 |  |
+
 ## 冲突处理示例
 
 若 TASK-1001 已以 `CLAIMED` 占用 `src/backend/Assets/`，TASK-1002 申请 `src/backend/Assets/Racks/` 时属于子路径重叠。TASK-1002 不得认领或修改，必须转为 `BLOCKED` 并记录 TASK-1001；待 TASK-1001 释放后重新检查并认领。
