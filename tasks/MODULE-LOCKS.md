@@ -26,9 +26,9 @@
 | TASK-0005 | docs/architecture/MVP-ARCHITECTURE-BASELINE.md | Claude + DeepSeek Product Manager | 2026-07-17 16:00:00 +08:00 | RELEASED | TASK-0005 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-17 |
 | TASK-0005 | tasks/current-task.md | Claude + DeepSeek Product Manager | 2026-07-17 16:00:00 +08:00 | RELEASED | TASK-0005 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-17 |
 | TASK-0005 | tasks/MODULE-LOCKS.md | Claude + DeepSeek Product Manager | 2026-07-17 16:00:00 +08:00 | RELEASED | TASK-0005 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-17 |
-| TASK-0006 | tasks/TASK-0006-PROJECT-SCAFFOLD.md | Claude + DeepSeek Product Manager | 2026-07-17 | CLAIMED | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 |  |
-| TASK-0006 | tasks/current-task.md | Claude + DeepSeek Product Manager | 2026-07-17 | CLAIMED | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 |  |
-| TASK-0006 | tasks/MODULE-LOCKS.md | Claude + DeepSeek Product Manager | 2026-07-17 | CLAIMED | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 |  |
+| TASK-0006 | tasks/TASK-0006-PROJECT-SCAFFOLD.md | Cursor Frontend | 2026-07-17 | HANDED_OFF | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 |  |
+| TASK-0006 | tasks/current-task.md | Cursor Frontend | 2026-07-17 | HANDED_OFF | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 |  |
+| TASK-0006 | tasks/MODULE-LOCKS.md | Cursor Frontend | 2026-07-17 | HANDED_OFF | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 |  |
 
 ## 冲突处理示例
 

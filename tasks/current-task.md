@@ -6,15 +6,15 @@
 
 - Task ID：TASK-0006
 - Task Name：MVP 项目脚手架
-- Status：DRAFT
-- Owner：Claude + DeepSeek Product Manager（任务规划）；Cursor Frontend（后续实施）
+- Status：READY_FOR_REVIEW
+- Owner：Cursor Frontend（AGENTS.md 第 3 节；TASK-0005 第 22 节批准的前端主导脚手架任务）
 - Reviewer：Codex Reviewer
 - Branch：chore/task-0006-project-scaffold
 - Task File：tasks/TASK-0006-PROJECT-SCAFFOLD.md
 - Requirement Source：hangyu 提出的企业机房服务器落位可视化需求
 - Product Baseline：docs/product/MVP-PRODUCT-BASELINE.md（TASK-0004，COMPLETED，PASS）
 - Architecture Reference：docs/architecture/MVP-ARCHITECTURE-BASELINE.md（TASK-0005，COMPLETED，PASS）
-- Module Lock：TASK-0006 三条模块锁已 CLAIMED；Product Manager 正在编写任务规格
+- Module Lock：TASK-0006 三条模块锁已 HANDED_OFF；任务规格交 Codex Reviewer 独立审核
 
 ## 当前目标
 

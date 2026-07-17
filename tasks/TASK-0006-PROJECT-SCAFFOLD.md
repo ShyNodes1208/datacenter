@@ -4,14 +4,14 @@
 
 - Task ID：TASK-0006
 - Task Name：MVP 项目脚手架
-- Status：DRAFT
-- Owner：Claude + DeepSeek Product Manager（任务规划）；Cursor Frontend（实施）
+- Status：READY_FOR_REVIEW
+- Owner：Cursor Frontend（AGENTS.md 第 3 节定义的唯一 Cursor 角色；TASK-0005 架构基线第 22 节批准 TASK-0006 为前端主导的项目脚手架任务，包含 Vue 前端空项目和 ASP.NET Core 后端空项目的最小编程创建，不含业务逻辑）
 - Reviewer：Codex Reviewer
 - Branch：chore/task-0006-project-scaffold
 - Requirement Source：hangyu 提出的企业机房服务器落位可视化需求
 - Product Baseline：docs/product/MVP-PRODUCT-BASELINE.md（TASK-0004，COMPLETED，PASS）
 - Architecture Reference：docs/architecture/MVP-ARCHITECTURE-BASELINE.md（TASK-0005，COMPLETED，PASS）
-- Module Lock：待认领（本轮任务规格编写期间 CLAIMED；实施时由 Cursor Frontend 重新认领）
+- Module Lock：HANDED_OFF（TASK-0006 三项锁已转为 HANDED_OFF；任务规格交 Codex Reviewer 审核）
 
 ## Reviewer 独立性检查
 
@@ -197,7 +197,9 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | 时间 | 发起者 | 原状态 | 新状态 | 接收者 | 证据/说明 |
 |---|---|---|---|---|---|
 | 2026-07-17 | Claude + DeepSeek Product Manager | IDLE | DRAFT | — | TASK-0005 COMPLETED；创建 TASK-0006 任务规格 |
-|  |  |  |  |  |  |
+| 2026-07-17 | Claude + DeepSeek Product Manager | DRAFT | READY | — | 任务规格完成：20 条 AC、依赖预算、防过度开发约束齐备；工作流 20/20 PASS |
+| 2026-07-17 | Claude + DeepSeek Product Manager | READY | IN_PROGRESS | — | 模块冲突检查通过；三项锁 CLAIMED |
+| 2026-07-17 | Claude + DeepSeek Product Manager | IN_PROGRESS | READY_FOR_REVIEW | Codex Reviewer | 任务规格正式交审（提交 005755b）；三项锁 HANDED_OFF |
 
 ## 审核结论
 
