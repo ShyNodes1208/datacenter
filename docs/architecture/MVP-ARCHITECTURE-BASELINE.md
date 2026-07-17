@@ -333,8 +333,10 @@ HTTP 状态码：
 - `HttpOnly = true`（JavaScript 不可访问）
 - `SameSite = Lax`（单站点部署适用；生产同源托管下无需 None）
 - `Secure = true`（生产 HTTPS 下强制；开发 HTTP 环境可关闭）
-- 会话有效期：绝对过期 + 滑动过期策略（具体值由 TASK-0007 定义，建议滑动过期 30 分钟，绝对过期 8 小时）
-- 认证票据包含用户标识和角色声明，每次请求由 Cookie 中间件解析
+- 会话有效期：固定 8 小时，`SlidingExpiration = false`。Cookie 过期后用户必须重新登录
+- 认证票据（Claims）只包含：用户唯一标识、登录名、角色。禁止在 Cookie/Claims 中保存密码、密码哈希、初始化凭据、数据库连接信息或其他敏感秘密
+
+**禁用账号的既有会话失效：** 使用 `CookieAuthenticationEvents.OnValidatePrincipal`。每个携带认证 Cookie 的请求到达时，服务端根据 Cookie 中的用户唯一标识查询 SQLite 中该用户的当前启用状态。若用户不存在或已禁用，调用 `RejectPrincipal()` 并 `SignOutAsync()`，拒绝当前请求。不允许已禁用用户继续依靠旧 Cookie 获得授权。MVP 数据规模下接受此每请求验证方式；后续只有实测证明该方式成为性能瓶颈时，才可通过 Change Request 调整。
 
 **CSRF 防护：** 使用 ASP.NET Core 内置 Antiforgery 机制。服务端向同源 SPA 签发防伪令牌；前端在所有状态变更请求（POST/PUT/PATCH/DELETE）中通过约定请求头提交令牌；服务端必须验证令牌。登录、注销以及所有新增、编辑、上架、移动、下架等状态变更请求均须验证 Antiforgery Token。查询类只读请求（GET）不要求防伪令牌。验证失败时拒绝请求，不执行任何状态变更。`SameSite=Lax` 作为纵深防御补充，不替代服务端防伪验证。
 
@@ -553,7 +555,7 @@ datacenter-layout/
 ### 12.2 敏感信息处理
 
 - SQLite 数据库文件无密码，连接字符串包含文件路径——不是敏感信息
-- 用户密码使用 PBKDF2 哈希存储（参见第 8.5 节），不存储明文
+- 用户密码使用 `PasswordHasher<TUser>` 哈希存储（参见第 8.5 节），不存储明文
 - Cookie 认证数据保护密钥由 ASP.NET Core 数据保护 API 自动管理
 - 开发环境密钥和连接配置通过 `appsettings.Development.json`（已 gitignored）本地管理
 - 不引入 Azure Key Vault、HashiCorp Vault 或任何密钥管理服务
@@ -643,9 +645,11 @@ pwsh --version          # 或 powershell
 
 ### 14.3 后端集成测试
 
-框架：xUnit + 实际 SQLite 文件数据库（每个测试类使用独立临时数据库文件，WAL 模式）。
+框架：xUnit + 实际 SQLite 文件数据库（每个测试类使用独立临时数据库文件，WAL 模式）+ `Microsoft.AspNetCore.Mvc.Testing`。
 
-范围（必须使用真实 SQLite 验证）：
+范围：
+
+**位置操作与业务规则（必须使用真实 SQLite 验证）：**
 - U 位冲突检测和并发拒绝（BR-010, BR-011）
 - 上架完整事务（FR-004）
 - 移动原子性：成功释放旧位 + 占用新位；失败时原位保留（BR-014, BR-015）
@@ -656,9 +660,36 @@ pwsh --version          # 或 powershell
 - 停用机房拒绝操作（BR-028）
 - 停用机柜拒绝操作（BR-029）
 - 编辑 U 位总数不得越界（BR-030）
+
+**认证与会话（Cookie 登录/注销）：**
+- 正确账号密码登录成功，响应包含认证 Cookie
+- 错误账号或密码登录失败，不泄露账号是否存在
+- 登录成功 Cookie 设置 HttpOnly 和 SameSite=Lax
+- 生产配置下 Cookie 设置 Secure
+- Cookie Claims 中不包含密码、密码哈希或初始化凭据
+- Cookie 固定 8 小时后过期，无滑动续期
+- 注销成功后，旧 Cookie 不能继续访问受保护资源
+
+**禁用账号会话失效：**
+- 用户登录取得有效 Cookie
+- 将该用户状态修改为禁用
+- 使用原 Cookie 再次请求受保护 API
+- `OnValidatePrincipal` 拒绝 Principal 并使会话失效
+- 请求不得获得原有角色权限
+
+**Antiforgery 验证：**
+- 状态变更请求不携带 Token 时被拒绝
+- Token 无效时被拒绝
+- 有效 Token 且权限正确时操作允许继续
+- Antiforgery 验证失败后数据库不发生变化
+- 登录和注销缺少 Token 时被拒绝
+- 已认证的只读 GET 请求不要求 Token
+
+**授权与角色：**
+- 机房管理员和运维人员可以执行批准的修改操作
+- DBA/应用运维人员和只读查看人员执行修改操作时被拒绝（403）
+- 匿名用户访问全部 MVP API 时被拒绝（401）
 - API 端点 → 业务逻辑 → 数据库读写的完整链路
-- 认证中间件和角色校验
-- 匿名拒绝（AC-037）
 
 ### 14.4 端到端验证
 
@@ -705,7 +736,7 @@ pwsh --version          # 或 powershell
 
 ### 16.1 认证
 
-认证方案完整定义于第 8.5 节（认证与角色），包括：账号来源（种子数据/管理员创建）、密码哈希（`PasswordHasher<TUser>` 或 PBKDF2 + 随机盐 + ≥ 100,000 迭代）、登录/注销流程、Cookie 安全约束（HttpOnly、SameSite=Lax、Secure on HTTPS、滑动过期）、CSRF 基础策略。
+认证方案完整定义于第 8.5 节（认证与角色），包括：账号来源（受控部署初始化预置，不提供用户管理页面或 API）、密码哈希（`PasswordHasher<TUser>`，唯一裁决）、登录/注销流程、Cookie 安全约束（HttpOnly、SameSite=Lax、Secure on HTTPS、固定 8 小时过期且无滑动续期）、禁用账号既有会话失效（`OnValidatePrincipal`）、Antiforgery 强制验证。
 
 ### 16.2 角色与授权
 
@@ -780,7 +811,7 @@ TASK-0005 本身不引入任何依赖（纯文档任务）。以下为后续 MVP
 | 依赖 | 用途 | 删除成本 |
 |------|------|----------|
 | `Microsoft.EntityFrameworkCore.Sqlite` | SQLite EF Core 提供程序 | 更换数据库（中） |
-| `Microsoft.Extensions.Identity.Core` | 提供 `PasswordHasher<TUser>` 独立哈希组件（不从完整 Identity 框架引入） | 替换为手动 PBKDF2 实现（低） |
+| `Microsoft.Extensions.Identity.Core` | 提供 `PasswordHasher<TUser>` 独立哈希组件（不从完整 Identity 框架引入） | 替换为自定义密码哈希实现（低） |
 
 认证和 Cookie 中间件由 ASP.NET Core 共享框架提供，无需额外 NuGet 包。
 
