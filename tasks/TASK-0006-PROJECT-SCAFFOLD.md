@@ -4,14 +4,14 @@
 
 - Task ID：TASK-0006
 - Task Name：MVP 项目脚手架
-- Status：READY_FOR_REVIEW
+- Status：CHANGES_REQUESTED
 - Owner：Cursor Developer（AGENTS.md 第 3 节；CR-0002 批准的全栈实施角色）
 - Reviewer：Codex Reviewer
 - Branch：chore/task-0006-project-scaffold
 - Requirement Source：hangyu 提出的企业机房服务器落位可视化需求
 - Product Baseline：docs/product/MVP-PRODUCT-BASELINE.md（TASK-0004，COMPLETED，PASS）
 - Architecture Reference：docs/architecture/MVP-ARCHITECTURE-BASELINE.md（TASK-0005，COMPLETED，PASS）
-- Module Lock：HANDED_OFF（Cursor Developer 9 项实施锁；未释放；等待 Codex Reviewer）
+- Module Lock：HANDED_OFF（Cursor Developer 9 项实施锁；CHANGES_REQUESTED 保持 HANDED_OFF；修复时由 Cursor Developer 重新认领为 CLAIMED）
 
 ## Reviewer 独立性检查
 
@@ -272,26 +272,108 @@
 - 为允许测试项目访问 Program，Datacenter.Api 的 Program.cs 最后必须包含 `public partial class Program { }`。
 
 ### AC-SC-17：统一验证脚本退出码 0
+
 - 命令：`pwsh -NoLogo -NoProfile -File ./scripts/verify-project.ps1`
 - 期望：退出码 0。
-- 脚本必须从仓库根目录执行，按顺序执行：
-  1. `cd src/frontend && npm install`
-  2. `cd src/frontend && npm run typecheck`
-  3. `cd src/frontend && npm run test`
-  4. `cd src/frontend && npm run build`
-  5. `dotnet restore Datacenter.sln`
-  6. `dotnet build Datacenter.sln --no-restore`
-  7. `dotnet test tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj --no-build`
-  8. `pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1`
-- 任一步骤失败（退出码非 0）时脚本必须立即退出并返回非 0 退出码。
+
+verify-project.ps1 必须实现以下全部门禁，且任一失败时脚本必须以非零退出码结束，不得输出 ALL CHECKS PASSED：
+
+1. **环境检查**：`node --version`、`npm --version`、`dotnet --version`、`pwsh --version` 全部执行成功。
+2. **package-lock.json 存在**：`test -f src/frontend/package-lock.json` 退出码 0。
+3. **确定性安装**：`cd src/frontend && npm ci` 退出码 0。
+4. **直接依赖白名单**：Node 脚本检查 package.json 的 dependencies 和 devDependencies 与批准白名单完全一致（见 AC-SC-03）。
+5. **AC-SC-18 A 层**：直接依赖检查（`jsdom`、`happy-dom`、`@vue/test-utils` 不在 package.json 直接依赖中）。
+6. **AC-SC-18 B 层**：顶层 node_modules 目录检查（`jsdom`、`happy-dom`、`@vue/test-utils` 目录不存在）。
+7. **AC-SC-18 C 层**：项目代码和配置引用检查（grep 无匹配）。
+8. **后端 NuGet 依赖检查**：Web API 项目无未批准 PackageReference；测试项目 PackageReference 与批准预算一致（xunit、Microsoft.NET.Test.Sdk、xunit.runner.visualstudio）。
+9. **coverlet.collector 不存在**：`grep -r "coverlet" tests/` 退出码 1。
+10. **类型检查**：`cd src/frontend && npm run typecheck` 退出码 0。
+11. **前端测试**：`cd src/frontend && npm run test` 退出码 0（恰好 1 个测试通过）。
+12. **前端构建**：`cd src/frontend && npm run build` 退出码 0。
+13. **后端还原**：`dotnet restore Datacenter.sln` 退出码 0。
+14. **后端构建**：`dotnet build Datacenter.sln --no-restore` 退出码 0（0 errors、0 warnings）。
+15. **后端测试**：`dotnet test tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj --no-build` 退出码 0（恰好 1 个测试通过）。
+16. **模板残留检查**：WeatherForecast 源文件不存在；HelloWorld、Counter、style.css、模板演示资源（hero.png、vite.svg、vue.svg、icons.svg）不存在。
+17. **launchSettings.json 检查**：大小写不敏感搜索 `weatherforecast` 退出码 1。
+18. **Git 跟踪检查**：`git ls-files src/frontend/node_modules/ src/frontend/dist/ src/backend/bin/ src/backend/obj/ tests/backend/bin/ tests/backend/obj/ TestResults/` 无输出。
+19. **git diff --check**：退出码 0。
+20. **工作流校验**：`pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1` 退出码 0，`PASS=20, FAIL=0, TOTAL=20`。
+
 - 脚本必须使用 WSL 中的 pwsh 执行。
-- 脚本使用 `$PSScriptRoot` 或 `$PWD` 定位仓库根目录。
+- 脚本使用 `$PSScriptRoot` 定位仓库根目录。
+- 命令使用 `npm ci`（确定性安装），不使用 `npm install`。
 
 ### AC-SC-18：无越界依赖
-- 命令：`grep -ri "EntityFrameworkCore\|SQLite\|Swashbuckle\|Microsoft.AspNetCore.OpenApi\|vue-router\|pinia\|axios\|@vue/test-utils\|jsdom\|happy-dom\|playwright\|cypress\|eslint\|prettier\|coverlet\|FluentAssertions\|Moq\|NSubstitute\|Microsoft.AspNetCore.Mvc.Testing" src/ tests/ --include="*.csproj" --include="*.json" 2>/dev/null`
-- 期望：退出码 1（grep 无匹配）。
-- 手动检查：package.json 中无 Router、Pinia、Axios、ESLint、Prettier、Playwright、Cypress、Vue Test Utils、jsdom、happy-dom。
-- 手动检查：所有 csproj 中无 EF Core、SQLite、OpenAPI、Swagger、coverlet、FluentAssertions、Moq、NSubstitute、Mvc.Testing。
+
+AC-SC-18 分三层独立验证。全部三层通过才判定 AC-SC-18 PASS。
+
+**A 层 — package.json 直接依赖白名单检查**
+
+命令：
+```bash
+cd src/frontend && node - <<'NODE'
+const pkg = require('./package.json');
+const direct = { ...(pkg.dependencies ?? {}), ...(pkg.devDependencies ?? {}) };
+const forbidden = ['jsdom', 'happy-dom', '@vue/test-utils'];
+const found = forbidden.filter(name => Object.prototype.hasOwnProperty.call(direct, name));
+if (found.length > 0) {
+  console.error('Forbidden direct dependencies:', found.join(', '));
+  process.exit(1);
+}
+console.log('Forbidden direct dependencies: none');
+NODE
+```
+
+期望：退出码 0，输出 `Forbidden direct dependencies: none`。
+
+**B 层 — 顶层 node_modules 安装目录检查**
+
+前提：已完成确定性安装（`npm ci`）。
+
+命令：
+```bash
+test ! -d src/frontend/node_modules/jsdom && \
+test ! -d src/frontend/node_modules/happy-dom && \
+test ! -d src/frontend/node_modules/@vue/test-utils
+```
+
+期望：退出码 0（三个目录均不存在）。
+
+**C 层 — 项目代码和配置文件引用检查**
+
+搜索范围仅限本项目主动维护的文件（不含 package-lock.json）：
+```bash
+grep -ri "jsdom\|happy-dom\|@vue/test-utils" \
+  src/frontend/src/ \
+  src/frontend/package.json \
+  src/frontend/vite.config.ts \
+  src/frontend/tsconfig*.json \
+  2>/dev/null
+```
+
+期望：退出码 1（grep 无匹配，即项目代码和配置中无引用）。
+
+**后端依赖检查**
+
+命令：
+```bash
+grep -ri "EntityFrameworkCore\|SQLite\|Swashbuckle\|Microsoft.AspNetCore.OpenApi\|coverlet\|FluentAssertions\|Moq\|NSubstitute\|Microsoft.AspNetCore.Mvc.Testing" \
+  src/backend/ tests/backend/ --include="*.csproj" 2>/dev/null
+```
+
+期望：退出码 1（grep 无匹配）。
+
+**明确排除规则**
+
+- package-lock.json 中由上游包 optional `peerDependenciesMeta` 产生的字符串匹配（如 Vitest 的 `jsdom`、`happy-dom`、`@vue/test-utils` optional peer metadata）**不构成失败条件**。
+- package-lock.json 不得作为 A/B/C 任何一层的搜索目标。
+- 禁止通过删除或篡改 package-lock.json 规避命中。
+- 如 package.json 的 `dependencies` 或 `devDependencies` 中出现禁止包、顶层 `node_modules` 中实际安装、或项目代码/配置主动引用，任一出现都必须 FAIL。
+
+**其他禁止依赖手动检查**
+
+- package.json 中无 `vue-router`、`pinia`、`axios`、`eslint`、`prettier`、`playwright`、`cypress`。
+- 所有 csproj 中无 EF Core、SQLite、OpenAPI、Swagger、coverlet、FluentAssertions、Moq、NSubstitute、Mvc.Testing。
 
 ### AC-SC-19：工作流校验 20/20 PASS，git diff --check PASS
 - 命令：`pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1`
@@ -299,17 +381,21 @@
 - 命令：`git diff --check`
 - 期望：退出码 0。
 
-### AC-SC-20：提交后工作区干净，本地远端哈希一致
+### AC-SC-20：提交后工作区干净，本地远端哈希一致，构建产物未被 Git 跟踪
+
 - 命令：`git status --porcelain`
 - 期望：无输出（工作区干净）。
+
 - 命令：`test "$(git rev-parse HEAD)" = "$(git rev-parse origin/chore/task-0006-project-scaffold)"`
 - 期望：退出码 0（本地与远端哈希一致）。
+
 - 命令：`git ls-files --error-unmatch src/frontend/package-lock.json`
 - 期望：退出码 0（package-lock.json 已提交）。
-- 命令：`test -d src/frontend/node_modules`
-- 期望：退出码 1（node_modules 不存在于工作区，即被 .gitignore 排除且未在工作区残留）。
-- 命令：`test -d src/frontend/dist`
-- 期望：退出码 1（dist 目录不存在于工作区，即未提交构建产物）。
+
+- 命令：`git ls-files src/frontend/node_modules/ src/frontend/dist/ src/backend/bin/ src/backend/obj/ tests/backend/bin/ tests/backend/obj/`
+- 期望：无输出（node_modules、dist、bin、obj 目录内容未被 Git 跟踪）。
+
+- 说明：`node_modules` 和 `dist` 目录在 `npm ci`/`npm run build` 后会在文件系统中存在（正常构建产物），但不得被 Git 跟踪。AC-SC-20 检查的是 Git 跟踪状态而非文件系统存在性。`node_modules` 和 `dist` 的 .gitignore 排除由 AC-SC-18 验证序列中的检查覆盖。
 
 ---
 
@@ -462,6 +548,25 @@ rm src/backend/Datacenter.Api/WeatherForecast.cs
 rm src/backend/Datacenter.Api/Controllers/WeatherForecastController.cs
 rm src/backend/Datacenter.Api/Datacenter.Api.http
 ```
+
+### 步骤 11b：清理 launchSettings.json 模板残留
+
+编辑 `src/backend/Datacenter.Api/Properties/launchSettings.json`：
+
+1. 删除 `"profiles"` → `"http"` → `"launchUrl": "weatherforecast"`（第 16 行附近）。
+2. 删除 `"profiles"` → `"IIS Express"` → `"launchUrl": "weatherforecast"`（第 25 行附近）。
+
+修复后验证：
+
+```powershell
+grep -ri "weatherforecast" src/backend/Datacenter.Api/Properties/launchSettings.json
+# 期望：退出码 1（无匹配）
+```
+
+禁止：
+- 创建替代业务 endpoint。
+- 增加 Swagger、OpenAPI 或健康检查 URL。
+- 修改 `applicationUrl` 或 `environmentVariables`（保留模板默认值）。
 
 ### 步骤 12：修改 Program.cs
 
@@ -739,10 +844,14 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 
 ## 开发完成证据
 
-- 修改文件：Datacenter.sln；src/frontend/**；src/backend/Datacenter.Api/**；tests/backend/Datacenter.Api.Tests/**；scripts/verify-project.ps1；README.md；tasks/TASK-0006-PROJECT-SCAFFOLD.md；tasks/current-task.md；tasks/MODULE-LOCKS.md。.gitignore 未改（现有 dist/node_modules/bin/obj/TestResults/SQLite 规则已覆盖）。
-- 验收证据：AC-SC-01..20 见交审记录；ScaffoldSmokeTest 使用 `typeof(global::Program)`；Program.cs 保留顶级语句 + `public partial class Program { }`
-- 模块锁状态：HANDED_OFF（9 项，未释放）
-- 已知限制：脚手架不含路由/认证/数据访问/业务功能；Vitest/xUnit 仅占位测试
+- 修改文件：Datacenter.sln；src/frontend/**；src/backend/Datacenter.Api/**；tests/backend/Datacenter.Api.Tests/**；scripts/verify-project.ps1；README.md；tasks/TASK-0006-PROJECT-SCAFFOLD.md；tasks/current-task.md；tasks/MODULE-LOCKS.md。.gitignore 未改。
+- 验收证据：AC-SC-01..17、AC-SC-19 共 18 项 PASS；AC-SC-18 和 AC-SC-20 FAIL（见实现审核报告 IR-001、IR-002）。
+- 模块锁状态：HANDED_OFF（9 项，CHANGES_REQUESTED 保持 HANDED_OFF）
+- 已知限制：
+  - verify-project.ps1 门禁不完整（IR-003），需补齐 20 项全部门禁
+  - launchSettings.json 含 weatherforecast 残留（IR-004），需删除两处 launchUrl
+  - AC-SC-18 原 grep 命令与 lockfile optional peer metadata 冲突（IR-001），规格已修正为三层验证
+  - AC-SC-20 原目录存在性检查与验证序列冲突（IR-002），规格已修正为 Git 跟踪检查
 
 ## 交接记录
 
@@ -758,14 +867,16 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | 2026-07-17 22:56:03 +08:00 | Cursor Developer | READY | IN_PROGRESS | — | 实现路径无活跃锁冲突；认领实施路径锁；开始按批准规格实施脚手架 |
 | 2026-07-17 23:00:01 +08:00 | Cursor Developer | IN_PROGRESS | BLOCKED | Codex Architect / Claude | 规格内部冲突：步骤 12 与步骤 17 `typeof(Datacenter.Api.Program)`；CS0234；停止等待裁决 |
 | 2026-07-17 | Claude + DeepSeek Product Manager | BLOCKED | IN_PROGRESS | Cursor Developer | 技术澄清：`typeof(global::Program)`；规格已更新；9 项锁保持 CLAIMED |
-| 2026-07-17 23:30:06 +08:00 | Cursor Developer | IN_PROGRESS | READY_FOR_REVIEW | Codex Reviewer | 脚手架实施完成；`global::Program` 修复验证通过；verify-project 0；前后端构建测试通过；工作流 20/20；git diff --check PASS；9 项锁 CLAIMED→HANDED_OFF；待独立审核实际脚手架 |
+| 2026-07-17 | Cursor Developer | IN_PROGRESS | READY_FOR_REVIEW | Codex Reviewer | 脚手架实施完成；`global::Program` 修复验证通过；verify-project 0；前后端构建测试通过；工作流 20/20；git diff --check PASS；9 项锁 CLAIMED→HANDED_OFF；待独立审核实际脚手架 |
+| 2026-07-17 | Codex Reviewer | READY_FOR_REVIEW | CHANGES_REQUESTED | — | 实现审核 NEEDS_CHANGES（提交 d6d8455）；IR-001（AC-SC-18 grep 命中 lockfile optional peer metadata）、IR-002（AC-SC-20 与验证序列冲突）、IR-003（verify-project.ps1 缺失门禁）、IR-004（launchSettings.json weatherforecast 残留）。MAJOR 3 / MINOR 1。修复后由同一 Reviewer 复审。 |
 
 ## 审核结论
 
-- Reviewer：Codex Reviewer（对规格的审核已完成，见下方）
-- 实施前规格审查结论：NEEDS_CHANGES（报告：reviews/tasks/TASK-0006-PROJECT-SCAFFOLD-SPEC-REVIEW.md，提交 6a1b4a9）
-- 规格审查发现：BLOCKER 2 / MAJOR 6 / MINOR 1 = 9 项，已通过本次规格修正全部解决（详见 CR-0002 和本次提交）
-- 实施后代码审核：待 Cursor Developer 完成脚手架后由 Codex Reviewer 执行
+- 实施前规格审查结论：NEEDS_CHANGES（报告：reviews/tasks/TASK-0006-PROJECT-SCAFFOLD-SPEC-REVIEW.md，提交 6a1b4a9；SC-001 至 SC-009，全部已通过规格修正解决）
+- 实施后代码审核结论：NEEDS_CHANGES（报告：reviews/tasks/TASK-0006-PROJECT-SCAFFOLD-IMPLEMENTATION-REVIEW.md，提交 d6d8455；IR-001 至 IR-004）
+- 规格审查发现：BLOCKER 2 / MAJOR 6 / MINOR 1 = 9 项，全部 CLOSED
+- 实现审核发现：MAJOR 3 / MINOR 1 = 4 项，状态见下方缺陷清单
+- 当前任务状态：CHANGES_REQUESTED，待 Cursor Developer 修复后进入 IN_FIX → READY_FOR_RETEST
 
 ## 缺陷清单
 
@@ -780,6 +891,10 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | SC-007 | MAJOR | 规格审核报告第 14 节 | 所有路径、名称、脚本固定为唯一值 | CLOSED（solution 根目录；项目名固定；恰好 1 个脚本；无"可选"） |
 | SC-008 | MAJOR | 规格审核报告第 14 节 | 20 条 AC 全部重写为可执行格式 | CLOSED（AC-SC-01 至 AC-SC-20 全部含精确命令和期望输出） |
 | SC-009 | MINOR | 规格审核报告第 14 节 | 追踪矩阵映射到正确 AC | CLOSED（需求追踪矩阵已更正 AC 映射） |
+| IR-001 | MAJOR | 实现审核报告 §6、§14；`package-lock.json:1537-1579` | AC-SC-18 改为三层验证；CR-0003 批准 | SPEC_CLARIFIED（AC-SC-18 已重写为三层验证；CR-0003 已批准；待 Cursor Developer 实现新验证命令） |
+| IR-002 | MAJOR | 实现审核报告 §12、§14；`TASK-0006:375-378` | AC-SC-20 改为 Git 跟踪检查；CR-0003 批准 | SPEC_CLARIFIED（AC-SC-20 已重写为 Git 跟踪检查；CR-0003 已批准；待 Cursor Developer 更新验证序列） |
+| IR-003 | MAJOR | 实现审核报告 §10、§14；`scripts/verify-project.ps1:7-41` | verify-project.ps1 补齐 20 项门禁；CR-0003 批准 | SPEC_CLARIFIED（AC-SC-17 已扩展为 20 项门禁清单；CR-0003 已批准；待 Cursor Developer 修改脚本） |
+| IR-004 | MINOR | 实现审核报告 §4、§14；`launchSettings.json:16,25` | 删除两处 weatherforecast launchUrl | IMPLEMENTATION_PENDING（规格已明确修复要求；待 Cursor Developer 修改 launchSettings.json） |
 
 ## 缺陷修复记录
 
@@ -787,11 +902,20 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 |---|---|---|---|---|
 | SC-001 至 SC-009 | Claude + DeepSeek Product Manager | 见上方缺陷清单各行的修复说明 | 工作流 20/20 PASS；git diff --check PASS | 见本轮提交 |
 
+## 实现审核（IR-001 至 IR-004）修复矩阵
+
+| Finding | 等级 | 规格修正位置 | Cursor 实现修复位置 | 复验命令 | 闭环条件 |
+|---------|------|-------------|-------------------|---------|---------|
+| IR-001 | MAJOR | AC-SC-18（A/B/C 三层验证）；CR-0003 | `verify-project.ps1` 新增步骤 5-7（AC-SC-18 A/B/C 层命令） | A层：`node -e` 直接依赖检查退出码 0；B层：`test ! -d` 三个目录不存在；C层：grep 退出码 1 | A/B/C 三层全部 PASS |
+| IR-002 | MAJOR | AC-SC-20（`git ls-files` 替换 `test -d`）；CR-0003 | verify-project.ps1 新增步骤 18（`git ls-files ... node_modules dist bin obj`） | `git ls-files src/frontend/node_modules/ src/frontend/dist/ ...` 无输出 | Git 未跟踪任何构建产物目录 |
+| IR-003 | MAJOR | AC-SC-17（20 项门禁清单）；CR-0003 | `scripts/verify-project.ps1` 全面重构：`npm ci` 替换 `npm install`；新增步骤 1-9、16-20 | `pwsh ... verify-project.ps1` 退出码 0 | 20 项全部 PASS；任一失败时非零退出码且不输出 ALL CHECKS PASSED |
+| IR-004 | MINOR | 步骤 11b（launchSettings.json 清理命令）；缺陷清单 | `src/backend/Datacenter.Api/Properties/launchSettings.json` 第 16、25 行删除 `launchUrl` | `grep -ri "weatherforecast" ... launchSettings.json` 退出码 1 | launchSettings.json 零命中 weatherforecast |
+
 ## 复审结果
 
-- 最终 Reviewer：N/A：本次为规格修正，非实现复审。实施完成后由 Codex Reviewer 对脚手架代码执行正式审核。
-- 复审结论：N/A
-- 关闭缺陷及证据：N/A
+- 最终 Reviewer：Codex Reviewer
+- 复审结论：NEEDS_CHANGES（IR-001 至 IR-004，详见缺陷清单）
+- 下一步：Cursor Developer 进入 IN_FIX 修复 IR-001 至 IR-004；完成后进入 READY_FOR_RETEST；Codex Reviewer 执行复审
 
 ## 防过度开发检查
 
