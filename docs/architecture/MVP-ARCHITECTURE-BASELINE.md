@@ -11,7 +11,7 @@
 | Requirement Source | hangyu 提出的企业机房服务器落位可视化需求 |
 | 产品基线 | docs/product/MVP-PRODUCT-BASELINE.md（TASK-0004，COMPLETED，PASS） |
 | 作者 | Claude + DeepSeek Product Manager |
-| 状态 | READY_FOR_RETEST |
+| 状态 | COMPLETED |
 | 对应分支 | docs/task-0005-architecture-baseline |
 
 ## 2. 架构目标

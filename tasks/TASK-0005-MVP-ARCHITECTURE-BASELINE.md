@@ -4,14 +4,14 @@
 
 - Task ID：TASK-0005
 - Task Name：机房服务器落位图 MVP 技术架构与开发基线
-- Status：READY_FOR_RETEST
+- Status：COMPLETED
 - Owner：Claude + DeepSeek Product Manager
 - Reviewer：Codex Reviewer
 - Branch：docs/task-0005-architecture-baseline
 - Requirement Source：hangyu 提出的企业机房服务器落位可视化需求
 - Product Baseline：docs/product/MVP-PRODUCT-BASELINE.md（TASK-0004，COMPLETED，PASS）
 - Architecture Reference：docs/architecture/MVP-ARCHITECTURE-BASELINE.md（本任务产出）
-- Module Lock：HANDED_OFF（三项锁已转为 HANDED_OFF；TASK-0005 交 Codex Reviewer 复审）
+- Module Lock：RELEASED（TASK-0005 三项锁已释放；任务完成）
 
 ## Reviewer 独立性检查
 
@@ -174,8 +174,12 @@
   - tasks/current-task.md（更新）
   - tasks/MODULE-LOCKS.md（更新）
 - 验收证据：架构基线覆盖全部 12 FR 和 7 NFR（第 21 节追踪矩阵）；前后端职责明确（第 7、8 节）；SQLite 方向确定（第 9 节）；6 个实体边界清晰（第 10 节）；11 个后续任务已拆分（第 22 节）
-- 模块锁状态：HANDED_OFF（TASK-0005 三项锁已转为 HANDED_OFF；等待 Codex Reviewer 复审）
+- 模块锁状态：RELEASED（TASK-0005 三项锁已释放；最终复审 PASS）
 - 已知限制：API 仅定义资源边界和产品已批准操作，完整路径和方法签名由 TASK-0007 定义；实体仅定义职责和关系，完整字段列表由 TASK-0007 定义
+- 关闭日期：2026-07-17
+- 最终状态：COMPLETED
+- 最终复审报告：reviews/architecture/MVP-ARCHITECTURE-BASELINE-RETEST-3-TASK-0005.md
+- 最终复审提交：030098ad42fe4129739fbb915a49a605683ea8d7
 
 ## 交接记录
 
@@ -191,12 +195,17 @@
 | 2026-07-17 | Codex Reviewer | READY_FOR_RETEST | CHANGES_REQUESTED | Claude + DeepSeek Product Manager | 第一次复审 bfc2735：4 MAJOR / 1 MINOR（R-001~R-005） |
 | 2026-07-17 | Claude + DeepSeek Product Manager | CHANGES_REQUESTED | IN_FIX | — | 确认 R-001 至 R-005 修复范围；重新 CLAIMED |
 | 2026-07-17 | Claude + DeepSeek Product Manager | IN_FIX | READY_FOR_RETEST | Codex Reviewer | 第二轮修复完成；A-001~A-005 全部 RESOLVED；三项锁 HANDED_OFF |
+| 2026-07-17 | Codex Reviewer | READY_FOR_RETEST | CHANGES_REQUESTED | Claude + DeepSeek Product Manager | 第二次复审 1bec2cf：1 MAJOR（R2-001） |
+| 2026-07-17 | Claude + DeepSeek Product Manager | CHANGES_REQUESTED | IN_FIX | — | 确认 R2-001 修复范围；重新 CLAIMED |
+| 2026-07-17 | Claude + DeepSeek Product Manager | IN_FIX | READY_FOR_RETEST | Codex Reviewer | 第三轮修复（3ca1ad4）：认证基线最终化；三项锁 HANDED_OFF |
+| 2026-07-17 | Codex Reviewer | READY_FOR_RETEST | COMPLETED | — | 最终复审 030098a：**PASS**；0 BLOCKER / 0 MAJOR / 0 MINOR / 0 NOTE；全部 RESOLVED |
 
 ## 审核结论
 
-- Reviewer：Codex Reviewer（待审核）
-- 结论：待审核
-- 审核命令和证据：待提交
+- Reviewer：Codex Reviewer
+- 结论：**PASS**（最终复审，提交 030098ad42fe4129739fbb915a49a605683ea8d7）
+- 最终复审报告：reviews/architecture/MVP-ARCHITECTURE-BASELINE-RETEST-3-TASK-0005.md
+- 审核命令和证据：工作流 20/20 PASS；`git diff --check` PASS；A-001~A-009 + R2-001 全部 RESOLVED
 
 ## 缺陷清单
 
