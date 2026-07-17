@@ -45,7 +45,6 @@
 - 第二轮修复结果：R-001 至 R-004 均已按产品裁决完成最小修订；新增 AC-032 至 AC-037，修正 BR-030、权限闭环和固定性能基准
 - 验证结果：工作流 20/20 PASS、FAIL=0、退出码 0；`git diff --check` PASS
 - 状态迁移：2026-07-17 14:44:42 +08:00，Claude + DeepSeek Product Manager 完成修复与验证，IN_FIX → READY_FOR_RETEST；三项锁转为 HANDED_OFF
-- 当前等待 Codex Reviewer 再次独立复审，不关闭 TASK-0004，不进入 TASK-0005
 - 第二次复审结论（提交 ecf2b68）：**PASS** — 全部 RESOLVED，0 BLOCKER / 0 MAJOR / 0 MINOR / 0 NOTE
 - 最终复审报告：reviews/product/MVP-PRODUCT-BASELINE-RETEST-2-TASK-0004.md
 - 关闭日期：2026-07-17

@@ -293,5 +293,3 @@
 - 产品基线文件：docs/product/MVP-PRODUCT-BASELINE.md
 - FR 12 / NFR 7 / AC 37 / BR 30 / PAGE 9
 - 模块锁：已全部 RELEASED
-
-不得直接标记为 COMPLETED。
