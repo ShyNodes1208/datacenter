@@ -4,7 +4,7 @@
 
 - Task ID：TASK-0004
 - Task Name：机房服务器落位可视化系统 MVP 产品基线
-- Status：READY
+- Status：COMPLETED
 - Owner：Claude + DeepSeek Product Manager
 - Reviewer：Codex Reviewer
 - Branch：docs/task-0004-product-baseline
@@ -269,9 +269,29 @@
 
 ## 完成状态
 
-产品经理完成后：
+产品经理完成基线编写：
 
 - current-task 状态更新为 READY_FOR_REVIEW
 - TASK-0004 模块锁更新为 HANDED_OFF
 - 交由 Codex Reviewer 独立审核
-- 不得直接标记为 COMPLETED
+
+审核历程：
+
+1. 初次审核（提交 bdb59c1）：NEEDS_CHANGES — 4 MAJOR / 3 MINOR / 2 NOTE
+2. 第一轮修复（提交 fb96868）：修复 F-001 至 F-007
+3. 第一次复审（提交 1e0e967）：NEEDS_CHANGES — R-001 至 R-004（4 MAJOR）
+4. 第二轮修复（提交 352d3d7）：修复 R-001 至 R-004，新增 AC-032 至 AC-037
+5. 第二次复审（提交 ecf2b68）：**PASS** — 全部 RESOLVED，0 BLOCKER / 0 MAJOR / 0 MINOR / 0 NOTE
+
+最终关闭：
+
+- 关闭日期：2026-07-17
+- 最终状态：COMPLETED
+- 最终复审报告：reviews/product/MVP-PRODUCT-BASELINE-RETEST-2-TASK-0004.md
+- 最终复审提交：ecf2b689f3a0193a88de03e33da7c1452ffadea8
+- 工作流校验：20/20 PASS，退出码 0
+- 产品基线文件：docs/product/MVP-PRODUCT-BASELINE.md
+- FR 12 / NFR 7 / AC 37 / BR 30 / PAGE 9
+- 模块锁：已全部 RELEASED
+
+不得直接标记为 COMPLETED。

@@ -6,7 +6,7 @@
 
 - Task ID：TASK-0004
 - Task Name：机房服务器落位可视化系统 MVP 产品基线
-- Status：READY_FOR_RETEST
+- Status：COMPLETED
 - Owner：Claude + DeepSeek Product Manager
 - Reviewer：Codex Reviewer
 - Branch：docs/task-0004-product-baseline
@@ -14,7 +14,7 @@
 - Requirement Source：hangyu 提出的企业机房服务器落位可视化需求
 - Product Baseline：只定义 MVP 产品要求，不进行架构设计和代码开发
 - Architecture Reference：N/A：产品基线完成后再建立架构任务
-- Module Lock：TASK-0004 三条模块锁已 HANDED_OFF；Product Manager 完成第二轮修复并交独立复审
+- Module Lock：TASK-0004 三条模块锁已 RELEASED；任务已关闭
 
 ## 当前目标
 
@@ -46,6 +46,11 @@
 - 验证结果：工作流 20/20 PASS、FAIL=0、退出码 0；`git diff --check` PASS
 - 状态迁移：2026-07-17 14:44:42 +08:00，Claude + DeepSeek Product Manager 完成修复与验证，IN_FIX → READY_FOR_RETEST；三项锁转为 HANDED_OFF
 - 当前等待 Codex Reviewer 再次独立复审，不关闭 TASK-0004，不进入 TASK-0005
+- 第二次复审结论（提交 ecf2b68）：**PASS** — 全部 RESOLVED，0 BLOCKER / 0 MAJOR / 0 MINOR / 0 NOTE
+- 最终复审报告：reviews/product/MVP-PRODUCT-BASELINE-RETEST-2-TASK-0004.md
+- 关闭日期：2026-07-17
+- 最终状态：COMPLETED
+- TASK-0004 产品基线任务已关闭。本任务定义的 MVP 产品基线将作为后续架构设计和开发任务的唯一产品输入。
 
 ## 当前约束
 
