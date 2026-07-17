@@ -25,6 +25,34 @@ function Invoke-Native {
     Assert-ExitZero -Step $Step -Code $LASTEXITCODE
 }
 
+# grep tri-state for "forbidden content must be absent":
+#   0 = matches found -> FAIL
+#   1 = no matches    -> PASS
+#   2+= grep error    -> FAIL
+function Assert-GrepNoMatch {
+    param(
+        [string]$Step,
+        [scriptblock]$Action
+    )
+    $output = & $Action 2>&1
+    $code = $LASTEXITCODE
+    if ($code -eq 1) {
+        return
+    }
+    if ($code -eq 0) {
+        $detail = ($output | Out-String).Trim()
+        if ($detail) {
+            throw "$Step failed: forbidden content found:`n$detail"
+        }
+        throw "$Step failed: forbidden content found (grep exit 0)"
+    }
+    $detail = ($output | Out-String).Trim()
+    if ($detail) {
+        throw "$Step failed: grep execution error exit code $code`n$detail"
+    }
+    throw "$Step failed: grep execution error exit code $code"
+}
+
 Push-Location $repoRoot
 
 try {
@@ -101,16 +129,12 @@ console.log("Forbidden direct dependencies: none");
         "src/frontend/package.json",
         "src/frontend/vite.config.ts"
     ) + @(Get-ChildItem -Path "src/frontend" -Filter "tsconfig*.json" -File | ForEach-Object { $_.FullName })
-    $cMatches = @()
     foreach ($target in $cTargets) {
-        if (Test-Path -LiteralPath $target) {
-            $hits = & grep -ri "jsdom\|happy-dom\|@vue/test-utils" -- $target 2>$null
-            if ($LASTEXITCODE -eq 0 -and $hits) {
-                $cMatches += $hits
-            }
+        Assert-True -Step "AC-SC-18 C target exists ($target)" -Condition (Test-Path -LiteralPath $target)
+        Assert-GrepNoMatch -Step "AC-SC-18 C ($target)" -Action {
+            & grep -ri "jsdom\|happy-dom\|@vue/test-utils" -- $target
         }
     }
-    Assert-True -Step "AC-SC-18 C" -Condition ($cMatches.Count -eq 0) -Detail ($cMatches -join "`n")
     Write-Host "Project references to forbidden packages: none"
 
     # 8. Backend NuGet dependency checks
@@ -127,13 +151,15 @@ console.log("Forbidden direct dependencies: none");
 
     Assert-True -Step "ProjectReference present" -Condition ($testCsproj -match 'ProjectReference\s+Include="[^"]*Datacenter\.Api\.csproj"')
 
-    $forbiddenCsproj = & grep -ri "EntityFrameworkCore\|SQLite\|Swashbuckle\|Microsoft.AspNetCore.OpenApi\|coverlet\|FluentAssertions\|Moq\|NSubstitute\|Microsoft.AspNetCore.Mvc.Testing" --include="*.csproj" src/backend/ tests/backend/ 2>$null
-    Assert-True -Step "Forbidden csproj packages" -Condition ($LASTEXITCODE -ne 0 -or -not $forbiddenCsproj) -Detail ($forbiddenCsproj -join "`n")
+    Assert-GrepNoMatch -Step "Forbidden csproj packages" -Action {
+        & grep -ri "EntityFrameworkCore\|SQLite\|Swashbuckle\|Microsoft.AspNetCore.OpenApi\|coverlet\|FluentAssertions\|Moq\|NSubstitute\|Microsoft.AspNetCore.Mvc.Testing" --include="*.csproj" src/backend/ tests/backend/
+    }
 
     # 9. coverlet.collector absent (source projects only; ignore bin/obj)
     Write-Host "=== coverlet.collector absent ==="
-    $coverletHits = & grep -ri "coverlet" --exclude-dir=bin --exclude-dir=obj tests/ 2>$null
-    Assert-True -Step "coverlet absent" -Condition ($LASTEXITCODE -ne 0 -or -not $coverletHits) -Detail ($coverletHits -join "`n")
+    Assert-GrepNoMatch -Step "coverlet absent" -Action {
+        & grep -ri "coverlet" --exclude-dir=bin --exclude-dir=obj tests/
+    }
 
     # Solution project list
     Write-Host "=== Solution project list ==="
@@ -197,15 +223,17 @@ console.log("Forbidden direct dependencies: none");
 
     # 17. launchSettings.json weatherforecast
     Write-Host "=== launchSettings.json weatherforecast check ==="
-    $launchHits = & grep -ni "weatherforecast" -- src/backend/Datacenter.Api/Properties/launchSettings.json 2>$null
-    Assert-True -Step "launchSettings weatherforecast" -Condition ($LASTEXITCODE -ne 0 -or -not $launchHits) -Detail ($launchHits -join "`n")
+    Assert-GrepNoMatch -Step "launchSettings weatherforecast" -Action {
+        & grep -ni "weatherforecast" -- src/backend/Datacenter.Api/Properties/launchSettings.json
+    }
 
-    # 18. Git tracking check (IR-002 / AC-SC-20) — untracked is OK; tracked is FAIL
+    # 18. Git tracking check (AC-SC-20) — validate git ls-files independently, then filter
     Write-Host "=== Git tracking check (build artifacts) ==="
-    $trackedArtifacts = & git ls-files |
-        & grep -E '(^|/)(node_modules|dist|bin|obj|TestResults)(/|$)'
-    # grep exit 1 means no matches (good); exit 0 means matches (bad)
-    Assert-True -Step "No tracked build artifacts" -Condition ($LASTEXITCODE -ne 0 -or -not $trackedArtifacts) -Detail ($trackedArtifacts -join "`n")
+    $trackedFiles = @(& git ls-files)
+    Assert-ExitZero -Step "git ls-files" -Code $LASTEXITCODE
+    Assert-GrepNoMatch -Step "No tracked build artifacts" -Action {
+        $trackedFiles | & grep -E '(^|/)(node_modules|dist|bin|obj|TestResults)(/|$)'
+    }
     Write-Host "Tracked build artifacts: none"
 
     # 19. git diff --check
