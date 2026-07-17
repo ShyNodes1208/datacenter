@@ -6,7 +6,7 @@
 
 - Task ID：TASK-0006
 - Task Name：MVP 项目脚手架
-- Status：READY_FOR_RETEST
+- Status：CHANGES_REQUESTED
 - Owner：Cursor Developer（AGENTS.md 第 3 节；CR-0002 批准的全栈实施角色）
 - Reviewer：Codex Reviewer
 - Branch：chore/task-0006-project-scaffold
@@ -14,22 +14,45 @@
 - Requirement Source：hangyu 提出的企业机房服务器落位可视化需求
 - Product Baseline：docs/product/MVP-PRODUCT-BASELINE.md（TASK-0004，COMPLETED，PASS）
 - Architecture Reference：docs/architecture/MVP-ARCHITECTURE-BASELINE.md（TASK-0005，COMPLETED，PASS）
-- Module Lock：9 项实施路径锁全部 HANDED_OFF（未释放）；等待 Codex Reviewer 对 RT-001 / RT-002 复审
+- Module Lock：9 项实施路径锁全部 HANDED_OFF；CHANGES_REQUESTED 保持 HANDED_OFF；修复时由 Cursor Developer 重新认领为 CLAIMED 后进入 IN_FIX
 
-## 第二轮返修摘要
+## 第三次实现复审结果
 
-- 修复起点：43cdebbb05c81e2677d177d3a183ff1dd563152d
-- RT-001：`Assert-GrepNoMatch` 三态处理（0=命中 FAIL，1=无匹配 PASS，≥2=执行错误 FAIL）；`git ls-files` 独立校验后再过滤
-- RT-002：`launchSettings.json` 去除 UTF-8 BOM；`python3 -m json.tool` 退出码 0
-- 负向证据：缺失目标 grep exit 2 → 门禁 FAIL（不再误判为 PASS）
-- `verify-project.ps1` 退出码 0，ALL CHECKS PASSED
-- 工作流 PASS=20 FAIL=0 TOTAL=20
+- 复审提交：2edbc2e（retest）
+- 复审报告：reviews/tasks/TASK-0006-PROJECT-SCAFFOLD-IMPLEMENTATION-RETEST-2.md
+- 复审结论：NEEDS_CHANGES
+- AC 结果：19 PASS / 1 FAIL（AC-SC-13 FAIL）
+
+### 复审缺陷摘要
+
+| Finding | 等级 | 问题 | 处置 |
+|---------|------|------|------|
+| IR-001 | MAJOR | AC-SC-18 lock metadata | **CLOSED**（确认） |
+| IR-002 | MAJOR | AC-SC-20 directory check | **CLOSED**（确认） |
+| IR-003/RT-001 | MAJOR | grep/Git error propagation | **CLOSED**（确认） |
+| IR-004/RT-002 | MINOR | launchSettings BOM | **CLOSED**（确认） |
+| RT-003 | MAJOR | AC-SC-13 recursive grep hits binary DLL strings | **SPEC_CLARIFIED**（AC-SC-13 改为 XML 检查；CR-0004 批准；verify-project.ps1 实现无需修改） |
 
 ## 当前目标
 
-等待 Codex Reviewer 第三次复审。不得改为 COMPLETED；不得释放锁；不得开始 TASK-0007；不得合并 main。
+RT-003 仅涉及规格 AC 命令修正（CR-0004）；verify-project.ps1 实现已正确（--exclude-dir=bin --exclude-dir=obj）。Cursor Developer 无需修改任何代码。
+
+规格修正完成后直接进入 READY_FOR_RETEST，由 Codex Reviewer 执行第四次（终审）复审。
+
+## 上一任务摘要
+
+### TASK-0005（MVP 技术架构与开发基线）
+
+- 最终状态：COMPLETED
+- 审核结论：PASS
+
+### TASK-0004（MVP 产品基线）
+
+- 最终状态：COMPLETED
+- 最终复审：PASS
 
 ## 当前约束
 
-- Owner 不得继续修改；等待同一独立 Reviewer 复审
 - 不得改为 COMPLETED；不得释放锁；不得开始 TASK-0007；不得合并 main
+- 规格修正范围限于 AC-SC-13 和 CR-0004；不改变其他 AC 或依赖预算
+- verify-project.ps1 无需修改

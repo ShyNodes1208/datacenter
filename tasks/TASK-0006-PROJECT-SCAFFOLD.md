@@ -4,14 +4,14 @@
 
 - Task ID：TASK-0006
 - Task Name：MVP 项目脚手架
-- Status：READY_FOR_RETEST
+- Status：CHANGES_REQUESTED
 - Owner：Cursor Developer（AGENTS.md 第 3 节；CR-0002 批准的全栈实施角色）
 - Reviewer：Codex Reviewer
 - Branch：chore/task-0006-project-scaffold
 - Requirement Source：hangyu 提出的企业机房服务器落位可视化需求
 - Product Baseline：docs/product/MVP-PRODUCT-BASELINE.md（TASK-0004，COMPLETED，PASS）
 - Architecture Reference：docs/architecture/MVP-ARCHITECTURE-BASELINE.md（TASK-0005，COMPLETED，PASS）
-- Module Lock：HANDED_OFF（9 项实施锁全部 HANDED_OFF；未释放；等待 Codex Reviewer 复审 RT-001/RT-002）
+- Module Lock：HANDED_OFF（9 项实施锁全部 HANDED_OFF；CHANGES_REQUESTED 保持 HANDED_OFF；修复时由 Cursor Developer 重新认领为 CLAIMED）
 
 ## Reviewer 独立性检查
 
@@ -248,10 +248,63 @@
   - `xunit.runner.visualstudio`
 
 ### AC-SC-13：coverlet.collector 不存在
-- 命令：`grep -r "coverlet" tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj`
-- 期望：退出码 1（grep 无匹配）。
-- 命令：`grep -ri "coverlet" tests/`
-- 期望：退出码 1（任何测试目录下均无 coverlet 引用）。
+
+AC-SC-13 只检查测试项目的依赖声明文件（csproj），不扫描 bin、obj、DLL 或其他构建产物。
+
+**A. 结构化 XML 检查（权威验收证据）：**
+
+```bash
+python3 - <<'PY'
+from pathlib import Path
+import xml.etree.ElementTree as ET
+
+path = Path(
+    "tests/backend/Datacenter.Api.Tests/"
+    "Datacenter.Api.Tests.csproj"
+)
+
+root = ET.parse(path).getroot()
+
+references = [
+    element.attrib.get("Include", "")
+    for element in root.iter()
+    if element.tag.endswith("PackageReference")
+]
+
+forbidden = [
+    reference
+    for reference in references
+    if reference.lower() == "coverlet.collector"
+]
+
+print("PackageReferences:", ", ".join(references))
+
+if forbidden:
+    raise SystemExit(
+        "Forbidden PackageReference found: coverlet.collector"
+    )
+
+print("coverlet.collector PackageReference: absent")
+PY
+```
+
+期望：退出码 0，输出 `coverlet.collector PackageReference: absent`。
+
+**B. 精确文件 grep（补充检查）：**
+
+```bash
+grep -ni "coverlet.collector" \
+  tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj
+```
+
+期望：无输出，退出码 1。
+
+**废除的命令（不再使用）：**
+- `grep -ri "coverlet" tests/`（扫描 bin/obj/DLL 导致二进制字符串误命中；退出码 0 不代表项目存在 coverlet.collector 引用）
+
+**禁止：**
+- 通过删除 bin/obj 目录规避验收
+- 新增 coverlet.collector PackageReference
 
 ### AC-SC-14：dotnet restore 退出码 0
 - 命令：`dotnet restore Datacenter.sln`
@@ -872,17 +925,19 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | 2026-07-18 | Codex Reviewer | READY_FOR_RETEST | CHANGES_REQUESTED | — | 复审 NEEDS_CHANGES（提交 1124339；报告：TASK-0006-PROJECT-SCAFFOLD-IMPLEMENTATION-RETEST.md）。AC-SC-17 FAIL（RT-001：grep/Git 管道错误处理不严格；grep exit 2 被当成"无匹配"；Git 失败可被掩盖）。RT-002：launchSettings.json UTF-8 BOM 导致 python3 json.tool 失败。IR-001 CLOSED、IR-002 CLOSED、IR-003/RT-001 OPEN、IR-004/RT-002 OPEN。19 AC PASS / 1 FAIL。修复后由同一 Reviewer 复审。 |
 | 2026-07-18 00:39:48 +08:00 | Cursor Developer | CHANGES_REQUESTED | IN_FIX | — | 重新认领 scripts/verify-project.ps1、src/backend/Datacenter.Api、tasks/TASK-0006-PROJECT-SCAFFOLD.md、tasks/current-task.md、tasks/MODULE-LOCKS.md 为 CLAIMED；开始修复 RT-001/RT-002 |
 | 2026-07-18 00:41:30 +08:00 | Cursor Developer | IN_FIX | READY_FOR_RETEST | Codex Reviewer | RT-001/RT-002 已 CLOSED；Assert-GrepNoMatch 三态；git ls-files 独立校验；launchSettings 无 BOM；json.tool 0；verify 0；工作流 20/20；5 项锁改回 HANDED_OFF；待同一 Reviewer 复审 |
+| 2026-07-18 | Codex Reviewer | READY_FOR_RETEST | CHANGES_REQUESTED | — | 第三次复审 NEEDS_CHANGES（提交 2edbc2e；报告：TASK-0006-PROJECT-SCAFFOLD-IMPLEMENTATION-RETEST-2.md）。AC-SC-13 FAIL（RT-003：递归 grep 扫描 bin/obj/DLL 命中二进制 coverlet 字符串）。IR-001/IR-002/IR-003/RT-001/IR-004/RT-002 全部 CLOSED。verify-project.ps1 实现已正确（--exclude-dir=bin --exclude-dir=obj）。仅规格 AC 命令需修正。修复后由同一 Reviewer 复审。 |
 
 ## 审核结论
 
 - 实施前规格审查结论：NEEDS_CHANGES（报告：reviews/tasks/TASK-0006-PROJECT-SCAFFOLD-SPEC-REVIEW.md，提交 6a1b4a9；SC-001 至 SC-009，全部 CLOSED）
 - 第一次实现审核结论：NEEDS_CHANGES（报告：reviews/tasks/TASK-0006-PROJECT-SCAFFOLD-IMPLEMENTATION-REVIEW.md，提交 d6d8455；IR-001 至 IR-004）
-- 第二次实现审核（复审）结论：NEEDS_CHANGES（报告：reviews/tasks/TASK-0006-PROJECT-SCAFFOLD-IMPLEMENTATION-RETEST.md，提交 1124339）
-- 复审发现：MAJOR 1（RT-001）/ MINOR 1（RT-002）
-- AC 结果：19 PASS / 1 FAIL（AC-SC-17 FAIL）
-- 已关闭：IR-001 CLOSED、IR-002 CLOSED
-- 仍开放：无（RT-001/RT-002 已 CLOSED，待 Reviewer 确认）
-- 当前任务状态：READY_FOR_RETEST；等待 Codex Reviewer 第三次复审
+- 第二次复审结论：NEEDS_CHANGES（报告：TASK-0006-PROJECT-SCAFFOLD-IMPLEMENTATION-RETEST.md，提交 1124339；RT-001/RT-002）
+- 第三次复审结论：NEEDS_CHANGES（报告：TASK-0006-PROJECT-SCAFFOLD-IMPLEMENTATION-RETEST-2.md，提交 2edbc2e；RT-003）
+- 第三次复审结果：19 PASS / 1 FAIL（AC-SC-13 FAIL）
+- 已确认关闭：IR-001 CLOSED、IR-002 CLOSED、IR-003/RT-001 CLOSED、IR-004/RT-002 CLOSED
+- 新发现：RT-003（MAJOR）— AC-SC-13 递归 grep 扫描 bin/obj/DLL 导致二进制字符串误命中
+- verify-project.ps1 实现已正确（--exclude-dir=bin --exclude-dir=obj）；仅规格 AC 命令需修正
+- 当前任务状态：CHANGES_REQUESTED，待 Cursor Developer 修复后重新进入 IN_FIX → READY_FOR_RETEST
 
 ## 缺陷清单
 
@@ -901,8 +956,9 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | IR-002 | MAJOR | 实现审核报告 §12、§14；`TASK-0006` AC-SC-20 | AC-SC-20 改为 Git 跟踪检查；CR-0003 批准 | CLOSED（复审确认：git ls-files 无输出；允许本地存在 node_modules/dist） |
 | IR-003 | MAJOR | 实现审核报告 §10、§14；复审报告 RT-001；`scripts/verify-project.ps1` | 补齐 20 项门禁；grep 必须区分退出码 1（无匹配）与 2+（执行错误）；Git 管道必须独立验证 git ls-files 成功 | CLOSED（Assert-GrepNoMatch 三态；git ls-files 独立校验；verify 0；负向缺失目标 exit 2 → FAIL） |
 | IR-004 | MINOR | 实现审核报告 §4、§14；复审报告 RT-002；`launchSettings.json:1` | 删除两处 weatherforecast；保存为 UTF-8 without BOM | CLOSED（无 weatherforecast；无 BOM；`python3 -m json.tool` 退出码 0） |
-| RT-001 | MAJOR | 复审报告 §7、§14；`scripts/verify-project.ps1` | 同 IR-003 | CLOSED（见 IR-003） |
-| RT-002 | MINOR | 复审报告 §8、§14；`launchSettings.json:1` | 同 IR-004 | CLOSED（见 IR-004） |
+| RT-001 | MAJOR | 复审报告 §7、§14；`scripts/verify-project.ps1` | 同 IR-003 | CLOSED（第三次复审确认。Assert-GrepNoMatch 三态；git ls-files 独立校验；verify 0） |
+| RT-002 | MINOR | 复审报告 §8、§14；`launchSettings.json:1` | 同 IR-004 | CLOSED（第三次复审确认。无 weatherforecast；无 BOM；json.tool 0） |
+| RT-003 | MAJOR | 第三次复审报告 §11；`TASK-0006` AC-SC-13；`tests/.../bin/.../*.dll` | AC-SC-13 改为结构化 XML 检查 + 精确 csproj grep；CR-0004 批准 | SPEC_CLARIFIED（AC-SC-13 已重写为 XML PackageReference 检查；verify-project.ps1 已正确使用 --exclude-dir；实现无需修改） |
 
 ## 缺陷修复记录
 
@@ -911,8 +967,9 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | SC-001 至 SC-009 | Claude + DeepSeek Product Manager | 见上方缺陷清单各行的修复说明 | 工作流 20/20 PASS；git diff --check PASS | 见规格修正提交 |
 | IR-001 | Cursor Developer | verify-project.ps1 实现 AC-SC-18 A/B/C 三层验证 | 复审确认 CLOSED。A/B/C 全部 PASS | 提交 1bfcc54 |
 | IR-002 | Cursor Developer | verify-project.ps1 按 git ls-files 检查构建产物跟踪状态 | 复审确认 CLOSED。git ls-files 无输出 | 提交 1bfcc54 |
-| IR-003/RT-001 | Cursor Developer | Assert-GrepNoMatch：exit 0 FAIL / 1 PASS / ≥2 FAIL；git ls-files 独立校验后再过滤 | verify 0；缺失目标负向测试 exit 2 → FAIL；工作流 20/20 | 待本轮提交 |
-| IR-004/RT-002 | Cursor Developer | launchSettings.json 去除 UTF-8 BOM | `python3 -m json.tool` 退出码 0；weatherforecast grep 退出码 1；file 无 BOM | 待本轮提交 |
+| IR-003/RT-001 | Cursor Developer | Assert-GrepNoMatch：exit 0 FAIL / 1 PASS / ≥2 FAIL；git ls-files 独立校验后再过滤 | 第三次复审确认 CLOSED | 提交 74ba6de |
+| IR-004/RT-002 | Cursor Developer | launchSettings.json 去除 UTF-8 BOM | 第三次复审确认 CLOSED | 提交 74ba6de |
+| RT-003 | Claude + DeepSeek（规格修正） | AC-SC-13 改为结构化 XML + 精确 grep；CR-0004 批准 | XML 检查 exit 0；verify-project.ps1 已正确使用 --exclude-dir | 待本轮提交 |
 
 ## 实现审核（IR-001 至 IR-004）及复审（RT-001、RT-002）修复矩阵
 
