@@ -77,6 +77,23 @@
 - 页面交互
 - 前端测试
 
+### Cursor Developer
+
+负责：
+
+- 按已批准任务规格创建和修改代码
+- 可以处理 Vue、TypeScript、ASP.NET Core、.NET、xUnit 和脚本
+- 可以执行构建、测试和最小调试
+- 不得自行修改产品需求和架构裁决
+- 不得自行扩大依赖预算
+- 遇到规格缺口必须停止并提交问题
+- 不负责独立最终审核
+- Reviewer 始终为 Codex Reviewer
+
+本角色为通用实施角色，用于需要同时处理前端和后端基础项目创建的全栈脚手架任务（如 TASK-0006）。后续前端业务任务仍由 Cursor Frontend 负责，后端业务任务仍由 Codex Backend 负责。
+
+依据：CR-0002（tasks/CR-0002-TASK-0006-WORKFLOW-AND-DEVELOPER-ROLE.md）。
+
 ### Codex Reviewer
 
 负责：
@@ -96,7 +113,7 @@ Reviewer 默认不直接修改被审核代码。
 2. 业务数据不能直接依赖 Grid Plan 的内部 JSON 格式。
 3. 必须设计独立的平面图数据模型和渲染适配层。
 4. 后端 API 契约由 Codex Architect 管理。
-5. Cursor 不得自行修改后端 API 契约。
+5. Cursor Frontend 和 Cursor Developer 不得自行修改后端 API 契约；API 契约由 Codex Architect 管理。
 6. 所有设备上下架和位置变更必须保留审计记录。
 7. 设备 U 位必须进行范围和冲突校验。
 8. 所有重要功能必须有可执行的验收标准。
