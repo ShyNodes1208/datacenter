@@ -23,3 +23,38 @@
 - Codex Backend：后端、数据库和自动化测试
 - Cursor：前端、2D 布局和局部 3D
 - Codex Reviewer：独立审核和缺陷验证
+
+## Development
+
+### Prerequisites
+
+- Node.js >= 18 (NVM)
+- npm (with Node.js)
+- .NET SDK 8.0
+- WSL 2 Ubuntu 24.04 or compatible Linux
+
+### Frontend
+
+```powershell
+cd src/frontend
+npm install          # Install dependencies
+npm run dev          # Start Vite dev server
+npm run typecheck    # Run TypeScript type checking
+npm run test         # Run Vitest tests
+npm run build        # TypeScript check + production build
+```
+
+### Backend
+
+```powershell
+dotnet restore Datacenter.sln                    # Restore NuGet packages
+dotnet build Datacenter.sln --no-restore          # Build all projects
+dotnet test tests/backend/Datacenter.Api.Tests/   # Run backend tests
+dotnet run --project src/backend/Datacenter.Api/  # Start the API server
+```
+
+### Verify All
+
+```powershell
+pwsh -NoLogo -NoProfile -File ./scripts/verify-project.ps1
+```

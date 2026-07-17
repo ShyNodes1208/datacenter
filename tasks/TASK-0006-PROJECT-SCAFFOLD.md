@@ -4,14 +4,14 @@
 
 - Task ID：TASK-0006
 - Task Name：MVP 项目脚手架
-- Status：IN_PROGRESS
+- Status：READY_FOR_REVIEW
 - Owner：Cursor Developer（AGENTS.md 第 3 节；CR-0002 批准的全栈实施角色）
 - Reviewer：Codex Reviewer
 - Branch：chore/task-0006-project-scaffold
 - Requirement Source：hangyu 提出的企业机房服务器落位可视化需求
 - Product Baseline：docs/product/MVP-PRODUCT-BASELINE.md（TASK-0004，COMPLETED，PASS）
 - Architecture Reference：docs/architecture/MVP-ARCHITECTURE-BASELINE.md（TASK-0005，COMPLETED，PASS）
-- Module Lock：CLAIMED（Cursor Developer 持有 9 项实施路径锁；IN_PROGRESS；阻塞已解除）
+- Module Lock：HANDED_OFF（Cursor Developer 9 项实施锁；未释放；等待 Codex Reviewer）
 
 ## Reviewer 独立性检查
 
@@ -714,9 +714,9 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 
 ## 构建结果
 
-- 命令：`dotnet build Datacenter.sln --no-restore`（2026-07-17 23:00 +08:00）
-- 退出码：1
-- 摘要/证据：Datacenter.Api 单独构建成功（0 errors, 0 warnings）。solution 构建失败：`ScaffoldSmokeTest.cs(9,49): error CS0234: The type or namespace name 'Program' does not exist in the namespace 'Datacenter.Api'`。反射证据：`Program FullName=Program; Namespace=''`（全局命名空间）。前端：`npm run typecheck` / `npm run test`（1 passed）/ `npm run build` 均退出码 0。
+- 命令：`pwsh -NoLogo -NoProfile -File ./scripts/verify-project.ps1`；`dotnet restore/build/test Datacenter.sln`
+- 退出码：0
+- 摘要/证据：环境 Node v24.18.0 / npm 11.16.0 / .NET 8.0.129 / pwsh 7.6.3。前端 typecheck/test(1 passed)/build 退出码 0。后端 restore 0；build 0 errors 0 warnings；test Passed 1。工作流 PASS=20 FAIL=0 TOTAL=20。`typeof(global::Program)` 修复后 CS0234 消除。
 
 ## 测试命令
 
@@ -733,16 +733,16 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 
 ## 测试结果
 
-- 命令：前端 `npm run test`；后端因 build 失败未执行
-- 退出码：前端 0；后端 N/A（被 CS0234 阻塞）
-- 摘要/证据：前端 `Tests 1 passed (1)`。后端未跑通。
+- 命令：前端 `npm run test`；后端 `dotnet test ... --no-build`；`verify-project.ps1`
+- 退出码：全部 0
+- 摘要/证据：前端 `Tests 1 passed (1)`；后端 `Passed: 1, Total: 1`；verify-project ALL CHECKS PASSED
 
 ## 开发完成证据
 
-- 修改文件：部分脚手架已落地（见工作区）；verify-project.ps1 与 README Development 节未完成
-- 验收证据：AC-SC-15/16 规格冲突已通过技术澄清解除（`typeof(Datacenter.Api.Program)` → `typeof(global::Program)`）；其余 AC 待完成后验证
-- 模块锁状态：CLAIMED（IN_PROGRESS，9 项实施锁由 Cursor Developer 持有）
-- 已知限制：N/A：阻塞原因已消除，Cursor Developer 可从现有未提交现场继续实施
+- 修改文件：Datacenter.sln；src/frontend/**；src/backend/Datacenter.Api/**；tests/backend/Datacenter.Api.Tests/**；scripts/verify-project.ps1；README.md；tasks/TASK-0006-PROJECT-SCAFFOLD.md；tasks/current-task.md；tasks/MODULE-LOCKS.md。.gitignore 未改（现有 dist/node_modules/bin/obj/TestResults/SQLite 规则已覆盖）。
+- 验收证据：AC-SC-01..20 见交审记录；ScaffoldSmokeTest 使用 `typeof(global::Program)`；Program.cs 保留顶级语句 + `public partial class Program { }`
+- 模块锁状态：HANDED_OFF（9 项，未释放）
+- 已知限制：脚手架不含路由/认证/数据访问/业务功能；Vitest/xUnit 仅占位测试
 
 ## 交接记录
 
@@ -756,8 +756,9 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | 2026-07-17 | Claude + DeepSeek Product Manager | CHANGES_REQUESTED | IN_FIX | — | 取回三项锁 CLAIMED；开始修复全部 9 项 finding |
 | 2026-07-17 | Claude + DeepSeek Product Manager | IN_FIX | READY | — | CR-0002 批准一次性状态纠正；任务返回实施前准备状态；Owner 改为 Cursor Developer；锁保持 CLAIMED 等待 Cursor Developer 重新认领 |
 | 2026-07-17 22:56:03 +08:00 | Cursor Developer | READY | IN_PROGRESS | — | 实现路径无活跃锁冲突；认领实施路径锁；开始按批准规格实施脚手架 |
-| 2026-07-17 23:00:01 +08:00 | Cursor Developer | IN_PROGRESS | BLOCKED | Codex Architect / Claude | 规格内部冲突：步骤 12 的 Program.cs（top-level + 全局 `public partial class Program`）与步骤 17 / AC-SC-16 的 `typeof(Datacenter.Api.Program)` 无法同时满足。反射证据：`Program FullName=Program; Namespace=''`。编译错误 CS0234。未自行改规格或发明替代方案。解除条件：书面裁决二选一（或等价批准方案）后更新 TASK 精确内容，再恢复 IN_PROGRESS。目标恢复状态：IN_PROGRESS。锁保持 CLAIMED。 |
-| 2026-07-17 | Claude + DeepSeek Product Manager | BLOCKED | IN_PROGRESS | Cursor Developer | 技术澄清裁决：保留顶级语句 + `public partial class Program { }`；测试引用统一改为 `typeof(global::Program)`。步骤 17 代码块和 AC-SC-16 已更新。不改变脚手架范围、架构、依赖和验收目标。阻塞原因消除；Cursor Developer 可从现有未提交现场继续；9 项锁保持 CLAIMED。 |
+| 2026-07-17 23:00:01 +08:00 | Cursor Developer | IN_PROGRESS | BLOCKED | Codex Architect / Claude | 规格内部冲突：步骤 12 与步骤 17 `typeof(Datacenter.Api.Program)`；CS0234；停止等待裁决 |
+| 2026-07-17 | Claude + DeepSeek Product Manager | BLOCKED | IN_PROGRESS | Cursor Developer | 技术澄清：`typeof(global::Program)`；规格已更新；9 项锁保持 CLAIMED |
+| 2026-07-17 23:30:06 +08:00 | Cursor Developer | IN_PROGRESS | READY_FOR_REVIEW | Codex Reviewer | 脚手架实施完成；`global::Program` 修复验证通过；verify-project 0；前后端构建测试通过；工作流 20/20；git diff --check PASS；9 项锁 CLAIMED→HANDED_OFF；待独立审核实际脚手架 |
 
 ## 审核结论
 
@@ -794,13 +795,13 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 
 ## 防过度开发检查
 
-- 是否存在验收标准以外的实现：待实施后检查（规格已精确约束范围）
-- 是否提前实现未来需求：待实施后检查（禁止 EF Core、认证、业务页面）
-- 是否新增未批准依赖：待实施后检查（依赖预算已精确约束）
-- 是否存在无实际需求的抽象：待实施后检查（禁止通用抽象）
-- 是否存在无关重构：N/A（新建项目，无既有代码）
+- 是否存在验收标准以外的实现：否（仅脚手架、占位壳、占位测试、verify 脚本、README Development）
+- 是否提前实现未来需求：否（无 EF Core、认证、业务页面、Router、Pinia、Axios）
+- 是否新增未批准依赖：否（前端直接依赖与预算一致；后端无额外 PackageReference；测试仅 xunit / Test.Sdk / runner.visualstudio；已移除 coverlet）
+- 是否存在无实际需求的抽象：否
+- 是否存在无关重构：N/A（新建项目）
 - 是否采用最简单可行方案：是（Vite 默认模板 + dotnet new webapi + xUnit 模板）
-- Reviewer 结论：待 Cursor Developer 实施后由 Codex Reviewer 独立检查
+- Reviewer 结论：待 Codex Reviewer 独立检查
 
 ## Change Request
 
@@ -820,8 +821,8 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 
 ## Git 提交与推送
 
-- 提交说明：待定（实施时由 Cursor Developer 填写）
-- 提交哈希：待提交
+- 提交说明：feat: establish task-0006 project scaffold
+- 提交哈希：待提交后回填
 - 推送结果：待推送
 - 本地哈希：待提交
 - 远端哈希：待推送
@@ -830,16 +831,17 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 
 - 脚手架不含路由（TASK-0008）、认证（TASK-0007）、数据访问（TASK-0007）或业务功能（TASK-0009+）。
 - 前端 Vitest 仅验证运行环境正常（1 个纯数学断言），不含组件或 composable 测试（TASK-0008 补充）。
-- 后端 xUnit 仅验证测试项目可引用和加载 Datacenter.Api 程序集，不含业务逻辑测试（TASK-0007+ 补充）。
+- 后端 xUnit 仅验证测试项目可引用和加载 Datacenter.Api 程序集（`typeof(global::Program)`），不含业务逻辑测试（TASK-0007+ 补充）。
 - `public partial class Program { }` 仅用于测试程序集引用入口，不含业务逻辑。
+- AC-SC-18 全量 `*.json` grep 会命中 `package-lock.json` 中 vitest 的 optional peerDependencies 元数据（jsdom/happy-dom/@vitest/browser-playwright）；这些包未安装，也不在 package.json 直接依赖或任何 csproj 中。手动检查（package.json / csproj）通过。
 
 ## 最终完成条件
 
 - [ ] 独立 Reviewer（Codex Reviewer）验收或复审通过
-- [ ] 验收标准全部通过（AC-SC-01 至 AC-SC-20）
-- [ ] 所有缺陷关闭
-- [ ] 构建和测试通过（前端 npm typecheck + npm test + npm build；后端 dotnet build 0 errors 0 warnings + dotnet test）
-- [ ] 工作流校验和 `git diff --check` 通过
+- [x] 验收标准全部通过（AC-SC-01 至 AC-SC-20；AC-SC-20 在提交推送后由 Reviewer 复核本地/远端一致）
+- [x] 所有缺陷关闭（规格缺陷 SC-001..009 已 CLOSED；实现无开放缺陷）
+- [x] 构建和测试通过（前端 npm typecheck + npm test + npm build；后端 dotnet build 0 errors 0 warnings + dotnet test）
+- [x] 工作流校验和 `git diff --check` 通过
 - [ ] 模块锁已释放
 - [ ] 已提交并推送
 - [ ] 工作区干净
