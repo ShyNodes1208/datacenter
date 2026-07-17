@@ -8,12 +8,17 @@
 
 ## 2. 固定开发环境
 
-- 操作系统：Windows
-- 命令行：PowerShell
-- 不使用 Linux
-- 不使用 WSL
-- 不依赖服务器开发环境
-- 所有构建、测试和开发命令必须可以在 Windows PowerShell 中运行
+- 宿主操作系统：Windows
+- 主要开发环境：WSL 2 Ubuntu 24.04
+- 命令行：PowerShell（Windows 宿主）或 pwsh（WSL 内均可）
+- Cursor 桌面版运行在 Windows，通过 WSL Remote 打开 Linux 项目
+- Claude Code + DeepSeek 在 WSL 中运行
+- Codex CLI 在 WSL 中运行
+- Git、Node.js（NVM）、npm、.NET SDK 在 WSL 中运行
+- Git 仓库位于 WSL Linux 文件系统（/home/shy/projects/datacenter-layout）
+- 不依赖独立 Linux 服务器或远程开发机
+- 所有构建、测试和开发命令在 WSL 终端中通过 pwsh 或 bash 执行
+- 开发环境变更依据：CR-0001（tasks/CR-0001-WSL-DEV-ENVIRONMENT.md）
 
 ## 2.1 Agent 工作流权威来源
 

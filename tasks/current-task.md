@@ -6,7 +6,7 @@
 
 - Task ID：TASK-0005
 - Task Name：机房服务器落位图 MVP 技术架构与开发基线
-- Status：DRAFT
+- Status：READY_FOR_RETEST
 - Owner：Claude + DeepSeek Product Manager
 - Reviewer：Codex Reviewer
 - Branch：docs/task-0005-architecture-baseline
@@ -14,7 +14,7 @@
 - Requirement Source：hangyu 提出的企业机房服务器落位可视化需求
 - Product Baseline：docs/product/MVP-PRODUCT-BASELINE.md（TASK-0004，COMPLETED，PASS）
 - Architecture Reference：docs/architecture/MVP-ARCHITECTURE-BASELINE.md（本任务产出）
-- Module Lock：TASK-0005 三条模块锁已 CLAIMED；Product Manager 正在编写架构基线
+- Module Lock：TASK-0005 三条模块锁已 HANDED_OFF；Product Manager 完成 A-001 至 A-009 修复并交复审
 
 ## 当前目标
 

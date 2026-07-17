@@ -4,14 +4,14 @@
 
 - Task ID：TASK-0005
 - Task Name：机房服务器落位图 MVP 技术架构与开发基线
-- Status：DRAFT
+- Status：READY_FOR_REVIEW
 - Owner：Claude + DeepSeek Product Manager
 - Reviewer：Codex Reviewer
 - Branch：docs/task-0005-architecture-baseline
 - Requirement Source：hangyu 提出的企业机房服务器落位可视化需求
 - Product Baseline：docs/product/MVP-PRODUCT-BASELINE.md（TASK-0004，COMPLETED，PASS）
 - Architecture Reference：docs/architecture/MVP-ARCHITECTURE-BASELINE.md（本任务产出）
-- Module Lock：待认领
+- Module Lock：HANDED_OFF（三项锁已转为 HANDED_OFF；TASK-0005 交 Codex Reviewer 复审）
 
 ## Reviewer 独立性检查
 
@@ -35,6 +35,9 @@
 - tasks/TASK-0005-MVP-ARCHITECTURE-BASELINE.md
 - tasks/current-task.md
 - tasks/MODULE-LOCKS.md
+- tasks/CR-0001-WSL-DEV-ENVIRONMENT.md（新增 Change Request）
+- AGENTS.md（第 2 节：经 CR-0001 批准的开发环境更新）
+- .gitignore（A-006 审核修复：配置规则一致性）
 
 ## 禁止修改
 
@@ -43,7 +46,6 @@
 - src/（无业务代码）
 - tests/（无业务代码）
 - scripts/validate-agent-workflow.ps1（工作流校验脚本）
-- AGENTS.md
 - agents/
 - docs/architecture/AGENT-WORKFLOW.md
 - tasks/TASK-TEMPLATE.md
@@ -55,7 +57,6 @@
 - tasks/blocked/
 - tasks/completed/
 - README.md
-- .gitignore
 
 ## 功能要求
 
@@ -173,15 +174,17 @@
   - tasks/current-task.md（更新）
   - tasks/MODULE-LOCKS.md（更新）
 - 验收证据：架构基线覆盖全部 12 FR 和 7 NFR（第 21 节追踪矩阵）；前后端职责明确（第 7、8 节）；SQLite 方向确定（第 9 节）；6 个实体边界清晰（第 10 节）；11 个后续任务已拆分（第 22 节）
-- 模块锁状态：CLAIMED（待完成后转为 HANDED_OFF）
-- 已知限制：API 端点仅定义资源分组，未定义完整路径和方法签名；实体仅定义职责和关系，未定义完整字段列表
+- 模块锁状态：HANDED_OFF（TASK-0005 三项锁已转为 HANDED_OFF；等待 Codex Reviewer 复审）
+- 已知限制：API 仅定义资源边界和产品已批准操作，完整路径和方法签名由 TASK-0007 定义；实体仅定义职责和关系，完整字段列表由 TASK-0007 定义
 
 ## 交接记录
 
 | 时间 | 发起者 | 原状态 | 新状态 | 接收者 | 证据/说明 |
 |---|---|---|---|---|---|
 | 2026-07-17 | Claude + DeepSeek Product Manager | IDLE | DRAFT | — | TASK-0004 COMPLETED；创建 TASK-0005 草案 |
-|  |  |  |  |  |  |
+| 2026-07-17 | Codex Reviewer | READY_FOR_REVIEW | CHANGES_REQUESTED | Claude + DeepSeek Product Manager | 审核报告 bdd5a38：8 MAJOR / 1 MINOR |
+| 2026-07-17 | Claude + DeepSeek Product Manager | CHANGES_REQUESTED | IN_FIX | — | 确认 A-001 至 A-009 修复范围；重新 CLAIMED |
+| 2026-07-17 | Claude + DeepSeek Product Manager | IN_FIX | READY_FOR_RETEST | Codex Reviewer | 全部 9 项修复完成；CR-0001 已记录；三项锁 HANDED_OFF |
 
 ## 审核结论
 
