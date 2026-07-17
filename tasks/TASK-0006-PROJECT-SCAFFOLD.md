@@ -4,14 +4,14 @@
 
 - Task ID：TASK-0006
 - Task Name：MVP 项目脚手架
-- Status：READY
+- Status：IN_PROGRESS
 - Owner：Cursor Developer（AGENTS.md 第 3 节；CR-0002 批准的全栈实施角色）
 - Reviewer：Codex Reviewer
 - Branch：chore/task-0006-project-scaffold
 - Requirement Source：hangyu 提出的企业机房服务器落位可视化需求
 - Product Baseline：docs/product/MVP-PRODUCT-BASELINE.md（TASK-0004，COMPLETED，PASS）
 - Architecture Reference：docs/architecture/MVP-ARCHITECTURE-BASELINE.md（TASK-0005，COMPLETED，PASS）
-- Module Lock：CLAIMED（TASK-0006 三项锁由 Claude 持有；实施时由 Cursor Developer 重新认领）
+- Module Lock：CLAIMED（Cursor Developer 持有 9 项实施路径锁；IN_PROGRESS；阻塞已解除）
 
 ## Reviewer 独立性检查
 
@@ -267,7 +267,7 @@
 - 命令：`dotnet test tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj --no-build`
 - 期望：退出码 0，输出显示 `1 passed`（或等效的 1 个测试通过指示）。
 - 测试文件路径：`tests/backend/Datacenter.Api.Tests/ScaffoldSmokeTest.cs`。
-- 测试内容：恰好 1 个测试，验证测试项目可引用并加载 Datacenter.Api 程序集（如引用 `Program` 类并断言其非 null），不测试业务逻辑。
+- 测试内容：恰好 1 个测试，验证测试项目可引用并加载 Datacenter.Api 程序集（使用 `typeof(global::Program)` 引用全局 Program 类型并断言其非 null），不测试业务逻辑。
 - 禁止：存在 `UnitTest1.cs` 或任何其他测试文件。
 - 为允许测试项目访问 Program，Datacenter.Api 的 Program.cs 最后必须包含 `public partial class Program { }`。
 
@@ -556,7 +556,7 @@ public class ScaffoldSmokeTest
     public void TestProjectReferencesAndLoadsBackendAssembly()
     {
         // 验证测试项目可引用 Datacenter.Api 程序集中的类型
-        var programType = typeof(Datacenter.Api.Program);
+        var programType = typeof(global::Program);
         Assert.NotNull(programType);
     }
 }
@@ -714,9 +714,9 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 
 ## 构建结果
 
-- 命令：待实施
-- 退出码：待实施
-- 摘要/证据：待实施
+- 命令：`dotnet build Datacenter.sln --no-restore`（2026-07-17 23:00 +08:00）
+- 退出码：1
+- 摘要/证据：Datacenter.Api 单独构建成功（0 errors, 0 warnings）。solution 构建失败：`ScaffoldSmokeTest.cs(9,49): error CS0234: The type or namespace name 'Program' does not exist in the namespace 'Datacenter.Api'`。反射证据：`Program FullName=Program; Namespace=''`（全局命名空间）。前端：`npm run typecheck` / `npm run test`（1 passed）/ `npm run build` 均退出码 0。
 
 ## 测试命令
 
@@ -733,16 +733,16 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 
 ## 测试结果
 
-- 命令：待实施
-- 退出码：待实施
-- 摘要/证据：待实施
+- 命令：前端 `npm run test`；后端因 build 失败未执行
+- 退出码：前端 0；后端 N/A（被 CS0234 阻塞）
+- 摘要/证据：前端 `Tests 1 passed (1)`。后端未跑通。
 
 ## 开发完成证据
 
-- 修改文件：待实施
-- 验收证据：待实施
-- 模块锁状态：待实施
-- 已知限制：待实施
+- 修改文件：部分脚手架已落地（见工作区）；verify-project.ps1 与 README Development 节未完成
+- 验收证据：AC-SC-15/16 规格冲突已通过技术澄清解除（`typeof(Datacenter.Api.Program)` → `typeof(global::Program)`）；其余 AC 待完成后验证
+- 模块锁状态：CLAIMED（IN_PROGRESS，9 项实施锁由 Cursor Developer 持有）
+- 已知限制：N/A：阻塞原因已消除，Cursor Developer 可从现有未提交现场继续实施
 
 ## 交接记录
 
@@ -755,6 +755,9 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | 2026-07-17 | Codex Reviewer | READY_FOR_REVIEW | CHANGES_REQUESTED | — | 规格审核 NEEDS_CHANGES（提交 6a1b4a9）；SC-001 至 SC-009 |
 | 2026-07-17 | Claude + DeepSeek Product Manager | CHANGES_REQUESTED | IN_FIX | — | 取回三项锁 CLAIMED；开始修复全部 9 项 finding |
 | 2026-07-17 | Claude + DeepSeek Product Manager | IN_FIX | READY | — | CR-0002 批准一次性状态纠正；任务返回实施前准备状态；Owner 改为 Cursor Developer；锁保持 CLAIMED 等待 Cursor Developer 重新认领 |
+| 2026-07-17 22:56:03 +08:00 | Cursor Developer | READY | IN_PROGRESS | — | 实现路径无活跃锁冲突；认领实施路径锁；开始按批准规格实施脚手架 |
+| 2026-07-17 23:00:01 +08:00 | Cursor Developer | IN_PROGRESS | BLOCKED | Codex Architect / Claude | 规格内部冲突：步骤 12 的 Program.cs（top-level + 全局 `public partial class Program`）与步骤 17 / AC-SC-16 的 `typeof(Datacenter.Api.Program)` 无法同时满足。反射证据：`Program FullName=Program; Namespace=''`。编译错误 CS0234。未自行改规格或发明替代方案。解除条件：书面裁决二选一（或等价批准方案）后更新 TASK 精确内容，再恢复 IN_PROGRESS。目标恢复状态：IN_PROGRESS。锁保持 CLAIMED。 |
+| 2026-07-17 | Claude + DeepSeek Product Manager | BLOCKED | IN_PROGRESS | Cursor Developer | 技术澄清裁决：保留顶级语句 + `public partial class Program { }`；测试引用统一改为 `typeof(global::Program)`。步骤 17 代码块和 AC-SC-16 已更新。不改变脚手架范围、架构、依赖和验收目标。阻塞原因消除；Cursor Developer 可从现有未提交现场继续；9 项锁保持 CLAIMED。 |
 
 ## 审核结论
 
