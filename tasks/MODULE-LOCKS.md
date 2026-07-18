@@ -38,6 +38,9 @@
 | TASK-0006 | tasks/TASK-0006-PROJECT-SCAFFOLD.md | Cursor Developer | 2026-07-18（R4-001 IN_FIX 重新认领） | RELEASED | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-18 11:11:38 +08:00（Codex Reviewer 实际释放） |
 | TASK-0006 | tasks/current-task.md | Cursor Developer | 2026-07-18（R4-001 IN_FIX 重新认领） | RELEASED | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-18 11:11:38 +08:00（Codex Reviewer 实际释放） |
 | TASK-0006 | tasks/MODULE-LOCKS.md | Cursor Developer | 2026-07-18（R4-001 IN_FIX 重新认领） | RELEASED | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-18 11:11:38 +08:00（Codex Reviewer 实际释放） |
+| TASK-0007 | tasks/TASK-0007-BACKEND-FOUNDATION.md | Claude + DeepSeek Product Manager | 2026-07-18 12:06:43 +08:00 | CLAIMED | TASK-0007 规格审核通过后转入 READY；实施时由 Codex Backend 重新认领 | |
+| TASK-0007 | tasks/current-task.md | Claude + DeepSeek Product Manager | 2026-07-18 12:06:43 +08:00 | CLAIMED | TASK-0007 规格审核通过后转入 READY；实施时由 Codex Backend 重新认领 | |
+| TASK-0007 | tasks/MODULE-LOCKS.md | Claude + DeepSeek Product Manager | 2026-07-18 12:06:43 +08:00 | CLAIMED | TASK-0007 规格审核通过后转入 READY；实施时由 Codex Backend 重新认领 | |
 
 ## 冲突处理示例
 
