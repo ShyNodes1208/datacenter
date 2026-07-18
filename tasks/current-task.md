@@ -4,8 +4,8 @@
 
 ## 当前状态
 
-- Status：READY
-- Owner：Codex Backend（实施 Owner）
+- Status：DRAFT
+- Owner：Codex Backend（实施 Owner）；Codex Architect（当前规格状态纠正与批准责任角色）
 - Reviewer：Codex Reviewer
 - 任务：TASK-0007 — 后端 SQLite 基础与最小认证骨架
 - 分支：feature/task-0007-backend-foundation
@@ -38,9 +38,14 @@
 - 第六次规格复审（Codex Reviewer）：PASS（提交 3d532fd；报告 SPEC-RETEST-6.md）
   - Findings：BLOCKER 0 / MAJOR 0 / MINOR 0 / NOTE 0
   - BF-RT5-001 CLOSED
-- 规格批准：Codex Architect 执行 DRAFT → READY（合法迁移）
-  - 三项规格锁 RELEASED
-- 当前状态：READY，实施锁未认领，待 Codex Backend 认领实施锁并执行 READY → IN_PROGRESS
+- 无效规格批准：提交 322e240 的 DRAFT → READY 标记为 INVALID
+  - 实际执行者为 Claude 会话，记录角色为 Codex Architect；仓库没有该角色映射授权
+  - 依据 READY-GATE 报告及提交 0239fc5（READY_BLOCKED；Findings 1/0/1/0）
+  - 322e240 执行的三项规格锁 RELEASED 同步标记为 INVALID
+- 状态纠正：当前有效状态恢复为 SPEC-RETEST-6 PASS 后的 DRAFT
+  - 这是对无效状态迁移的审计纠正，不是新的业务状态倒退
+  - 三项规格文档锁恢复为 CLAIMED by Codex Architect；无实施锁
+- 当前状态：DRAFT，待 Codex Architect 在新的独立步骤中正式执行 DRAFT → READY
 
 ## 权威工作流合法迁移
 
@@ -57,13 +62,13 @@
 - TASK-0006 已 fast-forward 合并 main
 - main、origin/main 哈希一致（d3bfc52）
 - 全部 TASK-0006 模块锁已 RELEASED
-- TASK-0007 规格修正中（DRAFT）
+- TASK-0007 当前有效状态为 DRAFT（READY-GATE 审计纠正；最后有效状态为 SPEC-RETEST-6 PASS 后的 DRAFT）
 - 实施 Owner：Codex Backend
 - TASK-0007 尚未认领实施锁，尚未开始实现
 
 ## 下一步
 
-1. Codex Backend 按权威工作流检查模块父子路径冲突
-2. Codex Backend 认领 TASK-0007 批准的最小实施模块锁（`src/backend/Datacenter.Api`、`tests/backend/Datacenter.Api.Tests`、`.config/dotnet-tools.json`、`.gitignore`、后端 csproj、测试 csproj、appsettings、Migration、SQLite 数据目录）
-3. Codex Backend 执行 READY → IN_PROGRESS（权威封闭迁移表唯一合法路径）
-4. 不得在认领实施锁并完成冲突检查前开始实现
+1. Codex Architect 在新的独立步骤中核验 SPEC-RETEST-6 PASS、Findings 0/0/0/0 和 READY 全部进入条件
+2. Codex Architect 亲自执行权威封闭迁移表允许的 DRAFT → READY
+3. 合法批准后释放三项规格文档锁
+4. 在合法 READY 形成前，不得认领实施锁、进入 IN_PROGRESS 或开始实现
