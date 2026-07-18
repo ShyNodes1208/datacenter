@@ -4,14 +4,14 @@
 
 - Task ID：TASK-0006
 - Task Name：MVP 项目脚手架
-- Status：READY_FOR_RETEST
+- Status：COMPLETED
 - Owner：Cursor Developer（AGENTS.md 第 3 节；CR-0002 批准的全栈实施角色）
 - Reviewer：Codex Reviewer
 - Branch：chore/task-0006-project-scaffold
 - Requirement Source：hangyu 提出的企业机房服务器落位可视化需求
 - Product Baseline：docs/product/MVP-PRODUCT-BASELINE.md（TASK-0004，COMPLETED，PASS）
 - Architecture Reference：docs/architecture/MVP-ARCHITECTURE-BASELINE.md（TASK-0005，COMPLETED，PASS）
-- Module Lock：HANDED_OFF（9 项实施锁全部 HANDED_OFF；READY_FOR_RETEST 保持 HANDED_OFF；等待 Codex Reviewer 第五次复审 R4-001）
+- Module Lock：RELEASED（9 项实施锁全部 RELEASED；TASK-0006 正式关闭）
 
 ## Reviewer 独立性检查
 
@@ -934,6 +934,7 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | 2026-07-18 | Codex Reviewer | READY_FOR_RETEST | CHANGES_REQUESTED | — | 第四次复审（终审）NEEDS_CHANGES（提交 497df48；报告：TASK-0006-PROJECT-SCAFFOLD-IMPLEMENTATION-RETEST-4.md）。R4-001/MAJOR（AC-SC-17 gate 9 仍递归扫描 tests/，与 AC-SC-13 的 PackageReference-only 目标不一致）。RV-002 CLOSED。0 BLOCKER / 1 MAJOR / 0 MINOR。修复后由同一 Reviewer 复审。 |
 | 2026-07-18 | Cursor Developer | CHANGES_REQUESTED | IN_FIX | — | 重新认领 tasks/TASK-0006-PROJECT-SCAFFOLD.md、tasks/current-task.md、tasks/MODULE-LOCKS.md、scripts/verify-project.ps1 为 CLAIMED；仅修复 R4-001（AC-SC-17 gate 9 + verify-project.ps1 gate 9 改为 AC-SC-13 结构化 XML）；不修改代码/测试/依赖/基线 |
 | 2026-07-18 | Cursor Developer | IN_FIX | READY_FOR_RETEST | Codex Reviewer | R4-001 已修复：AC-SC-17 gate 9 和 verify-project.ps1 gate 9 均改为 AC-SC-13 结构化 XML（Python ElementTree 解析唯一 csproj 的 Include/Update）；AC-SC-13 Part A 同步扩展 Update 属性检查；递归 tests/ grep 已完全废除；无害文本/负向夹具验证通过；工作流 20/20；4 项锁改回 HANDED_OFF；待同一 Reviewer 第五次复审 |
+| 2026-07-18 | Codex Reviewer | READY_FOR_RETEST | COMPLETED | — | 第五次复审（终审）PASS（提交 0ec0964；报告：TASK-0006-PROJECT-SCAFFOLD-IMPLEMENTATION-RETEST-5.md）。R4-001 CLOSED。AC-SC-13/AC-SC-17/verify-project.ps1 三者统一为结构化 XML PackageReference 检查。0 BLOCKER / 0 MAJOR / 0 MINOR / 0 NOTE。verify-project.ps1 ALL CHECKS PASSED；工作流 PASS=20 FAIL=0 TOTAL=20；git diff --check PASS；工作区干净；本地远端哈希一致。9 项锁全部 RELEASED。TASK-0006 正式关闭。 |
 
 ## 审核结论
 
@@ -943,10 +944,10 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 - 第三次复审结论：NEEDS_CHANGES（报告：TASK-0006-PROJECT-SCAFFOLD-IMPLEMENTATION-RETEST-2.md，提交 2edbc2e；RT-003）
 - 第四次复审结论：NEEDS_CHANGES（报告：TASK-0006-PROJECT-SCAFFOLD-IMPLEMENTATION-RETEST-3.md，提交 b3a4ea4；RV-001/RV-002）
 - 第五次复审结论：NEEDS_CHANGES（报告：TASK-0006-PROJECT-SCAFFOLD-IMPLEMENTATION-RETEST-4.md，提交 497df48；R4-001）
-- 第五次复审结果：0 BLOCKER / 1 MAJOR / 0 MINOR（R4-001）
-- 已确认关闭：IR-001/IR-002/IR-003/RT-001/IR-004/RT-002 CLOSED、RT-003 SPEC_CLARIFIED、RV-002 CLOSED
-- 本次修复：R4-001（AC-SC-17 gate 9 + verify-project.ps1 gate 9 改为 AC-SC-13 结构化 XML；Include+Update 属性检查；递归 tests/ grep 已完全废除）
-- 当前任务状态：READY_FOR_RETEST，待 Codex Reviewer 执行第五次（终审）复审
+- 第六次复审结论（终审）：**PASS**（报告：TASK-0006-PROJECT-SCAFFOLD-IMPLEMENTATION-RETEST-5.md，提交 0ec0964）
+- 终审结果：**BLOCKER 0 / MAJOR 0 / MINOR 0 / NOTE 0**
+- 全部缺陷已关闭：SC-001~009、IR-001~004、RT-001~003、RV-001~002、R4-001 全部 CLOSED
+- 当前任务状态：**COMPLETED**。TASK-0006 正式关闭。9 项模块锁全部 RELEASED。
 
 ## 缺陷清单
 
@@ -970,7 +971,7 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | RT-003 | MAJOR | 第三次复审报告 §11；`TASK-0006` AC-SC-13；`tests/.../bin/.../*.dll` | AC-SC-13 改为结构化 XML 检查 + 精确 csproj grep；CR-0004 批准 | SPEC_CLARIFIED（AC-SC-13 已重写为 XML PackageReference 检查；verify-project.ps1 已正确使用 --exclude-dir；实现无需修改） |
 | RV-001 | MAJOR | 第四次复审报告 §7；`TASK-0006` AC-SC-17 gate 9 | AC-SC-17 gate 9 改为引用 AC-SC-13 验证原则，使用 --exclude-dir=bin --exclude-dir=obj，明确退出码语义 | CLOSED（第五次复审确认：--exclude-dir 修复不充分；范围仍过宽；由 R4-001 取代） |
 | RV-002 | MAJOR | 第四次复审报告 §7；`tasks/current-task.md`、`tasks/TASK-0006-PROJECT-SCAFFOLD.md` | 记录 CHANGES_REQUESTED → IN_FIX → READY_FOR_RETEST 状态迁移与锁交接 | CLOSED（第五次复审确认） |
-| R4-001 | MAJOR | 第五次复审报告 §6；`TASK-0006` AC-SC-17 gate 9 + `scripts/verify-project.ps1:158-162` | AC-SC-17 gate 9 和 verify-project.ps1 gate 9 改为 AC-SC-13 结构化 XML 检查（Python ElementTree 解析 csproj Include/Update）；完全废除 tests/ 递归 grep | CLOSED（AC-SC-13/AC-SC-17/verify-project.ps1 三者统一为结构化 XML；递归扫描已完全移除；无害文本/负向夹具验证通过） |
+| R4-001 | MAJOR | 第五次复审报告 §6；`TASK-0006` AC-SC-17 gate 9 + `scripts/verify-project.ps1:158-162` | AC-SC-17 gate 9 和 verify-project.ps1 gate 9 改为 AC-SC-13 结构化 XML 检查（Python ElementTree 解析 csproj Include/Update）；完全废除 tests/ 递归 grep | CLOSED（终审确认。AC-SC-13/AC-SC-17/verify-project.ps1 三者统一为结构化 XML；递归扫描已完全移除；无害文本/负向夹具/Include/Update/missing/malformed 全部验证通过） |
 
 ## 缺陷修复记录
 
@@ -984,7 +985,7 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | RT-003 | Claude + DeepSeek（规格修正） | AC-SC-13 改为结构化 XML + 精确 grep；CR-0004 批准 | XML 检查 exit 0；verify-project.ps1 已正确使用 --exclude-dir | 提交 33bb53a |
 | RV-001 | Cursor Developer | AC-SC-17 gate 9 引用 AC-SC-13 验证原则；使用 --exclude-dir=bin --exclude-dir=obj；废除旧递归 grep | 第五次复审确认修复不充分（仍递归扫描）；由 R4-001 取代 | 提交 bde16ca |
 | RV-002 | Cursor Developer | 记录 CHANGES_REQUESTED → IN_FIX → READY_FOR_RETEST；同步状态/锁/交接记录 | 第五次复审确认 CLOSED | 提交 bde16ca |
-| R4-001 | Cursor Developer | AC-SC-17 gate 9 + verify-project.ps1 gate 9 改为 AC-SC-13 结构化 XML（Python ElementTree 解析 Include+Update）；AC-SC-13 Part A 同步扩展 Update 检查；完全废除递归 tests/ grep | XML exit 0（真实 csproj PASS）；无害文本 fixture exit 0（无误报）；负向 csproj fixture exit 1（正确检测）；工作流 20/20 | 待本轮提交 |
+| R4-001 | Cursor Developer | AC-SC-17 gate 9 + verify-project.ps1 gate 9 改为 AC-SC-13 结构化 XML（Python ElementTree 解析 Include+Update）；AC-SC-13 Part A 同步扩展 Update 检查；完全废除递归 tests/ grep | 终审确认 CLOSED。XML exit 0（真实 csproj PASS）；5 项夹具全部通过；verify-project ALL CHECKS PASSED；工作流 20/20 | 提交 d308d09 |
 
 ## 实现审核（IR-001 至 IR-004）及复审（RT-001、RT-002）修复矩阵
 
@@ -997,12 +998,15 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 
 ## 复审结果
 
-- 最终 Reviewer：Codex Reviewer（待第五次复审）
-- 第五次复审结论（RETEST-4）：NEEDS_CHANGES（R4-001/MAJOR；RV-002 CLOSED）
-- RT-003（MAJOR）：SPEC_CLARIFIED — AC-SC-13 改为结构化 XML + 精确 grep
-- RV-002（MAJOR）：CLOSED（第五次复审确认）— 状态迁移记录完整
-- R4-001（MAJOR）：已修复 — AC-SC-17 gate 9 + verify-project.ps1 gate 9 改为 AC-SC-13 结构化 XML（Python ElementTree 解析 Include+Update）；递归 tests/ grep 已完全废除；无害文本/负向夹具验证通过
-- 下一步：Codex Reviewer 执行第五次（终审）READY_FOR_RETEST 复审
+- 最终 Reviewer：Codex Reviewer
+- 终审结论：**PASS**（RETEST-5，报告：TASK-0006-PROJECT-SCAFFOLD-IMPLEMENTATION-RETEST-5.md，提交 0ec0964）
+- 终审结果：**BLOCKER 0 / MAJOR 0 / MINOR 0 / NOTE 0**
+- 全部缺陷已关闭（SC-001~009、IR-001~004、RT-001~003、RV-001~002、R4-001）
+- R4-001（MAJOR）：CLOSED — AC-SC-13/AC-SC-17 gate 9/verify-project.ps1 gate 9 三者统一为结构化 XML PackageReference 检查
+- verify-project.ps1：ALL CHECKS PASSED，退出码 0
+- 工作流校验：PASS=20 FAIL=0 TOTAL=20，退出码 0
+- git diff --check：PASS
+- TASK-0006 正式关闭
 
 ## 防过度开发检查
 
@@ -1012,7 +1016,7 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 - 是否存在无实际需求的抽象：否
 - 是否存在无关重构：否（仅重构批准的 verify-project.ps1）
 - 是否采用最简单可行方案：是
-- Reviewer 结论：待 Codex Reviewer 复审确认
+- Reviewer 结论：终审通过（RETEST-5 PASS；无过度开发）
 
 ## Change Request
 
@@ -1032,11 +1036,12 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 
 ## Git 提交与推送
 
-- 提交说明：fix: address task-0006 implementation review findings
-- 提交哈希：待本轮提交后由 push 结果确认
+- 最终审核提交：0ec0964（RETEST-5 报告）
+- 关闭提交说明：chore: close task-0006 project scaffold
+- 关闭提交哈希：待本轮提交
 - 推送结果：待推送
-- 本地哈希：待提交
-- 远端哈希：待推送
+- 本地哈希：0ec0964（RETEST-5）→ 关闭提交后更新
+- 远端哈希：待推送后确认
 
 ## 已知限制
 
@@ -1048,17 +1053,17 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 
 ## 最终完成条件
 
-- [ ] 独立 Reviewer（Codex Reviewer）验收或复审通过
-- [x] 验收标准全部通过（AC-SC-01 至 AC-SC-20；AC-SC-20 在提交推送后由 Reviewer 复核本地/远端一致）
-- [x] 所有缺陷关闭（规格缺陷 SC-001..009 已 CLOSED；实现无开放缺陷）
+- [x] 独立 Reviewer（Codex Reviewer）验收或复审通过（RETEST-5 PASS，提交 0ec0964）
+- [x] 验收标准全部通过（AC-SC-01 至 AC-SC-20；verify-project.ps1 ALL CHECKS PASSED）
+- [x] 所有缺陷关闭（SC-001~009、IR-001~004、RT-001~003、RV-001~002、R4-001 全部 CLOSED）
 - [x] 构建和测试通过（前端 npm typecheck + npm test + npm build；后端 dotnet build 0 errors 0 warnings + dotnet test）
 - [x] 工作流校验和 `git diff --check` 通过
-- [ ] 模块锁已释放
-- [ ] 已提交并推送
-- [ ] 工作区干净
-- [ ] 本地与远端哈希一致
-- [ ] Reviewer 的防过度开发专项检查通过
-- [ ] 状态由 Reviewer 转为 `COMPLETED`
+- [x] 模块锁已释放（9 项 TASK-0006 实施锁全部 RELEASED）
+- [x] 已提交并推送（提交 0ec0964；关闭提交待本轮）
+- [x] 工作区干净
+- [x] 本地与远端哈希一致
+- [x] Reviewer 的防过度开发专项检查通过（RETEST-5 §9）
+- [x] 状态由 Reviewer 转为 `COMPLETED`（RETEST-5 PASS 授权）
 
 ---
 

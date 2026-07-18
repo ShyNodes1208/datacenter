@@ -6,47 +6,45 @@
 
 - Task ID：TASK-0006
 - Task Name：MVP 项目脚手架
-- Status：READY_FOR_RETEST
-- Owner：Cursor Developer（AGENTS.md 第 3 节；CR-0002 批准的全栈实施角色）
-- Reviewer：Codex Reviewer
-- Branch：chore/task-0006-project-scaffold
+- Status：IDLE
+- Owner：N/A（TASK-0006 已关闭；下一任务待分配）
+- Reviewer：N/A
+- Branch：chore/task-0006-project-scaffold（待合并 main）
 - Task File：tasks/TASK-0006-PROJECT-SCAFFOLD.md
-- Requirement Source：hangyu 提出的企业机房服务器落位可视化需求
+- Requirement Source：N/A
 - Product Baseline：docs/product/MVP-PRODUCT-BASELINE.md（TASK-0004，COMPLETED，PASS）
 - Architecture Reference：docs/architecture/MVP-ARCHITECTURE-BASELINE.md（TASK-0005，COMPLETED，PASS）
-- Module Lock：9 项实施路径锁全部 HANDED_OFF；READY_FOR_RETEST 保持 HANDED_OFF；等待 Codex Reviewer 第五次复审 R4-001
+- Module Lock：TASK-0006 全部锁已 RELEASED；当前无活动锁
 
-## 第五次复审（RETEST-4）与修复记录
+## TASK-0006 关闭记录
 
-- 复审提交：497df48（retest-4）
-- 复审报告：reviews/tasks/TASK-0006-PROJECT-SCAFFOLD-IMPLEMENTATION-RETEST-4.md
-- 复审结论：NEEDS_CHANGES
-- 发现：0 BLOCKER / 1 MAJOR / 0 MINOR
+- 最终状态：**COMPLETED**
+- 终审报告：reviews/tasks/TASK-0006-PROJECT-SCAFFOLD-IMPLEMENTATION-RETEST-5.md
+- 终审提交：0ec0964050eae413cceea9d32b0c22a56f5b18bb
+- 终审结论：**PASS**（BLOCKER 0 / MAJOR 0 / MINOR 0 / NOTE 0）
+- 关闭提交：待本轮
+- 全部缺陷：CLOSED（SC-001~009、IR-001~004、RT-001~003、RV-001~002、R4-001）
+- 验收证据：verify-project.ps1 ALL CHECKS PASSED；工作流 PASS=20 FAIL=0 TOTAL=20；git diff --check PASS
+- 9 项模块锁：全部 RELEASED
 
-### 历史缺陷状态
+### 全部复审历程
 
-| Finding | 等级 | 问题 | 处置 |
-|---------|------|------|------|
-| IR-001/IR-002/IR-003/RT-001/IR-004/RT-002 | — | 早期实现和复审缺陷 | **CLOSED**（多次复审确认） |
-| RT-003 | MAJOR | AC-SC-13 recursive grep hits binary DLL strings | **SPEC_CLARIFIED**（AC-SC-13 改为 XML 检查；CR-0004 批准） |
-| RV-001 | MAJOR | AC-SC-17 gate 9 --exclude-dir 仍递归扫描 | **SUPERSEDED**（由 R4-001 取代；--exclude-dir 修复不充分） |
-| RV-002 | MAJOR | 缺少状态迁移 | **CLOSED**（第四次复审确认） |
+| # | 报告 | 结论 | 关键发现 |
+|---|------|------|---------|
+| 1 | SPEC-REVIEW | NEEDS_CHANGES | SC-001~009 |
+| 2 | IMPLEMENTATION-REVIEW | NEEDS_CHANGES | IR-001~004 |
+| 3 | RETEST | NEEDS_CHANGES | RT-001/RT-002 |
+| 4 | RETEST-2 | NEEDS_CHANGES | RT-003 |
+| 5 | RETEST-3 | NEEDS_CHANGES | RV-001/RV-002 |
+| 6 | RETEST-4 | NEEDS_CHANGES | R4-001 |
+| 7 | RETEST-5 | **PASS** | 全部 CLOSED |
 
-### RETEST-4 缺陷与修复
+## 当前状态
 
-| Finding | 等级 | 问题 | 处置 |
-|---------|------|------|------|
-| R4-001 | MAJOR | AC-SC-17 gate 9 + verify-project.ps1 gate 9 仍递归扫描 tests/ | **CLOSED**（改为 AC-SC-13 结构化 XML；Python ElementTree 解析 Include+Update；递归 tests/ grep 已完全废除；无害文本/负向夹具验证通过） |
-
-## 当前目标
-
-R4-001 已修复。AC-SC-13/AC-SC-17 gate 9/verify-project.ps1 gate 9 三者统一为结构化 XML PackageReference 检查。递归 tests/ grep 已完全移除。状态已迁移至 READY_FOR_RETEST。
-
-等待 Codex Reviewer 执行第五次（终审）READY_FOR_RETEST 复审。
+当前无活动任务（IDLE）。TASK-0007 尚未启动。TASK-0006 需先合并 main 后方可准备 TASK-0007。
 
 ## 当前约束
 
-- 不得改为 COMPLETED；不得释放锁；不得开始 TASK-0007；不得合并 main
-- 修复范围限于 R4-001（AC-SC-17 gate 9 + verify-project.ps1 gate 9 + AC-SC-13 Update 属性扩展）
-- 不修改代码、测试、依赖、产品或架构基线
-- 仅 verify-project.ps1 gate 9 实现方式变更（递归 grep → 结构化 XML），其他门禁不变
+- 不得启动 TASK-0007
+- 不得合并 main（需独立 Reviewer 执行 main 合并门禁）
+- 等待 Codex 合并门禁审核
