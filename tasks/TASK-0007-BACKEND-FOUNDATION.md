@@ -813,10 +813,12 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | 2026-07-18 | Claude + DeepSeek Product Manager | DRAFT（NEEDS_CHANGES） | DRAFT（待复审） | Codex Reviewer | 第一轮修正（提交 f51c9ba）；BF-SR-001 至 009 CLOSED |
 | 2026-07-18 | Codex Reviewer | DRAFT（待复审） | DRAFT（NEEDS_CHANGES） | Claude + DeepSeek Product Manager | 规格复审 NEEDS_CHANGES（提交 a84624c；报告 SPEC-RETEST.md）；BLOCKER 0 / MAJOR 5 / MINOR 3 / NOTE 0 |
 | 2026-07-18 | Claude + DeepSeek Product Manager | DRAFT（NEEDS_CHANGES） | DRAFT（HANDED_OFF） | Codex Reviewer | 第二轮修正（提交 9091a4d）；BF-RT1-001 至 008 CLOSED；三项锁 HANDED_OFF |
-| 2026-07-18 | Codex Reviewer | DRAFT（HANDED_OFF） | READY_FOR_RETEST（NEEDS_CHANGES） | Claude + DeepSeek Product Manager | 规格第二次复审 NEEDS_CHANGES（提交 f517ee3；报告 SPEC-RETEST-2.md）；BLOCKER 0 / MAJOR 5 / MINOR 2 / NOTE 0 |
-| 2026-07-18 | Claude + DeepSeek Product Manager | DRAFT（NEEDS_CHANGES） | READY_FOR_RETEST | Codex Reviewer | ⚠ [INVALID per RETEST-3 BF-RT3-001] 第三轮修正（提交 95eea07）；状态 DRAFT → READY_FOR_RETEST 不在权威封闭迁移表中（DRAFT 只允许 → READY/BLOCKED/CANCELLED）；BF-RT2-001 至 007 实质性修正有效，但迁移本身不合法 |
-| 2026-07-18 | Claude + DeepSeek Product Manager | READY_FOR_RETEST | DRAFT | — | ⚠ [CORRECTION per RETEST-3] RETEST-3 发现 BF-RT3-001 BLOCKER：DRAFT → READY_FOR_RETEST 为无效迁移；返还 DRAFT 并恢复 CLAIMED 锁。规格多轮审核均在 DRAFT 内完成（DRAFT 允许澄清、设计、补全文档）。Reviewer 审核和 NEEDS_CHANGES 在 DRAFT 内合法进行。Reviewer PASS 后由 Architect 执行 DRAFT → READY（权威封闭迁移表支持） |
-| 2026-07-18 | Claude + DeepSeek Product Manager | DRAFT | DRAFT（待复审） | Codex Reviewer | 第四轮修正（本轮提交）；BF-RT3-001 和 BF-RT3-002 已 CLOSED；状态纠正为 DRAFT；三项规格锁 CLAIMED（DRAFT 允许澄清/补全文档）；待 Reviewer 第四次复审 |
+| 2026-07-18 | Codex Reviewer | — | — | — | ⚠ [INVALID — BF-RT3-001/RETEST-4] 本行原错误记载为 Codex Reviewer 执行 DRAFT → READY_FOR_RETEST 状态迁移（归因于提交 f517ee3）。Git 证据：f517ee3 只新增 SPEC-RETEST-2.md 审核报告文件（`git show --name-status f517ee3` 确认仅有 A 操作），未修改 TASK-0007-BACKEND-FOUNDATION.md、current-task.md 或 MODULE-LOCKS.md。Codex Reviewer 仅执行只读规格复审。任务实际有效状态保持 DRAFT。DRAFT → READY_FOR_RETEST 不在权威封闭迁移表中。BLOCKER 0 / MAJOR 5 / MINOR 2 / NOTE 0（审核结论属实） |
+| 2026-07-18 | — | — | — | — | [CORRECTION — BF-RT3-001/RETEST-4] RETEST-4（报告 SPEC-RETEST-4.md，审核提交 7ac9cbc）确认：f517ee3 为只读审核报告，未发生状态迁移；Codex Reviewer 从未执行 DRAFT → READY_FOR_RETEST。当前有效状态 DRAFT。Reviewer PASS 后由 Architect 执行 DRAFT → READY（权威封闭迁移表唯一合法路径） |
+| 2026-07-18 | Claude + DeepSeek Product Manager | DRAFT（NEEDS_CHANGES） | READY_FOR_RETEST | Codex Reviewer | ⚠ [INVALID per RETEST-3 BF-RT3-001] 第三轮修正（提交 95eea07）；状态 DRAFT → READY_FOR_RETEST 不在权威封闭迁移表中；BF-RT2-001 至 007 实质性修正有效，迁移本身不合法。注意：95eea07 的无效迁移与 f517ee3（Codex Reviewer 只读审核）无关 |
+| 2026-07-18 | Claude + DeepSeek Product Manager | READY_FOR_RETEST | DRAFT | — | ⚠ [CORRECTION per RETEST-3] RETEST-3 BF-RT3-001：返还 DRAFT 并恢复 CLAIMED 锁。规格多轮审核在 DRAFT 内完成。Reviewer PASS 后由 Architect 执行 DRAFT → READY |
+| 2026-07-18 | Claude + DeepSeek Product Manager | DRAFT | DRAFT（待复审） | Codex Reviewer | 第四轮修正（提交 67ccaa5）；BF-RT3-001/BF-RT3-002 已 CLOSED；状态 DRAFT；三项锁 CLAIMED；待 Reviewer 第四次复审 |
+| 2026-07-18 | Claude + DeepSeek Product Manager | DRAFT（待复审） | DRAFT（待复审） | Codex Reviewer | 第五轮修正（本轮提交）；BF-RT4-001 已 CLOSED；仅修正 f517ee3 无效迁移审计记录；技术规格/AC/预算/锁均不变；待 Reviewer 第五次复审 |
 
 ## 审核结论
 
@@ -825,8 +827,9 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 - 第一次复审结论：NEEDS_CHANGES（SPEC-RETEST.md，提交 a84624c；BLOCKER 0 / MAJOR 5 / MINOR 3 / NOTE 0）
 - 第二次复审结论：NEEDS_CHANGES（SPEC-RETEST-2.md，提交 f517ee3；BLOCKER 0 / MAJOR 5 / MINOR 2 / NOTE 0）
 - 第三次复审结论：NEEDS_CHANGES（SPEC-RETEST-3.md，提交 53a5fbc；BLOCKER 1 / MAJOR 0 / MINOR 1 / NOTE 0）
+- 第四次复审结论：NEEDS_CHANGES（SPEC-RETEST-4.md，提交 7ac9cbc；BLOCKER 1 / MAJOR 0 / MINOR 0 / NOTE 0）
 - 审核命令和证据：工作流 20/20 PASS；git diff --check PASS；diff 确认仅任务文件变化
-- ⚠ 历史无效迁移：第三轮修正（提交 95eea07）中 DRAFT → READY_FOR_RETEST 迁移不在权威封闭迁移表中，已由 RETEST-3 BF-RT3-001 发现并修正。当前有效状态为 DRAFT
+- ⚠ 历史无效迁移：f517ee3 被错误记载为状态迁移提交（Git 证据：仅新增 SPEC-RETEST-2.md）；95eea07 的 DRAFT→READY_FOR_RETEST 不在权威封闭迁移表。两者均已标记 INVALID 并追加 CORRECTION。当前有效状态为 DRAFT
 
 ## 缺陷清单
 
@@ -858,6 +861,7 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | BF-RT2-007 | MINOR | SQLite 路径失败 + 测试并行未验收 | CLOSED（本轮 FR-BF-04 路径验证 + AC-BF-07 + AC-BF-28 并行隔离） |
 | BF-RT3-001 | BLOCKER | DRAFT → READY_FOR_RETEST 不在权威封闭迁移表 | CLOSED（本轮返还 DRAFT；历史无效迁移已标记；Reviewer PASS 后 Architect 执行 DRAFT → READY） |
 | BF-RT3-002 | MINOR | 文件预算 16/15 双算法并存 | CLOSED（本轮删除 DTO 合并后 15 的替代分支；唯一上限 16） |
+| BF-RT4-001 | BLOCKER | f517ee3 错误归因为 Codex Reviewer 执行 DRAFT→READY_FOR_RETEST | CLOSED（本轮 INVALID 标记 + CORRECTION；Git 证据确认 f517ee3 仅新增审核报告） |
 
 ## 缺陷修复记录
 
@@ -872,6 +876,7 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | BF-RT2-007 | Claude + DeepSeek Product Manager | FR-BF-04 新增路径验证步骤 + 网络共享拒绝 + 目录创建失败；AC-BF-07 新增路径失败测试；AC-BF-28 新增唯一目录/GUID/Collection/Dispose 清理 | 待提交 |
 | BF-RT3-001 | Claude + DeepSeek Product Manager | DRAFT → READY_FOR_RETEST 不在权威封闭迁移表；返还 DRAFT + CLAIMED；标记无效迁移；明确 Reviewer PASS 后 DRAFT → READY（权威迁移） | 待提交 |
 | BF-RT3-002 | Claude + DeepSeek Product Manager | 删除 DTO 合并后 15 个的替代分支；唯一新增文件上限 16 个；逐文件清单保持 16 项 | 待提交 |
+| BF-RT4-001 | Claude + DeepSeek Product Manager | f517ee3 错误归因修正：标记 INVALID + 追加 CORRECTION + Git 证据（f517ee3 仅新增 SPEC-RETEST-2.md，未修改任务文件）；当前有效状态 DRAFT | 待提交 |
 
 ## 复审结果
 
@@ -949,7 +954,7 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 >
 > 本任务规格由 Claude + DeepSeek Product Manager 编写，基于已批准的产品基线（TASK-0004）和架构基线（TASK-0005）。
 > Owner 为 Codex Backend，Reviewer 为 Codex Reviewer。
-> 规格已按 Codex Reviewer 三次审核报告（cc44f8b SPEC-REVIEW、a84624c SPEC-RETEST、f517ee3 SPEC-RETEST-2）全面修正。
+> 规格已按 Codex Reviewer 审核报告（cc44f8b SPEC-REVIEW、a84624c SPEC-RETEST、f517ee3 SPEC-RETEST-2、53a5fbc SPEC-RETEST-3、7ac9cbc SPEC-RETEST-4）全面修正。f517ee3 和 7ac9cbc 均为 Codex Reviewer 只读审核报告提交，未执行状态迁移。
 > 全部 BF-SR、BF-RT1 和 BF-RT2 finding 已 CLOSED。
 > 状态为 DRAFT，三项规格锁为 CLAIMED（DRAFT 允许澄清/设计/补全文档，锁管理任务文件而非开发模块）。
 > 规格多轮审核在 DRAFT 内完成。下一步：交由 Codex Reviewer 做第四次规格复审。Reviewer PASS 后由 Architect 执行 DRAFT → READY。

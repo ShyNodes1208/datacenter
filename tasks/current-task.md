@@ -26,8 +26,15 @@
 - 第三次规格复审（Codex Reviewer）：NEEDS_CHANGES（提交 53a5fbc；报告 SPEC-RETEST-3.md）
   - Findings：BLOCKER 1 / MAJOR 0 / MINOR 1 / NOTE 0
   - BF-RT3-001 BLOCKER：DRAFT → READY_FOR_RETEST 不在权威封闭迁移表中
-- 第四轮修正：本轮提交（BF-RT3-001 和 BF-RT3-002 已 CLOSED）
-- 当前状态：DRAFT，三项规格锁 CLAIMED，待 Reviewer 第四次复审
+- 第三次规格复审（Codex Reviewer）：NEEDS_CHANGES（提交 53a5fbc；报告 SPEC-RETEST-3.md）
+  - Findings：BLOCKER 1 / MAJOR 0 / MINOR 1 / NOTE 0
+  - BF-RT3-001 BLOCKER：DRAFT → READY_FOR_RETEST 不在权威封闭迁移表中
+- 第四轮修正：67ccaa5（BF-RT3-001/BF-RT3-002 CLOSED）
+- 第四次规格复审（Codex Reviewer）：NEEDS_CHANGES（提交 7ac9cbc；报告 SPEC-RETEST-4.md）
+  - Findings：BLOCKER 1 / MAJOR 0 / MINOR 0 / NOTE 0
+  - BF-RT4-001 BLOCKER：f517ee3 错误归因为 Codex Reviewer 执行状态迁移（Git 证据：仅新增审核报告）
+- 第五轮修正：本轮提交（BF-RT4-001 CLOSED）
+- 当前状态：DRAFT，三项规格锁 CLAIMED，待 Reviewer 第五次复审
 
 ## 权威工作流合法迁移
 
@@ -35,7 +42,7 @@
 - 多轮规格审核和 NEEDS_CHANGES 在 DRAFT 内合法进行（DRAFT 允许澄清、设计、补全文档）
 - Reviewer PASS 后由 Architect 执行 DRAFT → READY
 - 禁止路径：DRAFT → READY_FOR_RETEST、READY_FOR_RETEST → READY
-- ⚠ 第三轮修正（95eea07）的 DRAFT → READY_FOR_RETEST 迁移已被 RETEST-3 BF-RT3-001 标记为无效并纠正
+- ⚠ 历史无效迁移已标记：95eea07 的 DRAFT→READY_FOR_RETEST（RETEST-3 纠正）；f517ee3 错误归因（RETEST-4 纠正）
 
 ## 关闭审计
 
