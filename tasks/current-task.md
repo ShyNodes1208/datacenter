@@ -79,7 +79,7 @@
 
 ## 下一步
 
-Codex Architect 按正式 Change Request 流程补充 `Microsoft.AspNetCore.Mvc.Testing` 8.0.29，然后由独立 Codex Reviewer 定点复审。该版本当前仅为待裁决值，尚未成为已批准规格；Codex Backend 不得继续编码。
+独立 Codex Reviewer 对 CR-0005 的最小依赖版本变更执行定点复审。Reviewer PASS 前任务保持 BLOCKED，Codex Backend 不得继续编码。
 
 ## 当前阻塞记录
 
@@ -91,7 +91,8 @@ Codex Architect 按正式 Change Request 流程补充 `Microsoft.AspNetCore.Mvc.
 - 实际执行环境：当前 Codex Backend 会话
 - 合法迁移：`IN_PROGRESS → BLOCKED`
 - 技术裁决责任角色：Codex Architect
-- 待裁决版本：`8.0.29`，尚未通过正式 Change Request 生效
+- Architect 裁决版本：`8.0.29`（CR-0005；等待独立 Codex Reviewer 定点复审）
+- CR 记录：`tasks/CR-0005-TASK-0007-MVC-TESTING-VERSION.md`
 - 解除条件：Codex Architect 提交最小 CR；TASK 依赖表和 AC-BF-34 明确 8.0.29；独立 Codex Reviewer 定点复审 PASS；有权角色按工作流恢复
 - 恢复目标状态：IN_PROGRESS
 - 实施文件变化：无

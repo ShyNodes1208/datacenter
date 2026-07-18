@@ -60,6 +60,9 @@
 | TASK-0007 | src/backend/Datacenter.Api/appsettings.json | Codex Backend | 2026-07-19 00:37:55 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：连接字符串模板与日志配置；预算：修改 3/5；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
 | TASK-0007 | tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj | Codex Backend | 2026-07-19 00:37:55 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：批准的 Mvc.Testing 包引用；预算：修改 4/5；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
 | TASK-0007 | .gitignore | Codex Backend | 2026-07-19 00:37:55 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：仅追加 .data/ 排除；预算：修改 5/5；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
+| CR-0005 | tasks/TASK-0007-BACKEND-FOUNDATION.md | Codex Architect | 2026-07-19 01:24:45 +08:00 | RELEASED | 仅补充 Microsoft.AspNetCore.Mvc.Testing 8.0.29；提交独立 CR 定点复审后释放 | 2026-07-19（Codex Architect 完成 CR 文档修改并释放） |
+| CR-0005 | tasks/current-task.md | Codex Architect | 2026-07-19 01:24:45 +08:00 | RELEASED | 仅同步 CR-0005 审计与下一步；提交独立 CR 定点复审后释放 | 2026-07-19（Codex Architect 完成 CR 文档修改并释放） |
+| CR-0005 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-19 01:24:45 +08:00 | RELEASED | 仅登记 CR-0005 最小文档锁；不修改 TASK-0007 实施锁 | 2026-07-19（Codex Architect 完成 CR 文档修改并释放） |
 
 ## TASK-0007 锁审计纠正
 

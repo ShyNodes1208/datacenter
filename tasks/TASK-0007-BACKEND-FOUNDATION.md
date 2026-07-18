@@ -352,9 +352,11 @@
 
 #### 后端测试新增直接依赖（新增 1 个）
 
-| 包 | 类别 | 用途 | 删除成本 |
-|---|---|---|---|
-| `Microsoft.AspNetCore.Mvc.Testing` | 测试 | 集成测试 WebApplicationFactory | 替换为手动自托管（中） |
+| 包 | 版本 | 目标项目 | 类型 | 用途 | 删除成本 |
+|---|---|---|---|---|---|
+| `Microsoft.AspNetCore.Mvc.Testing` | 8.0.29 | `tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj` | 测试项目直接依赖 | 集成测试 WebApplicationFactory | 替换为手动自托管（中） |
+
+精确 PackageReference：`<PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.29" />`。不得使用 `latest`、`8.0.x`、通配符、浮动版本或无版本声明。
 
 #### 测试项目既有依赖（非本任务新增）
 
@@ -369,7 +371,7 @@
 |---|---|---|---|
 | `dotnet-ef` | 8.0.29 | `.config/dotnet-tools.json` | 生成迁移。通过仓库本地 Tool Manifest 管理。`dotnet tool restore` 恢复；`dotnet tool run dotnet-ef` 执行 |
 
-- 三项版本必须完全一致（8.0.29），不得使用范围或通配符。
+- 四项批准依赖版本必须完全一致为 8.0.29：`Microsoft.EntityFrameworkCore.Sqlite`、`Microsoft.EntityFrameworkCore.Design`、`Microsoft.AspNetCore.Mvc.Testing` 和 `dotnet-ef`。不得使用范围、通配符或其他新增依赖。
 - 本地 Tool Manifest 必须提交 Git。
 - 不要求用户全局安装 dotnet-ef。
 - 所有迁移命令示例使用 `dotnet tool run dotnet-ef`。
@@ -752,7 +754,7 @@ N/A：本任务使用 ASP.NET Core 内置 Cookie 认证中间件 + EF Core SQLit
   - Web API csproj 运行时 PackageReference：仅 `Microsoft.EntityFrameworkCore.Sqlite`，版本精确为 `8.0.29`
   - Web API csproj 设计时 PackageReference：仅 `Microsoft.EntityFrameworkCore.Design`，版本精确为 `8.0.29`，`PrivateAssets=all`
   - 无 `Microsoft.Extensions.Identity.Core` PackageReference
-  - 测试 csproj 新增 PackageReference：仅 `Microsoft.AspNetCore.Mvc.Testing`（TASK-0006 既有 xUnit 三件套不变）
+  - 测试 csproj 新增 PackageReference：仅直接引用 `Microsoft.AspNetCore.Mvc.Testing`，版本精确为 `8.0.29`（TASK-0006 既有 xUnit 三件套不变）
   - `.config/dotnet-tools.json` 存在且含 `dotnet-ef`，版本精确为 `8.0.29`，被 Git 跟踪
   - `dotnet tool restore` 退出码 0
   - 所有 csproj 中无 AutoMapper、MediatR、FluentValidation、Serilog、Swashbuckle、coverlet.collector、FluentAssertions、Moq、NSubstitute、Identity 完整包、JWT 包
@@ -928,19 +930,21 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 
 ## Change Request
 
-- Change Request ID：N/A：本轮为规格修正，恢复产品基线和架构基线已批准的内容。未引入新变更
-- 发现者：
-- 原任务：
-- 变更原因：
-- 产品范围影响：
-- 技术影响：
-- 文件影响：
-- 测试影响：
-- 风险：
-- Claude 裁决：
-- Architect 裁决：
-- 更新后的 Requirement Source：
-- 批准状态：
+- Change Request ID：CR-0005
+- 记录位置：`tasks/CR-0005-TASK-0007-MVC-TESTING-VERSION.md`
+- 发现者：Codex Backend（`BLOCKED_SPEC_DEPENDENCY_VERSION`）
+- 原任务：TASK-0007
+- 原始 BLOCKED 提交：`909a59cb99aa1c9a8bb7abf293e73c970bb2ded0`
+- 变更原因：已批准的测试直接依赖 `Microsoft.AspNetCore.Mvc.Testing` 在依赖表和 AC-BF-34 中缺少精确版本，Codex Backend 无权自行选择版本。
+- 产品范围影响：无；不改变产品角色、业务规则、API 或实现范围。
+- 技术影响：仅将 `Microsoft.AspNetCore.Mvc.Testing` 固定为 `8.0.29`。
+- 文件影响：本任务依赖表、AC-BF-34、current-task、MODULE-LOCKS 审计和 CR-0005；无实施文件变化。
+- 测试影响：仅使测试项目依赖版本可复现；不改变测试行为或测试隔离规则。
+- 风险：低；与 .NET 8/EF Core/dotnet-ef 已批准补丁版本一致。
+- Claude 裁决：N/A：本 CR 无产品范围影响，不需要产品范围变更裁决；Codex Architect 不代替 Claude 扩大产品范围。
+- Architect 裁决：APPROVED；`Microsoft.AspNetCore.Mvc.Testing` 精确版本为 `8.0.29`。
+- 更新后的 Requirement Source：不变；仍为 hangyu 提出的企业机房服务器落位可视化需求。
+- 批准状态：APPROVED（仅完成 Architect 技术裁决；独立 Codex Reviewer 定点复审 PASS 前任务保持 BLOCKED）
 
 ## Git 提交与推送
 
@@ -988,5 +992,5 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 > Owner 为 Codex Backend，Reviewer 为 Codex Reviewer。
 > 规格已按 Codex Reviewer 六次审核报告（cc44f8b SPEC-REVIEW、a84624c SPEC-RETEST、f517ee3 SPEC-RETEST-2、53a5fbc SPEC-RETEST-3、7ac9cbc SPEC-RETEST-4、6844cfc SPEC-RETEST-5）全面修正。第六次复审 SPEC-RETEST-6（提交 3d532fd）结论 PASS，Findings 0/0/0/0。
 > 全部 BF-SR、BF-RT1、BF-RT2、BF-RT3、BF-RT4 和 BF-RT5 finding 已 CLOSED。
-> 当前有效状态为 BLOCKED。Codex Backend 因 `Microsoft.AspNetCore.Mvc.Testing` 精确版本规格缺口合法执行 IN_PROGRESS → BLOCKED；恢复目标为 IN_PROGRESS，等待 Codex Architect 通过正式 Change Request 补充规格并由独立 Reviewer 定点复审。
+> 当前有效状态为 BLOCKED。Codex Backend 因 `Microsoft.AspNetCore.Mvc.Testing` 精确版本规格缺口合法执行 IN_PROGRESS → BLOCKED；CR-0005 已由 Codex Architect 补充精确版本 8.0.29，当前等待独立 Codex Reviewer 定点复审；恢复目标仍为 IN_PROGRESS。
 > 提交 322e240 的 DRAFT → READY 及三项规格锁释放仍为 INVALID，第一阶段 CORRECTION 历史继续保留。三项规格文档锁保持 RELEASED；普通 BLOCKED 期间实施锁保持 CLAIMED，Owner 为 Codex Backend；尚未开始写代码。
