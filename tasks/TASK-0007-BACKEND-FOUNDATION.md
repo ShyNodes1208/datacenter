@@ -4,7 +4,7 @@
 
 - Task ID：TASK-0007
 - Task Name：后端 SQLite 基础与最小认证骨架
-- Status：READY_FOR_RETEST
+- Status：DRAFT
 - Owner：Codex Backend（AGENTS.md 第 3 节；实施 Owner）
 - Reviewer：Codex Reviewer
 - Branch：feature/task-0007-backend-foundation
@@ -28,7 +28,7 @@
 - [x] 项目脚手架已完成：TASK-0006 COMPLETED，PASS；已合并 main
 - [x] Owner/Reviewer 独立性已检查：是
 - [ ] 模块父子路径冲突已检查：由 Codex Backend 在 READY → IN_PROGRESS 前执行
-- [ ] 其他前置条件：TASK-0007 规格已通过 Codex Reviewer 独立审核（当前 READY_FOR_RETEST，待 Reviewer 第三次复审）
+- [ ] 其他前置条件：TASK-0007 规格已通过 Codex Reviewer 独立审核（当前 DRAFT，待 Reviewer 第四次复审；Reviewer PASS 后由 Architect 执行 DRAFT → READY）
 
 ## 允许修改
 
@@ -383,7 +383,7 @@
 | 15 | `tests/backend/Datacenter.Api.Tests/IntegrationTests/AuthIntegrationTests.cs` | 认证集成测试 | AC-BF-12 至 AC-BF-20, AC-BF-22 |
 | 16 | `tests/backend/Datacenter.Api.Tests/UnitTests/AuthUnitTests.cs` | 密码哈希 + 授权策略 + 角色约束单元测试 | AC-BF-11, AC-BF-21, AC-BF-23, AC-BF-24 |
 
-AuthController 不直接接收或返回 EF User 实体。LoginRequest 和 UserInfoResponse 可合入单个 DTO 文件（合并后新增文件减为 15 个）。迁移文件是 EF Core 自动生成的合法文件。
+AuthController 不直接接收或返回 EF User 实体。LoginRequest 和 UserInfoResponse 为两个独立 DTO 文件。迁移文件是 EF Core 自动生成的合法文件。
 
 #### 实施修改现有文件（共 5 个）
 
@@ -403,8 +403,9 @@ AuthController 不直接接收或返回 EF User 实体。LoginRequest 和 UserIn
 
 #### 文件预算上限
 
-- 实施新增文件最多 **16 个**（含迁移自动生成 3 个 + Tool Manifest + DTO；若 LoginRequest 和 UserInfoResponse 合入单文件则为 15 个）
-- 实施修改现有文件最多 **5 个**
+- 实施新增文件上限 **16 个**（含迁移自动生成 3 个 + Tool Manifest + LoginRequest + UserInfoResponse 两个 DTO）
+- 实施修改现有文件上限 **5 个**
+- 预计实际新增约 16 个文件，以逐文件清单为准
 - 超过上限必须 Change Request
 
 > 注：`src/backend/Datacenter.Api/appsettings.Development.json` 在本地文件系统已存在且已被 .gitignore 排除（`git ls-files` 返回退出码 1）。本任务不修改、不跟踪、不删除该文件。实施时通过新建 tracked `appsettings.Development.example.json` 提供开发配置模板，开发者自行复制为本地 Development 配置。
@@ -813,7 +814,9 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | 2026-07-18 | Codex Reviewer | DRAFT（待复审） | DRAFT（NEEDS_CHANGES） | Claude + DeepSeek Product Manager | 规格复审 NEEDS_CHANGES（提交 a84624c；报告 SPEC-RETEST.md）；BLOCKER 0 / MAJOR 5 / MINOR 3 / NOTE 0 |
 | 2026-07-18 | Claude + DeepSeek Product Manager | DRAFT（NEEDS_CHANGES） | DRAFT（HANDED_OFF） | Codex Reviewer | 第二轮修正（提交 9091a4d）；BF-RT1-001 至 008 CLOSED；三项锁 HANDED_OFF |
 | 2026-07-18 | Codex Reviewer | DRAFT（HANDED_OFF） | READY_FOR_RETEST（NEEDS_CHANGES） | Claude + DeepSeek Product Manager | 规格第二次复审 NEEDS_CHANGES（提交 f517ee3；报告 SPEC-RETEST-2.md）；BLOCKER 0 / MAJOR 5 / MINOR 2 / NOTE 0 |
-| 2026-07-18 | Claude + DeepSeek Product Manager | READY_FOR_RETEST（NEEDS_CHANGES） | READY_FOR_RETEST | Codex Reviewer | 第三轮修正（本轮提交）；BF-RT2-001 至 007 全部 CLOSED；8.0.29 精确版本；4 角色恢复；error JSON 恢复；DRAFT+HANDED_OFF 纠正为 READY_FOR_RETEST+HANDED_OFF；三项锁保持 HANDED_OFF |
+| 2026-07-18 | Claude + DeepSeek Product Manager | DRAFT（NEEDS_CHANGES） | READY_FOR_RETEST | Codex Reviewer | ⚠ [INVALID per RETEST-3 BF-RT3-001] 第三轮修正（提交 95eea07）；状态 DRAFT → READY_FOR_RETEST 不在权威封闭迁移表中（DRAFT 只允许 → READY/BLOCKED/CANCELLED）；BF-RT2-001 至 007 实质性修正有效，但迁移本身不合法 |
+| 2026-07-18 | Claude + DeepSeek Product Manager | READY_FOR_RETEST | DRAFT | — | ⚠ [CORRECTION per RETEST-3] RETEST-3 发现 BF-RT3-001 BLOCKER：DRAFT → READY_FOR_RETEST 为无效迁移；返还 DRAFT 并恢复 CLAIMED 锁。规格多轮审核均在 DRAFT 内完成（DRAFT 允许澄清、设计、补全文档）。Reviewer 审核和 NEEDS_CHANGES 在 DRAFT 内合法进行。Reviewer PASS 后由 Architect 执行 DRAFT → READY（权威封闭迁移表支持） |
+| 2026-07-18 | Claude + DeepSeek Product Manager | DRAFT | DRAFT（待复审） | Codex Reviewer | 第四轮修正（本轮提交）；BF-RT3-001 和 BF-RT3-002 已 CLOSED；状态纠正为 DRAFT；三项规格锁 CLAIMED（DRAFT 允许澄清/补全文档）；待 Reviewer 第四次复审 |
 
 ## 审核结论
 
@@ -821,7 +824,9 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 - 第一次审核结论：NEEDS_CHANGES（SPEC-REVIEW.md，提交 cc44f8b；BLOCKER 0 / MAJOR 7 / MINOR 2 / NOTE 0）
 - 第一次复审结论：NEEDS_CHANGES（SPEC-RETEST.md，提交 a84624c；BLOCKER 0 / MAJOR 5 / MINOR 3 / NOTE 0）
 - 第二次复审结论：NEEDS_CHANGES（SPEC-RETEST-2.md，提交 f517ee3；BLOCKER 0 / MAJOR 5 / MINOR 2 / NOTE 0）
+- 第三次复审结论：NEEDS_CHANGES（SPEC-RETEST-3.md，提交 53a5fbc；BLOCKER 1 / MAJOR 0 / MINOR 1 / NOTE 0）
 - 审核命令和证据：工作流 20/20 PASS；git diff --check PASS；diff 确认仅任务文件变化
+- ⚠ 历史无效迁移：第三轮修正（提交 95eea07）中 DRAFT → READY_FOR_RETEST 迁移不在权威封闭迁移表中，已由 RETEST-3 BF-RT3-001 发现并修正。当前有效状态为 DRAFT
 
 ## 缺陷清单
 
@@ -851,6 +856,8 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | BF-RT2-005 | MAJOR | OnValidatePrincipal 未处理角色变化 | CLOSED（本轮新增角色比较 + reject） |
 | BF-RT2-006 | MINOR | 文件预算三口径不一致 | CLOSED（本轮逐文件 16 新 + 5 修改） |
 | BF-RT2-007 | MINOR | SQLite 路径失败 + 测试并行未验收 | CLOSED（本轮 FR-BF-04 路径验证 + AC-BF-07 + AC-BF-28 并行隔离） |
+| BF-RT3-001 | BLOCKER | DRAFT → READY_FOR_RETEST 不在权威封闭迁移表 | CLOSED（本轮返还 DRAFT；历史无效迁移已标记；Reviewer PASS 后 Architect 执行 DRAFT → READY） |
+| BF-RT3-002 | MINOR | 文件预算 16/15 双算法并存 | CLOSED（本轮删除 DTO 合并后 15 的替代分支；唯一上限 16） |
 
 ## 缺陷修复记录
 
@@ -863,6 +870,8 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | BF-RT2-005 | Claude + DeepSeek Product Manager | FR-BF-14 新增 Role 比较拒绝规则；AC-BF-20 新增角色变化 + 重新登录测试 | 待提交 |
 | BF-RT2-006 | Claude + DeepSeek Product Manager | 逐文件 16 新 + 5 修改 + 任务管理分离；精确计数与上限一致 | 待提交 |
 | BF-RT2-007 | Claude + DeepSeek Product Manager | FR-BF-04 新增路径验证步骤 + 网络共享拒绝 + 目录创建失败；AC-BF-07 新增路径失败测试；AC-BF-28 新增唯一目录/GUID/Collection/Dispose 清理 | 待提交 |
+| BF-RT3-001 | Claude + DeepSeek Product Manager | DRAFT → READY_FOR_RETEST 不在权威封闭迁移表；返还 DRAFT + CLAIMED；标记无效迁移；明确 Reviewer PASS 后 DRAFT → READY（权威迁移） | 待提交 |
+| BF-RT3-002 | Claude + DeepSeek Product Manager | 删除 DTO 合并后 15 个的替代分支；唯一新增文件上限 16 个；逐文件清单保持 16 项 | 待提交 |
 
 ## 复审结果
 
@@ -942,4 +951,5 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 > Owner 为 Codex Backend，Reviewer 为 Codex Reviewer。
 > 规格已按 Codex Reviewer 三次审核报告（cc44f8b SPEC-REVIEW、a84624c SPEC-RETEST、f517ee3 SPEC-RETEST-2）全面修正。
 > 全部 BF-SR、BF-RT1 和 BF-RT2 finding 已 CLOSED。
-> 状态为 READY_FOR_RETEST，三项锁为 HANDED_OFF。下一步：交由 Codex Reviewer 做第三次规格复审。
+> 状态为 DRAFT，三项规格锁为 CLAIMED（DRAFT 允许澄清/设计/补全文档，锁管理任务文件而非开发模块）。
+> 规格多轮审核在 DRAFT 内完成。下一步：交由 Codex Reviewer 做第四次规格复审。Reviewer PASS 后由 Architect 执行 DRAFT → READY。
