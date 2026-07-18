@@ -29,15 +29,15 @@
 | TASK-0006 | tasks/TASK-0006-PROJECT-SCAFFOLD.md | Claude + DeepSeek Product Manager | 2026-07-17 | RELEASED | TASK-0006 规格修正完成，转入 READY；实施时由 Cursor Developer 重新认领 | 2026-07-17 |
 | TASK-0006 | tasks/current-task.md | Claude + DeepSeek Product Manager | 2026-07-17 | RELEASED | TASK-0006 规格修正完成，转入 READY；实施时由 Cursor Developer 重新认领 | 2026-07-17 |
 | TASK-0006 | tasks/MODULE-LOCKS.md | Claude + DeepSeek Product Manager | 2026-07-17 | RELEASED | TASK-0006 规格修正完成，转入 READY；实施时由 Cursor Developer 重新认领 | 2026-07-17 |
-| TASK-0006 | Datacenter.sln | Cursor Developer | 2026-07-17 22:56:03 +08:00 | RELEASED | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-18（TASK-0006 COMPLETED） |
-| TASK-0006 | src/frontend | Cursor Developer | 2026-07-17 22:56:03 +08:00 | RELEASED | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-18（TASK-0006 COMPLETED） |
-| TASK-0006 | src/backend/Datacenter.Api | Cursor Developer | 2026-07-17 22:56:03 +08:00 | RELEASED | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-18（TASK-0006 COMPLETED） |
-| TASK-0006 | tests/backend/Datacenter.Api.Tests | Cursor Developer | 2026-07-17 22:56:03 +08:00 | RELEASED | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-18（TASK-0006 COMPLETED） |
-| TASK-0006 | scripts/verify-project.ps1 | Cursor Developer | 2026-07-18（R4-001 IN_FIX 重新认领） | RELEASED | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-18（TASK-0006 COMPLETED） |
-| TASK-0006 | README.md | Cursor Developer | 2026-07-17 22:56:03 +08:00 | RELEASED | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-18（TASK-0006 COMPLETED） |
-| TASK-0006 | tasks/TASK-0006-PROJECT-SCAFFOLD.md | Cursor Developer | 2026-07-18（R4-001 IN_FIX 重新认领） | RELEASED | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-18（TASK-0006 COMPLETED） |
-| TASK-0006 | tasks/current-task.md | Cursor Developer | 2026-07-18（R4-001 IN_FIX 重新认领） | RELEASED | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-18（TASK-0006 COMPLETED） |
-| TASK-0006 | tasks/MODULE-LOCKS.md | Cursor Developer | 2026-07-18（R4-001 IN_FIX 重新认领） | RELEASED | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-18（TASK-0006 COMPLETED） |
+| TASK-0006 | Datacenter.sln | Cursor Developer | 2026-07-17 22:56:03 +08:00 | HANDED_OFF | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放（须由 Codex Reviewer 执行） | 曾于 2026-07-18 由无效关闭（6d89eeb）释放；经合并门禁 d45f90a（MERGE_BLOCKED）纠正恢复 |
+| TASK-0006 | src/frontend | Cursor Developer | 2026-07-17 22:56:03 +08:00 | HANDED_OFF | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放（须由 Codex Reviewer 执行） | 曾于 2026-07-18 由无效关闭（6d89eeb）释放；经合并门禁 d45f90a 纠正恢复 |
+| TASK-0006 | src/backend/Datacenter.Api | Cursor Developer | 2026-07-17 22:56:03 +08:00 | HANDED_OFF | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放（须由 Codex Reviewer 执行） | 曾于 2026-07-18 由无效关闭（6d89eeb）释放；经合并门禁 d45f90a 纠正恢复 |
+| TASK-0006 | tests/backend/Datacenter.Api.Tests | Cursor Developer | 2026-07-17 22:56:03 +08:00 | HANDED_OFF | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放（须由 Codex Reviewer 执行） | 曾于 2026-07-18 由无效关闭（6d89eeb）释放；经合并门禁 d45f90a 纠正恢复 |
+| TASK-0006 | scripts/verify-project.ps1 | Cursor Developer | 2026-07-18（R4-001 IN_FIX 重新认领） | HANDED_OFF | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放（须由 Codex Reviewer 执行） | 曾于 2026-07-18 由无效关闭（6d89eeb）释放；经合并门禁 d45f90a 纠正恢复 |
+| TASK-0006 | README.md | Cursor Developer | 2026-07-17 22:56:03 +08:00 | HANDED_OFF | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放（须由 Codex Reviewer 执行） | 曾于 2026-07-18 由无效关闭（6d89eeb）释放；经合并门禁 d45f90a 纠正恢复 |
+| TASK-0006 | tasks/TASK-0006-PROJECT-SCAFFOLD.md | Cursor Developer | 2026-07-18（R4-001 IN_FIX 重新认领） | HANDED_OFF | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放（须由 Codex Reviewer 执行） | 曾于 2026-07-18 由无效关闭（6d89eeb）释放；经合并门禁 d45f90a 纠正恢复 |
+| TASK-0006 | tasks/current-task.md | Cursor Developer | 2026-07-18（R4-001 IN_FIX 重新认领） | HANDED_OFF | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放（须由 Codex Reviewer 执行） | 曾于 2026-07-18 由无效关闭（6d89eeb）释放；经合并门禁 d45f90a 纠正恢复 |
+| TASK-0006 | tasks/MODULE-LOCKS.md | Cursor Developer | 2026-07-18（R4-001 IN_FIX 重新认领） | HANDED_OFF | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放（须由 Codex Reviewer 执行） | 曾于 2026-07-18 由无效关闭（6d89eeb）释放；经合并门禁 d45f90a 纠正恢复 |
 
 ## 冲突处理示例
 
