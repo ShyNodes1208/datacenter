@@ -38,9 +38,9 @@
 | TASK-0006 | tasks/TASK-0006-PROJECT-SCAFFOLD.md | Cursor Developer | 2026-07-18（R4-001 IN_FIX 重新认领） | RELEASED | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-18 11:11:38 +08:00（Codex Reviewer 实际释放） |
 | TASK-0006 | tasks/current-task.md | Cursor Developer | 2026-07-18（R4-001 IN_FIX 重新认领） | RELEASED | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-18 11:11:38 +08:00（Codex Reviewer 实际释放） |
 | TASK-0006 | tasks/MODULE-LOCKS.md | Cursor Developer | 2026-07-18（R4-001 IN_FIX 重新认领） | RELEASED | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-18 11:11:38 +08:00（Codex Reviewer 实际释放） |
-| TASK-0007 | tasks/TASK-0007-BACKEND-FOUNDATION.md | Claude + DeepSeek Product Manager | 2026-07-18 12:06:43 +08:00 | CLAIMED | 第六轮修正完成；待 Codex Reviewer 第六次复审；Reviewer PASS 后 Architect 执行 DRAFT→READY；实施时由 Codex Backend 重新认领 | |
-| TASK-0007 | tasks/current-task.md | Claude + DeepSeek Product Manager | 2026-07-18 12:06:43 +08:00 | CLAIMED | 第六轮修正完成；待 Codex Reviewer 第六次复审；Reviewer PASS 后 Architect 执行 DRAFT→READY；实施时由 Codex Backend 重新认领 | |
-| TASK-0007 | tasks/MODULE-LOCKS.md | Claude + DeepSeek Product Manager | 2026-07-18 12:06:43 +08:00 | CLAIMED | 第六轮修正完成；待 Codex Reviewer 第六次复审；Reviewer PASS 后 Architect 执行 DRAFT→READY；实施时由 Codex Backend 重新认领 | |
+| TASK-0007 | tasks/TASK-0007-BACKEND-FOUNDATION.md | Claude + DeepSeek Product Manager | 2026-07-18 12:06:43 +08:00 | RELEASED | SPEC-RETEST-6 PASS（0/0/0/0）；Architect 执行 DRAFT→READY；规格批准完成；实施锁由 Codex Backend 在 READY→IN_PROGRESS 前认领 | 2026-07-18（Architect 执行规格批准后释放） |
+| TASK-0007 | tasks/current-task.md | Claude + DeepSeek Product Manager | 2026-07-18 12:06:43 +08:00 | RELEASED | SPEC-RETEST-6 PASS（0/0/0/0）；Architect 执行 DRAFT→READY；规格批准完成；实施锁由 Codex Backend 在 READY→IN_PROGRESS 前认领 | 2026-07-18（Architect 执行规格批准后释放） |
+| TASK-0007 | tasks/MODULE-LOCKS.md | Claude + DeepSeek Product Manager | 2026-07-18 12:06:43 +08:00 | RELEASED | SPEC-RETEST-6 PASS（0/0/0/0）；Architect 执行 DRAFT→READY；规格批准完成；实施锁由 Codex Backend 在 READY→IN_PROGRESS 前认领 | 2026-07-18（Architect 执行规格批准后释放） |
 
 ## 冲突处理示例
 

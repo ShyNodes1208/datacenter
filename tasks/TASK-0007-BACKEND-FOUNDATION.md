@@ -4,7 +4,7 @@
 
 - Task ID：TASK-0007
 - Task Name：后端 SQLite 基础与最小认证骨架
-- Status：DRAFT
+- Status：READY
 - Owner：Codex Backend（AGENTS.md 第 3 节；实施 Owner）
 - Reviewer：Codex Reviewer
 - Branch：feature/task-0007-backend-foundation
@@ -821,6 +821,7 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | 2026-07-18 | Claude + DeepSeek Product Manager | DRAFT（待复审） | DRAFT（待复审） | Codex Reviewer | 第五轮修正（提交 bda2405）；BF-RT4-001 CLOSED；INVALID/CORRECTION 标记 f517ee3 错误归因 |
 | 2026-07-18 | Codex Reviewer | — | — | — | 第五次规格复审 NEEDS_CHANGES（提交 6844cfc；报告 SPEC-RETEST-5.md）；BLOCKER 0 / MAJOR 0 / MINOR 1 / NOTE 0（BF-RT5-001） |
 | 2026-07-18 | Claude + DeepSeek Product Manager | DRAFT（待复审） | DRAFT（待复审） | Codex Reviewer | 第六轮修正（本轮提交）；BF-RT5-001 CLOSED；删除重复记录 + 三文件统一轮次元数据；技术规格/AC/预算/锁均不变；待 Reviewer 第六次复审 |
+| 2026-07-18 | Codex Architect | DRAFT | READY | Codex Backend（实施 Owner） | SPEC-RETEST-6 PASS（提交 3d532fd）；Findings 0/0/0/0；DRAFT→READY 权威工作流合法迁移；规格批准；三项规格锁 RELEASED；实施尚未开始 |
 
 ## 审核结论
 
@@ -959,7 +960,7 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 >
 > 本任务规格由 Claude + DeepSeek Product Manager 编写，基于已批准的产品基线（TASK-0004）和架构基线（TASK-0005）。
 > Owner 为 Codex Backend，Reviewer 为 Codex Reviewer。
-> 规格已按 Codex Reviewer 六次审核报告（cc44f8b SPEC-REVIEW、a84624c SPEC-RETEST、f517ee3 SPEC-RETEST-2、53a5fbc SPEC-RETEST-3、7ac9cbc SPEC-RETEST-4、6844cfc SPEC-RETEST-5）全面修正。f517ee3、7ac9cbc 和 6844cfc 均为 Codex Reviewer 只读审核报告提交，未执行状态迁移。
+> 规格已按 Codex Reviewer 六次审核报告（cc44f8b SPEC-REVIEW、a84624c SPEC-RETEST、f517ee3 SPEC-RETEST-2、53a5fbc SPEC-RETEST-3、7ac9cbc SPEC-RETEST-4、6844cfc SPEC-RETEST-5）全面修正。第六次复审 SPEC-RETEST-6（提交 3d532fd）结论 PASS，Findings 0/0/0/0。
 > 全部 BF-SR、BF-RT1、BF-RT2、BF-RT3、BF-RT4 和 BF-RT5 finding 已 CLOSED。
-> 状态为 DRAFT，三项规格锁为 CLAIMED（DRAFT 允许澄清/设计/补全文档，锁管理任务文件而非开发模块）。
-> 规格多轮审核在 DRAFT 内完成。下一步：交由 Codex Reviewer 做第六次规格复审。Reviewer PASS 后由 Architect 执行 DRAFT → READY。
+> 状态为 READY。Codex Architect 已于 2026-07-18 批准规格并执行 DRAFT → READY 合法迁移。
+> 三项规格锁已 RELEASED。下一步：Codex Backend 按权威工作流检查冲突、认领实施模块锁并执行 READY → IN_PROGRESS。

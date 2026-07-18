@@ -4,9 +4,9 @@
 
 ## 当前状态
 
-- Status：DRAFT
-- Owner：Codex Backend（实施 Owner）；Claude + DeepSeek Product Manager（当前规格修正）
-- Reviewer：Codex Reviewer（待第六次规格复审）
+- Status：READY
+- Owner：Codex Backend（实施 Owner）
+- Reviewer：Codex Reviewer
 - 任务：TASK-0007 — 后端 SQLite 基础与最小认证骨架
 - 分支：feature/task-0007-backend-foundation
 - 规格文件：tasks/TASK-0007-BACKEND-FOUNDATION.md
@@ -35,7 +35,12 @@
   - Findings：BLOCKER 0 / MAJOR 0 / MINOR 1 / NOTE 0
   - BF-RT5-001 MINOR：current-task.md 重复记录 + 复审轮次元数据未同步
 - 第六轮修正：本轮提交（BF-RT5-001 CLOSED；仅同步审计元数据）
-- 当前状态：DRAFT，三项规格锁 CLAIMED，待 Reviewer 第六次复审
+- 第六次规格复审（Codex Reviewer）：PASS（提交 3d532fd；报告 SPEC-RETEST-6.md）
+  - Findings：BLOCKER 0 / MAJOR 0 / MINOR 0 / NOTE 0
+  - BF-RT5-001 CLOSED
+- 规格批准：Codex Architect 执行 DRAFT → READY（合法迁移）
+  - 三项规格锁 RELEASED
+- 当前状态：READY，实施锁未认领，待 Codex Backend 认领实施锁并执行 READY → IN_PROGRESS
 
 ## 权威工作流合法迁移
 
@@ -58,7 +63,7 @@
 
 ## 下一步
 
-1. Codex Reviewer 对修正后规格进行第六次独立复审
-2. 规格复审 PASS 后，Architect 执行 DRAFT → READY（唯一合法迁移）
-3. Codex Backend 检查冲突、认领实施模块锁并进入 IN_PROGRESS
-4. 不得在规格复审通过前开始实现
+1. Codex Backend 按权威工作流检查模块父子路径冲突
+2. Codex Backend 认领 TASK-0007 批准的最小实施模块锁（`src/backend/Datacenter.Api`、`tests/backend/Datacenter.Api.Tests`、`.config/dotnet-tools.json`、`.gitignore`、后端 csproj、测试 csproj、appsettings、Migration、SQLite 数据目录）
+3. Codex Backend 执行 READY → IN_PROGRESS（权威封闭迁移表唯一合法路径）
+4. 不得在认领实施锁并完成冲突检查前开始实现
