@@ -14,41 +14,39 @@
 - Requirement Source：hangyu 提出的企业机房服务器落位可视化需求
 - Product Baseline：docs/product/MVP-PRODUCT-BASELINE.md（TASK-0004，COMPLETED，PASS）
 - Architecture Reference：docs/architecture/MVP-ARCHITECTURE-BASELINE.md（TASK-0005，COMPLETED，PASS）
-- Module Lock：9 项实施路径锁全部 HANDED_OFF；READY_FOR_RETEST 保持 HANDED_OFF；等待 Codex Reviewer 第四次复审 RV-001/RV-002
+- Module Lock：9 项实施路径锁全部 HANDED_OFF；READY_FOR_RETEST 保持 HANDED_OFF；等待 Codex Reviewer 第五次复审 R4-001
 
-## 第四次复审（RETEST-3）与修复记录
+## 第五次复审（RETEST-4）与修复记录
 
-- 复审提交：b3a4ea4（retest-3）
-- 复审报告：reviews/tasks/TASK-0006-PROJECT-SCAFFOLD-IMPLEMENTATION-RETEST-3.md
+- 复审提交：497df48（retest-4）
+- 复审报告：reviews/tasks/TASK-0006-PROJECT-SCAFFOLD-IMPLEMENTATION-RETEST-4.md
 - 复审结论：NEEDS_CHANGES
-- 发现：0 BLOCKER / 2 MAJOR / 0 MINOR
+- 发现：0 BLOCKER / 1 MAJOR / 0 MINOR
 
-### 前三次复审缺陷状态
+### 历史缺陷状态
 
 | Finding | 等级 | 问题 | 处置 |
 |---------|------|------|------|
-| IR-001 | MAJOR | AC-SC-18 lock metadata | **CLOSED**（确认） |
-| IR-002 | MAJOR | AC-SC-20 directory check | **CLOSED**（确认） |
-| IR-003/RT-001 | MAJOR | grep/Git error propagation | **CLOSED**（确认） |
-| IR-004/RT-002 | MINOR | launchSettings BOM | **CLOSED**（确认） |
+| IR-001/IR-002/IR-003/RT-001/IR-004/RT-002 | — | 早期实现和复审缺陷 | **CLOSED**（多次复审确认） |
 | RT-003 | MAJOR | AC-SC-13 recursive grep hits binary DLL strings | **SPEC_CLARIFIED**（AC-SC-13 改为 XML 检查；CR-0004 批准） |
+| RV-001 | MAJOR | AC-SC-17 gate 9 --exclude-dir 仍递归扫描 | **SUPERSEDED**（由 R4-001 取代；--exclude-dir 修复不充分） |
+| RV-002 | MAJOR | 缺少状态迁移 | **CLOSED**（第四次复审确认） |
 
-### RETEST-3 缺陷与修复
+### RETEST-4 缺陷与修复
 
 | Finding | 等级 | 问题 | 处置 |
 |---------|------|------|------|
-| RV-001 | MAJOR | AC-SC-17 gate 9 仍保留已废除的 `grep -r "coverlet" tests/` | **CLOSED**（AC-SC-17 gate 9 改为引用 AC-SC-13 验证原则；使用 --exclude-dir=bin --exclude-dir=obj；明确退出码语义） |
-| RV-002 | MAJOR | 缺少 CHANGES_REQUESTED → IN_FIX → READY_FOR_RETEST 状态迁移 | **CLOSED**（两次迁移已记录；状态/锁/交接记录一致） |
+| R4-001 | MAJOR | AC-SC-17 gate 9 + verify-project.ps1 gate 9 仍递归扫描 tests/ | **CLOSED**（改为 AC-SC-13 结构化 XML；Python ElementTree 解析 Include+Update；递归 tests/ grep 已完全废除；无害文本/负向夹具验证通过） |
 
 ## 当前目标
 
-RV-001 和 RV-002 已修复。AC-SC-13/AC-SC-17/verify-project.ps1 三者一致。Coverlet 验证 PASS。状态已迁移至 READY_FOR_RETEST。
+R4-001 已修复。AC-SC-13/AC-SC-17 gate 9/verify-project.ps1 gate 9 三者统一为结构化 XML PackageReference 检查。递归 tests/ grep 已完全移除。状态已迁移至 READY_FOR_RETEST。
 
-等待 Codex Reviewer 执行第四次（终审）READY_FOR_RETEST 复审。
+等待 Codex Reviewer 执行第五次（终审）READY_FOR_RETEST 复审。
 
 ## 当前约束
 
 - 不得改为 COMPLETED；不得释放锁；不得开始 TASK-0007；不得合并 main
-- 修复范围限于 RV-001（AC-SC-17 gate 9）+ RV-002（状态迁移与交接记录）
+- 修复范围限于 R4-001（AC-SC-17 gate 9 + verify-project.ps1 gate 9 + AC-SC-13 Update 属性扩展）
 - 不修改代码、测试、依赖、产品或架构基线
-- verify-project.ps1 无需修改
+- 仅 verify-project.ps1 gate 9 实现方式变更（递归 grep → 结构化 XML），其他门禁不变

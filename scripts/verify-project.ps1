@@ -155,11 +155,43 @@ console.log("Forbidden direct dependencies: none");
         & grep -ri "EntityFrameworkCore\|SQLite\|Swashbuckle\|Microsoft.AspNetCore.OpenApi\|coverlet\|FluentAssertions\|Moq\|NSubstitute\|Microsoft.AspNetCore.Mvc.Testing" --include="*.csproj" src/backend/ tests/backend/
     }
 
-    # 9. coverlet.collector absent (source projects only; ignore bin/obj)
-    Write-Host "=== coverlet.collector absent ==="
-    Assert-GrepNoMatch -Step "coverlet absent" -Action {
-        & grep -ri "coverlet" --exclude-dir=bin --exclude-dir=obj tests/
-    }
+    # 9. coverlet.collector PackageReference absent (AC-SC-13 structured XML; project csproj only)
+    Write-Host "=== coverlet.collector PackageReference absent ==="
+    $coverletCheck = @'
+from pathlib import Path
+import xml.etree.ElementTree as ET
+
+path = Path(
+    "tests/backend/Datacenter.Api.Tests/"
+    "Datacenter.Api.Tests.csproj"
+)
+
+root = ET.parse(path).getroot()
+
+references = []
+for element in root.iter():
+    if element.tag.endswith("PackageReference"):
+        for attr in ("Include", "Update"):
+            val = element.attrib.get(attr, "")
+            if val:
+                references.append(val)
+
+forbidden = [
+    ref for ref in references
+    if ref.lower() == "coverlet.collector"
+]
+
+print("PackageReferences:", ", ".join(references) if references else "(none)")
+
+if forbidden:
+    raise SystemExit(
+        "Forbidden PackageReference found: coverlet.collector"
+    )
+
+print("coverlet.collector PackageReference: absent")
+'@
+    $coverletCheck | python3
+    Assert-ExitZero -Step "coverlet.collector absent" -Code $LASTEXITCODE
 
     # Solution project list
     Write-Host "=== Solution project list ==="
