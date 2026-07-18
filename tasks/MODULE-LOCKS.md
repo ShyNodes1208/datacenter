@@ -63,6 +63,9 @@
 | CR-0005 | tasks/TASK-0007-BACKEND-FOUNDATION.md | Codex Architect | 2026-07-19 01:24:45 +08:00 | RELEASED | 仅补充 Microsoft.AspNetCore.Mvc.Testing 8.0.29；提交独立 CR 定点复审后释放 | 2026-07-19（Codex Architect 完成 CR 文档修改并释放） |
 | CR-0005 | tasks/current-task.md | Codex Architect | 2026-07-19 01:24:45 +08:00 | RELEASED | 仅同步 CR-0005 审计与下一步；提交独立 CR 定点复审后释放 | 2026-07-19（Codex Architect 完成 CR 文档修改并释放） |
 | CR-0005 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-19 01:24:45 +08:00 | RELEASED | 仅登记 CR-0005 最小文档锁；不修改 TASK-0007 实施锁 | 2026-07-19（Codex Architect 完成 CR 文档修改并释放） |
+| CR5-RV-001 | tasks/TASK-0007-BACKEND-FOUNDATION.md | Codex Architect | 2026-07-19 01:41:29 +08:00 | RELEASED | 仅修正 CR5-RV-001 当前阻塞审计元数据；提交独立 CR 复审后释放 | 2026-07-19（Codex Architect 完成元数据修正并释放） |
+| CR5-RV-001 | tasks/current-task.md | Codex Architect | 2026-07-19 01:41:29 +08:00 | RELEASED | 仅同步 CR5-RV-001 当前态与解除条件；提交独立 CR 复审后释放 | 2026-07-19（Codex Architect 完成元数据修正并释放） |
+| CR5-RV-001 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-19 01:41:29 +08:00 | RELEASED | 仅纠正 BLOCKED 锁保留原因并登记最小文档锁；不修改 19 项实施锁 | 2026-07-19（Codex Architect 完成锁审计修正并释放） |
 
 ## TASK-0007 锁审计纠正
 
@@ -80,7 +83,7 @@
 - 锁状态：上述 19 项实施锁全部继续保持 CLAIMED
 - Owner：Codex Backend
 - Reviewer：Codex Reviewer
-- 保留原因：普通 BLOCKED，等待 `Microsoft.AspNetCore.Mvc.Testing` 精确版本规格 Change Request
+- 保留原因：普通 BLOCKED；CR-0005 已写入 `Microsoft.AspNetCore.Mvc.Testing` 8.0.29，当前等待 CR5-RV-001 修正后的独立 Reviewer 复审 PASS
 - 限制：阻塞期间其他 Agent 不得抢占或修改这些实施路径；不释放、不改为 HANDED_OFF 或 RELEASED
 - 范围：未扩大、未新增、未减少任何实施锁路径
 - 三项规格锁：继续保持 RELEASED，不重新认领

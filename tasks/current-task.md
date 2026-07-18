@@ -86,14 +86,17 @@
 - 阻塞类型：BLOCKED_SPEC_DEPENDENCY_VERSION
 - 阻塞依赖：`Microsoft.AspNetCore.Mvc.Testing`
 - 目标项目：`tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj`
-- 原因：任务依赖章节与 AC-BF-34 未规定精确版本，且测试项目当前不存在该 PackageReference
+- 原始规格缺口（提交 `909a59cb99aa1c9a8bb7abf293e73c970bb2ded0`）：当时任务依赖章节与 AC-BF-34 未规定精确版本，测试项目也不存在该 PackageReference，因此触发 `BLOCKED_SPEC_DEPENDENCY_VERSION`
 - 执行角色：Codex Backend
 - 实际执行环境：当前 Codex Backend 会话
 - 合法迁移：`IN_PROGRESS → BLOCKED`
 - 技术裁决责任角色：Codex Architect
 - Architect 裁决版本：`8.0.29`（CR-0005；等待独立 Codex Reviewer 定点复审）
 - CR 记录：`tasks/CR-0005-TASK-0007-MVC-TESTING-VERSION.md`
-- 解除条件：Codex Architect 提交最小 CR；TASK 依赖表和 AC-BF-34 明确 8.0.29；独立 Codex Reviewer 定点复审 PASS；有权角色按工作流恢复
+- CR-0005 当前进展：提交 `a6c9b8268fa2db5d322a50a70db9e0d999eae6a4` 已将依赖表、精确 PackageReference、目标测试项目、AC-BF-34 和依赖预算更新为 8.0.29；该变更已写入仓库但尚未取得独立 Reviewer PASS
+- 当前阻塞原因：首次审核 NEEDS_CHANGES（报告 `reviews/tasks/CR-0005-TASK-0007-MVC-TESTING-VERSION-REVIEW.md`；审核提交 `c7c21e6ea1f8287c840798a1a53df19e61168b04`）；唯一剩余问题为 `CR5-RV-001`
+- CR5-RV-001 修正记录：当前态已从“尚未写入 CR”纠正为“CR 已写入但尚未 Reviewer PASS”；原始规格缺口作为历史保留
+- 解除条件：`CR5-RV-001` 修正完成；独立 Codex Reviewer 对 CR-0005 复审并返回 PASS；有权责任角色合法执行 `BLOCKED → IN_PROGRESS`；恢复前不得继续实现
 - 恢复目标状态：IN_PROGRESS
 - 实施文件变化：无
 
