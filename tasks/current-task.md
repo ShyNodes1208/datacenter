@@ -4,15 +4,16 @@
 
 ## 当前状态
 
-- Status：IN_PROGRESS
+- Status：BLOCKED
 - Owner：Codex Backend
 - Reviewer：Codex Reviewer
 - 任务：TASK-0007 — 后端 SQLite 基础与最小认证骨架
 - 分支：feature/task-0007-backend-foundation
 - 规格文件：tasks/TASK-0007-BACKEND-FOUNDATION.md
 - 当前阶段：TASK-0007 后端基础实施
-- 实施锁：已认领
-- 实现状态：尚未开始写代码
+- Blocker：BLOCKED_SPEC_DEPENDENCY_VERSION
+- 实施锁：继续保留，全部 CLAIMED by Codex Backend
+- 实现状态：暂停，尚未开始写代码
 
 ## 规格审核记录
 
@@ -72,13 +73,28 @@
 - TASK-0006 已 fast-forward 合并 main
 - main、origin/main 哈希一致（d3bfc52）
 - 全部 TASK-0006 模块锁已 RELEASED
-- TASK-0007 当前有效状态为 IN_PROGRESS（Codex Backend 已依据 READY-GATE-2 / READY_APPROVED 认领最小实施锁并合法执行 READY → IN_PROGRESS）
+- TASK-0007 当前有效状态为 BLOCKED（Codex Backend 因依赖精确版本规格缺口合法执行 IN_PROGRESS → BLOCKED）
 - 实施 Owner：Codex Backend
 - TASK-0007 实施锁已由 Codex Backend 认领，尚未开始写代码
 
 ## 下一步
 
-Codex Backend 在已认领锁和批准的 16/5 文件预算内开始最小实现。
+Codex Architect 按正式 Change Request 流程补充 `Microsoft.AspNetCore.Mvc.Testing` 8.0.29，然后由独立 Codex Reviewer 定点复审。该版本当前仅为待裁决值，尚未成为已批准规格；Codex Backend 不得继续编码。
+
+## 当前阻塞记录
+
+- 阻塞类型：BLOCKED_SPEC_DEPENDENCY_VERSION
+- 阻塞依赖：`Microsoft.AspNetCore.Mvc.Testing`
+- 目标项目：`tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj`
+- 原因：任务依赖章节与 AC-BF-34 未规定精确版本，且测试项目当前不存在该 PackageReference
+- 执行角色：Codex Backend
+- 实际执行环境：当前 Codex Backend 会话
+- 合法迁移：`IN_PROGRESS → BLOCKED`
+- 技术裁决责任角色：Codex Architect
+- 待裁决版本：`8.0.29`，尚未通过正式 Change Request 生效
+- 解除条件：Codex Architect 提交最小 CR；TASK 依赖表和 AC-BF-34 明确 8.0.29；独立 Codex Reviewer 定点复审 PASS；有权角色按工作流恢复
+- 恢复目标状态：IN_PROGRESS
+- 实施文件变化：无
 
 ## 实施启动记录
 

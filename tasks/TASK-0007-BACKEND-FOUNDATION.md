@@ -4,14 +4,14 @@
 
 - Task ID：TASK-0007
 - Task Name：后端 SQLite 基础与最小认证骨架
-- Status：IN_PROGRESS
+- Status：BLOCKED
 - Owner：Codex Backend（AGENTS.md 第 3 节；实施 Owner）
 - Reviewer：Codex Reviewer
 - Branch：feature/task-0007-backend-foundation
 - Requirement Source：hangyu 提出的企业机房服务器落位可视化需求
 - Product Baseline：docs/product/MVP-PRODUCT-BASELINE.md（TASK-0004，COMPLETED，PASS）
 - Architecture Reference：docs/architecture/MVP-ARCHITECTURE-BASELINE.md（TASK-0005，COMPLETED，PASS）
-- Module Lock：三项规格文档锁已由 Codex Architect RELEASED；Codex Backend 已认领批准的最小实施锁
+- Module Lock：三项规格文档锁保持 RELEASED；普通 BLOCKED 期间全部实施锁继续由 Codex Backend 保持 CLAIMED
 
 ## Reviewer 独立性检查
 
@@ -20,6 +20,28 @@
 - 例外原因：N/A
 - hangyu 批准记录：N/A
 - 补偿性复审方式：N/A
+
+## 当前阻塞
+
+- 原状态：IN_PROGRESS
+- 新状态：BLOCKED
+- 执行角色：Codex Backend
+- 实际执行环境：当前 Codex Backend 会话
+- 迁移依据：权威工作流 `IN_PROGRESS → BLOCKED`
+- 阻塞类型：`BLOCKED_SPEC_DEPENDENCY_VERSION`
+- 阻塞依赖：`Microsoft.AspNetCore.Mvc.Testing`
+- 目标项目：`tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj`
+- 规格缺口：任务依赖章节与 AC-BF-34 只规定包名，未规定精确版本；当前测试项目也不存在该 PackageReference
+- 实施情况：Codex Backend 已停止实现，未修改任何实施文件，当前实现代码仍未开始
+- 技术裁决责任角色：Codex Architect
+- 已知待裁决值：`8.0.29`；该值尚未通过正式 Change Request 写入规格，不能作为当前实施依据
+- 解除条件：
+  1. Codex Architect 创建并提交最小依赖版本 Change Request；
+  2. TASK 依赖表明确 `Microsoft.AspNetCore.Mvc.Testing` 版本为 `8.0.29`；
+  3. AC-BF-34 明确版本为 `8.0.29`；
+  4. 独立 Codex Reviewer 完成 Change Request 定点复审并 PASS；
+  5. 有权角色按工作流恢复任务。
+- 恢复目标状态：IN_PROGRESS
 
 ## 前置条件
 
@@ -825,6 +847,7 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | 2026-07-18 | Codex Architect | — | DRAFT（CORRECTION） | Codex Architect | [CORRECTION — READY-GATE 0239fc5] 当前有效状态恢复为 SPEC-RETEST-6 PASS（报告 SPEC-RETEST-6.md；提交 3d532fd；Findings 0/0/0/0）后的 DRAFT；这是对 322e240 无效状态迁移的审计纠正，不是新的业务状态倒退。三项规格文档锁恢复为 CLAIMED by Codex Architect；无实施锁，技术规格未变化 |
 | 2026-07-19 | Codex Architect（当前真实 Codex 会话） | DRAFT | READY | 独立 Codex Reviewer（READY 门禁） | 权威封闭迁移 DRAFT → READY；规格批准依据 `reviews/tasks/TASK-0007-BACKEND-FOUNDATION-SPEC-RETEST-6.md`，Reviewer 提交 3d532fd42459b1b5d12d886707e451150f53ec9e，结论 PASS，Findings 0/0/0/0；三项规格文档锁由 CLAIMED → RELEASED；本次有效规格批准提交以当前 Codex Architect 实际 Git 提交为准；无实施锁，未开始实现 |
 | 2026-07-19 00:37:55 +08:00 | Codex Backend（当前真实 Codex Backend 会话） | READY | IN_PROGRESS | Codex Backend | 权威封闭迁移 READY → IN_PROGRESS；READY 门禁报告 `reviews/tasks/TASK-0007-BACKEND-FOUNDATION-READY-GATE-2.md`，门禁提交 `380316dae6e06e2c36d749cdd7205eecf3474c7e`，结论 READY_APPROVED；全部批准的最小实施锁已成功登记为 CLAIMED，Owner 为 Codex Backend，Reviewer 为 Codex Reviewer；当前实现尚未产生代码修改 |
+| 2026-07-19 01:08:26 +08:00 | Codex Backend（当前真实 Codex Backend 会话） | IN_PROGRESS | BLOCKED | Codex Architect（待创建正式 Change Request） | 阻塞类型 `BLOCKED_SPEC_DEPENDENCY_VERSION`：`Microsoft.AspNetCore.Mvc.Testing` 在任务依赖章节与 AC-BF-34 中缺少精确版本，测试项目当前也不存在该依赖；Codex Backend 无权自行选择版本，已停止且未修改实施文件。待裁决值为 8.0.29，但尚未通过正式 CR 生效。恢复目标为 IN_PROGRESS；普通 BLOCKED 期间全部实施锁保持 CLAIMED by Codex Backend |
 
 ## 审核结论
 
@@ -965,5 +988,5 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 > Owner 为 Codex Backend，Reviewer 为 Codex Reviewer。
 > 规格已按 Codex Reviewer 六次审核报告（cc44f8b SPEC-REVIEW、a84624c SPEC-RETEST、f517ee3 SPEC-RETEST-2、53a5fbc SPEC-RETEST-3、7ac9cbc SPEC-RETEST-4、6844cfc SPEC-RETEST-5）全面修正。第六次复审 SPEC-RETEST-6（提交 3d532fd）结论 PASS，Findings 0/0/0/0。
 > 全部 BF-SR、BF-RT1、BF-RT2、BF-RT3、BF-RT4 和 BF-RT5 finding 已 CLOSED。
-> 当前有效状态为 IN_PROGRESS。2026-07-19 当前真实 Codex Architect 会话依据 SPEC-RETEST-6 PASS 合法执行 DRAFT → READY，独立 Reviewer 随后在 READY-GATE-2 给出 READY_APPROVED；Codex Backend 已检查冲突、认领批准的最小实施锁并合法执行 READY → IN_PROGRESS。
-> 提交 322e240 的 DRAFT → READY 及三项规格锁释放仍为 INVALID，第一阶段 CORRECTION 历史继续保留。三项规格文档锁已 RELEASED；实施锁现为 CLAIMED，Owner 为 Codex Backend；尚未开始写代码。
+> 当前有效状态为 BLOCKED。Codex Backend 因 `Microsoft.AspNetCore.Mvc.Testing` 精确版本规格缺口合法执行 IN_PROGRESS → BLOCKED；恢复目标为 IN_PROGRESS，等待 Codex Architect 通过正式 Change Request 补充规格并由独立 Reviewer 定点复审。
+> 提交 322e240 的 DRAFT → READY 及三项规格锁释放仍为 INVALID，第一阶段 CORRECTION 历史继续保留。三项规格文档锁保持 RELEASED；普通 BLOCKED 期间实施锁保持 CLAIMED，Owner 为 Codex Backend；尚未开始写代码。

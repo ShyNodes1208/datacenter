@@ -69,6 +69,20 @@
 - **CORRECTION**：当前有效状态恢复为 SPEC-RETEST-6 PASS 后的 DRAFT；这是对无效迁移及无效锁释放的审计纠正，不是新的业务状态倒退。三项规格文档锁由当前实际修正规格的正式角色 Codex Architect 恢复为 CLAIMED；原 322e240 历史保留。
 - **VALID RELEASE（2026-07-19）**：原状态 CLAIMED，原 Owner Codex Architect；当前真实 Codex Architect 会话依据 SPEC-RETEST-6 PASS（Reviewer 提交 3d532fd，Findings 0/0/0/0）合法执行 DRAFT → READY 后，将三项规格文档锁全部变更为 RELEASED。当前不再持有规格编写锁；无 CLAIMED/HANDED_OFF 遗留；未转交 Codex Backend，未认领实施锁。
 
+## TASK-0007 BLOCKED 锁保留记录
+
+- 记录时间：2026-07-19 01:08:26 +08:00
+- 当前任务状态：BLOCKED
+- 阻塞类型：BLOCKED_SPEC_DEPENDENCY_VERSION
+- 锁状态：上述 19 项实施锁全部继续保持 CLAIMED
+- Owner：Codex Backend
+- Reviewer：Codex Reviewer
+- 保留原因：普通 BLOCKED，等待 `Microsoft.AspNetCore.Mvc.Testing` 精确版本规格 Change Request
+- 限制：阻塞期间其他 Agent 不得抢占或修改这些实施路径；不释放、不改为 HANDED_OFF 或 RELEASED
+- 范围：未扩大、未新增、未减少任何实施锁路径
+- 三项规格锁：继续保持 RELEASED，不重新认领
+- 恢复目标状态：IN_PROGRESS
+
 ## 冲突处理示例
 
 若 TASK-1001 已以 `CLAIMED` 占用 `src/backend/Assets/`，TASK-1002 申请 `src/backend/Assets/Racks/` 时属于子路径重叠。TASK-1002 不得认领或修改，必须转为 `BLOCKED` 并记录 TASK-1001；待 TASK-1001 释放后重新检查并认领。
