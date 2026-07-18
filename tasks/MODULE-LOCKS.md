@@ -35,9 +35,9 @@
 | TASK-0006 | tests/backend/Datacenter.Api.Tests | Cursor Developer | 2026-07-17 22:56:03 +08:00 | HANDED_OFF | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 | |
 | TASK-0006 | scripts/verify-project.ps1 | Cursor Developer | 2026-07-17 22:56:03 +08:00 | HANDED_OFF | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 | |
 | TASK-0006 | README.md | Cursor Developer | 2026-07-17 22:56:03 +08:00 | HANDED_OFF | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-0006 | tasks/TASK-0006-PROJECT-SCAFFOLD.md | Cursor Developer | 2026-07-17 22:56:03 +08:00 | HANDED_OFF | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-0006 | tasks/current-task.md | Cursor Developer | 2026-07-17 22:56:03 +08:00 | HANDED_OFF | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-0006 | tasks/MODULE-LOCKS.md | Cursor Developer | 2026-07-17 22:56:03 +08:00 | HANDED_OFF | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0006 | tasks/TASK-0006-PROJECT-SCAFFOLD.md | Cursor Developer | 2026-07-18（IN_FIX 重新认领） | HANDED_OFF | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0006 | tasks/current-task.md | Cursor Developer | 2026-07-18（IN_FIX 重新认领） | HANDED_OFF | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0006 | tasks/MODULE-LOCKS.md | Cursor Developer | 2026-07-18（IN_FIX 重新认领） | HANDED_OFF | TASK-0006 进入 COMPLETED 或 CANCELLED 时释放 | |
 
 ## 冲突处理示例
 
