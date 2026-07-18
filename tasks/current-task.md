@@ -4,8 +4,8 @@
 
 ## 当前状态
 
-- Status：DRAFT
-- Owner：Codex Backend（实施 Owner）；Codex Architect（当前规格状态纠正与批准责任角色）
+- Status：READY
+- Owner：Codex Backend
 - Reviewer：Codex Reviewer
 - 任务：TASK-0007 — 后端 SQLite 基础与最小认证骨架
 - 分支：feature/task-0007-backend-foundation
@@ -45,7 +45,14 @@
 - 状态纠正：当前有效状态恢复为 SPEC-RETEST-6 PASS 后的 DRAFT
   - 这是对无效状态迁移的审计纠正，不是新的业务状态倒退
   - 三项规格文档锁恢复为 CLAIMED by Codex Architect；无实施锁
-- 当前状态：DRAFT，待 Codex Architect 在新的独立步骤中正式执行 DRAFT → READY
+- 有效规格批准：2026-07-19 当前真实 Codex Architect 会话执行 DRAFT → READY
+  - 权威迁移依据：DRAFT → READY
+  - 规格批准报告：`reviews/tasks/TASK-0007-BACKEND-FOUNDATION-SPEC-RETEST-6.md`
+  - Reviewer 提交：3d532fd42459b1b5d12d886707e451150f53ec9e
+  - Reviewer 结论：PASS；Findings 0/0/0/0
+  - 三项规格文档锁由 CLAIMED → RELEASED；原 Owner 和释放角色均为 Codex Architect
+  - 本次有效规格批准提交以当前 Codex Architect 实际 Git 提交为准
+- 当前状态：READY；实现尚未开始；实施锁尚未认领
 
 ## 权威工作流合法迁移
 
@@ -62,13 +69,13 @@
 - TASK-0006 已 fast-forward 合并 main
 - main、origin/main 哈希一致（d3bfc52）
 - 全部 TASK-0006 模块锁已 RELEASED
-- TASK-0007 当前有效状态为 DRAFT（READY-GATE 审计纠正；最后有效状态为 SPEC-RETEST-6 PASS 后的 DRAFT）
+- TASK-0007 当前有效状态为 READY（由 2026-07-19 当前真实 Codex Architect 会话合法执行 DRAFT → READY）
 - 实施 Owner：Codex Backend
 - TASK-0007 尚未认领实施锁，尚未开始实现
 
 ## 下一步
 
-1. Codex Architect 在新的独立步骤中核验 SPEC-RETEST-6 PASS、Findings 0/0/0/0 和 READY 全部进入条件
-2. Codex Architect 亲自执行权威封闭迁移表允许的 DRAFT → READY
-3. 合法批准后释放三项规格文档锁
-4. 在合法 READY 形成前，不得认领实施锁、进入 IN_PROGRESS 或开始实现
+1. 先由独立 Codex Reviewer 执行新的 READY 门禁审核
+2. 只有门禁返回 READY_APPROVED 后，Codex Backend 才可检查模块锁冲突
+3. Codex Backend 随后认领批准的最小实施锁并执行 READY → IN_PROGRESS
+4. 在 READY_APPROVED、冲突检查和实施锁认领全部完成前，不得开始实现
