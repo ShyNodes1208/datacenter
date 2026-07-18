@@ -6,7 +6,7 @@
 
 - Status：DRAFT
 - Owner：Codex Backend（实施 Owner）；Claude + DeepSeek Product Manager（当前规格修正）
-- Reviewer：Codex Reviewer（待第四次规格复审）
+- Reviewer：Codex Reviewer（待第六次规格复审）
 - 任务：TASK-0007 — 后端 SQLite 基础与最小认证骨架
 - 分支：feature/task-0007-backend-foundation
 - 规格文件：tasks/TASK-0007-BACKEND-FOUNDATION.md
@@ -26,15 +26,16 @@
 - 第三次规格复审（Codex Reviewer）：NEEDS_CHANGES（提交 53a5fbc；报告 SPEC-RETEST-3.md）
   - Findings：BLOCKER 1 / MAJOR 0 / MINOR 1 / NOTE 0
   - BF-RT3-001 BLOCKER：DRAFT → READY_FOR_RETEST 不在权威封闭迁移表中
-- 第三次规格复审（Codex Reviewer）：NEEDS_CHANGES（提交 53a5fbc；报告 SPEC-RETEST-3.md）
-  - Findings：BLOCKER 1 / MAJOR 0 / MINOR 1 / NOTE 0
-  - BF-RT3-001 BLOCKER：DRAFT → READY_FOR_RETEST 不在权威封闭迁移表中
 - 第四轮修正：67ccaa5（BF-RT3-001/BF-RT3-002 CLOSED）
 - 第四次规格复审（Codex Reviewer）：NEEDS_CHANGES（提交 7ac9cbc；报告 SPEC-RETEST-4.md）
   - Findings：BLOCKER 1 / MAJOR 0 / MINOR 0 / NOTE 0
   - BF-RT4-001 BLOCKER：f517ee3 错误归因为 Codex Reviewer 执行状态迁移（Git 证据：仅新增审核报告）
-- 第五轮修正：本轮提交（BF-RT4-001 CLOSED）
-- 当前状态：DRAFT，三项规格锁 CLAIMED，待 Reviewer 第五次复审
+- 第五轮修正：bda2405（BF-RT4-001 CLOSED）
+- 第五次规格复审（Codex Reviewer）：NEEDS_CHANGES（提交 6844cfc；报告 SPEC-RETEST-5.md）
+  - Findings：BLOCKER 0 / MAJOR 0 / MINOR 1 / NOTE 0
+  - BF-RT5-001 MINOR：current-task.md 重复记录 + 复审轮次元数据未同步
+- 第六轮修正：本轮提交（BF-RT5-001 CLOSED；仅同步审计元数据）
+- 当前状态：DRAFT，三项规格锁 CLAIMED，待 Reviewer 第六次复审
 
 ## 权威工作流合法迁移
 
@@ -57,7 +58,7 @@
 
 ## 下一步
 
-1. Codex Reviewer 对修正后规格进行第四次独立复审
+1. Codex Reviewer 对修正后规格进行第六次独立复审
 2. 规格复审 PASS 后，Architect 执行 DRAFT → READY（唯一合法迁移）
 3. Codex Backend 检查冲突、认领实施模块锁并进入 IN_PROGRESS
 4. 不得在规格复审通过前开始实现
