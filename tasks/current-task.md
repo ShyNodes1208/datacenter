@@ -4,12 +4,15 @@
 
 ## 当前状态
 
-- Status：READY
+- Status：IN_PROGRESS
 - Owner：Codex Backend
 - Reviewer：Codex Reviewer
 - 任务：TASK-0007 — 后端 SQLite 基础与最小认证骨架
 - 分支：feature/task-0007-backend-foundation
 - 规格文件：tasks/TASK-0007-BACKEND-FOUNDATION.md
+- 当前阶段：TASK-0007 后端基础实施
+- 实施锁：已认领
+- 实现状态：尚未开始写代码
 
 ## 规格审核记录
 
@@ -52,7 +55,7 @@
   - Reviewer 结论：PASS；Findings 0/0/0/0
   - 三项规格文档锁由 CLAIMED → RELEASED；原 Owner 和释放角色均为 Codex Architect
   - 本次有效规格批准提交以当前 Codex Architect 实际 Git 提交为准
-- 当前状态：READY；实现尚未开始；实施锁尚未认领
+- READY 门禁结论：READY_APPROVED（报告 `reviews/tasks/TASK-0007-BACKEND-FOUNDATION-READY-GATE-2.md`；门禁提交 `380316dae6e06e2c36d749cdd7205eecf3474c7e`）
 
 ## 权威工作流合法迁移
 
@@ -69,13 +72,23 @@
 - TASK-0006 已 fast-forward 合并 main
 - main、origin/main 哈希一致（d3bfc52）
 - 全部 TASK-0006 模块锁已 RELEASED
-- TASK-0007 当前有效状态为 READY（由 2026-07-19 当前真实 Codex Architect 会话合法执行 DRAFT → READY）
+- TASK-0007 当前有效状态为 IN_PROGRESS（Codex Backend 已依据 READY-GATE-2 / READY_APPROVED 认领最小实施锁并合法执行 READY → IN_PROGRESS）
 - 实施 Owner：Codex Backend
-- TASK-0007 尚未认领实施锁，尚未开始实现
+- TASK-0007 实施锁已由 Codex Backend 认领，尚未开始写代码
 
 ## 下一步
 
-1. 先由独立 Codex Reviewer 执行新的 READY 门禁审核
-2. 只有门禁返回 READY_APPROVED 后，Codex Backend 才可检查模块锁冲突
-3. Codex Backend 随后认领批准的最小实施锁并执行 READY → IN_PROGRESS
-4. 在 READY_APPROVED、冲突检查和实施锁认领全部完成前，不得开始实现
+Codex Backend 在已认领锁和批准的 16/5 文件预算内开始最小实现。
+
+## 实施启动记录
+
+- 原状态：READY
+- 新状态：IN_PROGRESS
+- 执行角色：Codex Backend
+- 实际执行环境：当前 Codex Backend 会话
+- 迁移依据：权威封闭迁移表 `READY → IN_PROGRESS`
+- READY 门禁报告：`reviews/tasks/TASK-0007-BACKEND-FOUNDATION-READY-GATE-2.md`
+- READY 门禁提交：`380316dae6e06e2c36d749cdd7205eecf3474c7e`
+- 门禁结论：READY_APPROVED
+- 锁结果：已成功认领批准的最小实施锁，无父子路径冲突
+- 当前实现：尚未产生代码修改

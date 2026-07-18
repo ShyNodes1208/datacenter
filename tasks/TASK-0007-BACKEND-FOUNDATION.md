@@ -4,14 +4,14 @@
 
 - Task ID：TASK-0007
 - Task Name：后端 SQLite 基础与最小认证骨架
-- Status：READY
+- Status：IN_PROGRESS
 - Owner：Codex Backend（AGENTS.md 第 3 节；实施 Owner）
 - Reviewer：Codex Reviewer
 - Branch：feature/task-0007-backend-foundation
 - Requirement Source：hangyu 提出的企业机房服务器落位可视化需求
 - Product Baseline：docs/product/MVP-PRODUCT-BASELINE.md（TASK-0004，COMPLETED，PASS）
 - Architecture Reference：docs/architecture/MVP-ARCHITECTURE-BASELINE.md（TASK-0005，COMPLETED，PASS）
-- Module Lock：三项规格文档锁已由 Codex Architect RELEASED；实施锁尚未认领
+- Module Lock：三项规格文档锁已由 Codex Architect RELEASED；Codex Backend 已认领批准的最小实施锁
 
 ## Reviewer 独立性检查
 
@@ -27,7 +27,7 @@
 - [x] 架构基线已批准：TASK-0005 COMPLETED，PASS
 - [x] 项目脚手架已完成：TASK-0006 COMPLETED，PASS；已合并 main
 - [x] Owner/Reviewer 独立性已检查：是
-- [ ] 模块父子路径冲突已检查：由 Codex Backend 在 READY → IN_PROGRESS 前执行
+- [x] 模块父子路径冲突已检查：Codex Backend 于 2026-07-19 00:37:55 +08:00 检查全部有效锁，无完全相同路径、父子路径或配置文件重叠冲突
 - [x] 其他前置条件：TASK-0007 规格已通过 Codex Reviewer 第六次独立复审（SPEC-RETEST-6.md，提交 3d532fd；PASS；Findings 0/0/0/0）；本次真实 Codex Architect 会话已合法执行 DRAFT → READY
 
 ## 允许修改
@@ -824,6 +824,7 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | 2026-07-18 | Claude 会话（原记录角色：Codex Architect） | DRAFT | READY（INVALID） | — | ⚠ [INVALID — READY-GATE RG-001/RG-002] 提交 322e240 的 DRAFT → READY 由 Claude 会话实际执行，却记录为 Codex Architect；仓库没有 Claude 映射为 Codex Architect 的授权。依据 READY-GATE 报告及提交 0239fc5，该迁移和同提交执行的三项规格锁 RELEASED 均无效；保留本行作为审计历史，不得作为实施授权 |
 | 2026-07-18 | Codex Architect | — | DRAFT（CORRECTION） | Codex Architect | [CORRECTION — READY-GATE 0239fc5] 当前有效状态恢复为 SPEC-RETEST-6 PASS（报告 SPEC-RETEST-6.md；提交 3d532fd；Findings 0/0/0/0）后的 DRAFT；这是对 322e240 无效状态迁移的审计纠正，不是新的业务状态倒退。三项规格文档锁恢复为 CLAIMED by Codex Architect；无实施锁，技术规格未变化 |
 | 2026-07-19 | Codex Architect（当前真实 Codex 会话） | DRAFT | READY | 独立 Codex Reviewer（READY 门禁） | 权威封闭迁移 DRAFT → READY；规格批准依据 `reviews/tasks/TASK-0007-BACKEND-FOUNDATION-SPEC-RETEST-6.md`，Reviewer 提交 3d532fd42459b1b5d12d886707e451150f53ec9e，结论 PASS，Findings 0/0/0/0；三项规格文档锁由 CLAIMED → RELEASED；本次有效规格批准提交以当前 Codex Architect 实际 Git 提交为准；无实施锁，未开始实现 |
+| 2026-07-19 00:37:55 +08:00 | Codex Backend（当前真实 Codex Backend 会话） | READY | IN_PROGRESS | Codex Backend | 权威封闭迁移 READY → IN_PROGRESS；READY 门禁报告 `reviews/tasks/TASK-0007-BACKEND-FOUNDATION-READY-GATE-2.md`，门禁提交 `380316dae6e06e2c36d749cdd7205eecf3474c7e`，结论 READY_APPROVED；全部批准的最小实施锁已成功登记为 CLAIMED，Owner 为 Codex Backend，Reviewer 为 Codex Reviewer；当前实现尚未产生代码修改 |
 
 ## 审核结论
 
@@ -964,5 +965,5 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 > Owner 为 Codex Backend，Reviewer 为 Codex Reviewer。
 > 规格已按 Codex Reviewer 六次审核报告（cc44f8b SPEC-REVIEW、a84624c SPEC-RETEST、f517ee3 SPEC-RETEST-2、53a5fbc SPEC-RETEST-3、7ac9cbc SPEC-RETEST-4、6844cfc SPEC-RETEST-5）全面修正。第六次复审 SPEC-RETEST-6（提交 3d532fd）结论 PASS，Findings 0/0/0/0。
 > 全部 BF-SR、BF-RT1、BF-RT2、BF-RT3、BF-RT4 和 BF-RT5 finding 已 CLOSED。
-> 当前有效状态为 READY，由 2026-07-19 当前真实 Codex Architect 会话依据 SPEC-RETEST-6 PASS 合法执行 DRAFT → READY。本次有效规格批准提交以当前 Codex Architect 实际 Git 提交为准。
-> 提交 322e240 的 DRAFT → READY 及三项规格锁释放仍为 INVALID，第一阶段 CORRECTION 历史继续保留。三项规格文档锁已 RELEASED；实施锁尚未认领，未开始实现。下一步仅允许独立 Codex Reviewer 执行新的 READY 门禁审核。
+> 当前有效状态为 IN_PROGRESS。2026-07-19 当前真实 Codex Architect 会话依据 SPEC-RETEST-6 PASS 合法执行 DRAFT → READY，独立 Reviewer 随后在 READY-GATE-2 给出 READY_APPROVED；Codex Backend 已检查冲突、认领批准的最小实施锁并合法执行 READY → IN_PROGRESS。
+> 提交 322e240 的 DRAFT → READY 及三项规格锁释放仍为 INVALID，第一阶段 CORRECTION 历史继续保留。三项规格文档锁已 RELEASED；实施锁现为 CLAIMED，Owner 为 Codex Backend；尚未开始写代码。
