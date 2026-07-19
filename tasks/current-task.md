@@ -81,7 +81,7 @@
 
 ## 下一步
 
-Codex Architect 创建最小验证规则 Change Request。
+独立 Codex Reviewer 定点审核 CR-0006；PASS 前不得提交当前完整实现。
 
 ## 当前验证规则阻塞记录
 
@@ -99,9 +99,12 @@ Codex Architect 创建最小验证规则 Change Request。
 - 实施锁：19 项继续 CLAIMED by Codex Backend
 - Reviewer：Codex Reviewer
 - 技术流程裁决角色：Codex Architect
-- 推荐最小裁决方向：现有 `scripts/verify-project.ps1` 配合 `dotnet restore/build/test` 替代缺失入口；尚未通过正式 CR 生效
+- Architect 裁决：CR-0006 已提出；以直接 `dotnet restore/build/test`、工作流、Git 格式、文件预算和安全运行时文件检查构成正式门禁
+- 不适用脚本：不存在的 `scripts/build.ps1`、`scripts/test.ps1` 均废止；TASK-0006 专用 `scripts/verify-project.ps1` 与 TASK-0007 已批准依赖和测试数量冲突，不适用且不得修改
+- 当前状态：继续 BLOCKED，等待独立 Codex Reviewer 审核；CR PASS 前不得提交完整实现
+- 实现保持：完整实现继续原样保留且未提交；19 项实施锁继续 CLAIMED by Codex Backend
 - 恢复目标：IN_PROGRESS
-- Next Action：Codex Architect 创建最小验证规则 Change Request
+- Next Action：独立 Codex Reviewer 定点审核 CR-0006
 
 ## 当前阻塞记录
 

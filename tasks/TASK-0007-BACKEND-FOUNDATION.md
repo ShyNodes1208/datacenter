@@ -86,16 +86,14 @@
   - `/home/shy/task-0007-implementation-tracked-20260719-093436.patch`（SHA256 `b72bffec21459fcd239c724f0cc8999c4b1df407f937ac7ae89b5fe10b3d7d0e`）；
   - `/home/shy/task-0007-implementation-untracked-20260719-093436.tar.gz`（SHA256 `6578d5a48bc984736d0e71d19afdacc3385da4a64b47f5cf5701a5c9e0b4867b`）。
 - 技术流程裁决角色：Codex Architect
-- 推荐最小裁决方向：使用现有 `scripts/verify-project.ps1`，配合 `dotnet restore`、`dotnet build`、`dotnet test`，替代不存在的 `build.ps1`/`test.ps1`
-- 推荐方向状态：尚未通过正式 Change Request 生效，不作为当前验证规则
+- Architect 裁决：CR-0006 已提出；废止不存在的 `scripts/build.ps1`、`scripts/test.ps1` 要求，并确认 TASK-0006 专用的 `scripts/verify-project.ps1` 不适用于 TASK-0007
+- 裁决状态：等待独立 Codex Reviewer 审核；Reviewer PASS 前不得恢复任务或提交实现
 - 恢复目标：IN_PROGRESS
 - 解除条件：
-  1. Codex Architect 创建最小验证规则 Change Request；
-  2. CR 明确批准验证替代方案，或批准其他合法处理；
-  3. 独立 Codex Reviewer 审核 CR 并 PASS；
-  4. 当前 Owner 执行合法的 `BLOCKED → IN_PROGRESS`；
-  5. 重新运行 CR 批准的验证命令；
-  6. 验证通过后才允许提交当前实现。
+  1. 独立 Codex Reviewer 审核 CR-0006 并 PASS；
+  2. 当前 Owner 执行合法的 `BLOCKED → IN_PROGRESS`；
+  3. 重新运行 CR-0006 批准的全部验证门禁；
+  4. 验证通过后才允许提交当前实现。
 
 ## 前置条件
 
@@ -826,14 +824,43 @@ N/A：本任务使用 ASP.NET Core 内置 Cookie 认证中间件 + EF Core SQLit
 
 ## 构建命令
 
+### TASK-0007 正式提交前验证门禁（CR-0006）
+
+以下规则取代对不存在的 `scripts/build.ps1`、`scripts/test.ps1` 的要求。`scripts/verify-project.ps1` 是 TASK-0006 脚手架专用脚本，其“API 无 PackageReference”“测试项目仅原 xUnit 依赖”“禁止 EF Core/SQLite/Mvc.Testing”“后端恰好 1 个测试”等断言与 TASK-0007 已批准范围冲突，因此不适用于本任务。不得新增或修改 scripts 文件。
+
+```powershell
+dotnet restore
+dotnet build
+dotnet test
+pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
+git diff --check
+git status --short
+git diff --stat
+git diff --name-status
+git ls-files --others --exclude-standard
+```
+
+```bash
+find . -type f \( \
+  -name "*.db" -o \
+  -name "*.db-wal" -o \
+  -name "*.db-shm" -o \
+  -name "appsettings.Development.json" \
+\) -not -path "./.git/*"
+```
+
+所有必跑命令必须退出码为 0，所有测试必须通过。文件检查必须确认新增实施文件不超过 16 个、修改现有实施文件不超过 5 个、Migration 恰好 3 个、无预算外路径、tasks/reviews 不进入实施提交，且 bin/obj、数据库、日志、秘密文件未进入提交。安全运行时文件检查输出须逐项核对；被忽略的本地 `appsettings.Development.json` 可以存在，但不得修改、暂存或提交。
+
+禁止使用 `|| true`、跳过/删除/放宽测试、使用 `--no-restore` 隐藏问题、修改验证脚本降低门禁，或提交数据库、WAL、SHM、日志、凭据、Token 和真实开发配置。
+
 ```powershell
 # 恢复本地工具
 cd <repo-root>
 dotnet tool restore
 
 # 后端构建
-dotnet restore Datacenter.sln
-dotnet build Datacenter.sln --no-restore
+dotnet restore
+dotnet build
 
 # 生成初始迁移（仅 Users 表，含 Role CHECK 约束）
 dotnet tool run dotnet-ef migrations add InitialCreate --project src/backend/Datacenter.Api/Datacenter.Api.csproj
@@ -856,13 +883,13 @@ dotnet tool restore
 
 # 后端全部测试
 cd <repo-root>
-dotnet test tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj --no-build
+dotnet test
 
 # 仅单元测试
-dotnet test tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj --no-build --filter "FullyQualifiedName~UnitTests"
+dotnet test tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj --filter "FullyQualifiedName~UnitTests"
 
 # 仅集成测试
-dotnet test tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj --no-build --filter "FullyQualifiedName~IntegrationTests"
+dotnet test tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj --filter "FullyQualifiedName~IntegrationTests"
 
 # 工作流校验
 pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
@@ -1001,6 +1028,16 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 - Architect 裁决：APPROVED；`Microsoft.AspNetCore.Mvc.Testing` 精确版本为 `8.0.29`。
 - 更新后的 Requirement Source：不变；仍为 hangyu 提出的企业机房服务器落位可视化需求。
 - 批准状态：APPROVED；独立 Codex Reviewer 定点复审 PASS（提交 `0aab9b0813941d2a7581f1caf2da82956ae2bc14`；Findings 0/0/0/0；`CR5-RV-001` CLOSED）
+
+### CR-0006：验证门禁适用范围修正
+
+- Change Request ID：CR-0006
+- 记录位置：`tasks/CR-0006-TASK-0007-VALIDATION-GATE-SCOPE.md`
+- 原始 Blocker：`BLOCKED_CHANGE_REQUEST_REQUIRED`
+- 原始 BLOCKED 提交：`675dc43792953ec4d57536f2a7ded02381173c5a`
+- Architect 裁决：APPROVED；废止不存在的 build.ps1/test.ps1 要求，确认 TASK-0006 专用 verify-project.ps1 不适用，并采用本任务正式验证门禁。
+- 当前状态：等待独立 Codex Reviewer 审核；不得预先记录 PASS 或 Reviewer 提交。
+- 恢复条件：Reviewer PASS、有权角色合法恢复到 `IN_PROGRESS`、Backend 重跑全部批准门禁通过；此前不得提交实现。
 
 ## Git 提交与推送
 
