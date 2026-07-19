@@ -69,6 +69,10 @@
 | CR-0006 | tasks/TASK-0007-BACKEND-FOUNDATION.md | Codex Architect | 2026-07-19 | RELEASED | 仅同步 TASK-0007 验证门禁；完成 CR 管理修改后释放 | 2026-07-19（Codex Architect 完成 CR 文档修改并释放） |
 | CR-0006 | tasks/current-task.md | Codex Architect | 2026-07-19 | RELEASED | 仅同步 CR-0006 等待独立审核状态；完成 CR 管理修改后释放 | 2026-07-19（Codex Architect 完成 CR 文档修改并释放） |
 | CR-0006 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-19 | RELEASED | 仅登记 CR-0006 最小文档锁及阻塞说明；不修改 19 项实施锁 | 2026-07-19（Codex Architect 完成 CR 文档修改并释放） |
+| CR6-RV-001 | tasks/CR-0006-TASK-0007-VALIDATION-GATE-SCOPE.md | Codex Architect | 2026-07-19 | RELEASED | 仅纠正 CR-0006 无效前提与批准状态；完成纠正后释放 | 2026-07-19（Codex Architect 完成审计纠正并释放） |
+| CR6-RV-001 | tasks/TASK-0007-BACKEND-FOUNDATION.md | Codex Architect | 2026-07-19 | RELEASED | 仅恢复 675dc437^ 已批准验证基线；完成纠正后释放 | 2026-07-19（Codex Architect 完成审计纠正并释放） |
+| CR6-RV-001 | tasks/current-task.md | Codex Architect | 2026-07-19 | RELEASED | 仅同步等待独立纠正复审；完成纠正后释放 | 2026-07-19（Codex Architect 完成审计纠正并释放） |
+| CR6-RV-001 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-19 | RELEASED | 仅同步纠正复审说明；不修改 19 项实施锁 | 2026-07-19（Codex Architect 完成审计纠正并释放） |
 
 ## TASK-0007 锁审计纠正
 
@@ -99,7 +103,7 @@
 - 实现状态：尚未开始写代码
 - 三项 TASK-0007 规格锁、三项 CR-0005 临时文档锁和三项 CR5-RV-001 临时文档锁：继续保持 RELEASED，不重新认领
 
-## TASK-0007 验证规则阻塞锁保留记录
+## TASK-0007 CR6-RV-001 审计纠正锁保留记录
 
 - 记录时间：2026-07-19
 - 当前任务状态：BLOCKED
@@ -109,10 +113,10 @@
 - 锁状态：上述 19 项实施锁全部继续保持 CLAIMED by Codex Backend
 - Owner：Codex Backend
 - Reviewer：Codex Reviewer
-- 保留依据：普通 BLOCKED 不自动释放；CR-0006 已由 Codex Architect 提出，当前等待独立 Codex Reviewer PASS
+- 保留依据：普通 BLOCKED 不自动释放；CR-0006 的原技术前提已被 Reviewer 判定无法复现，当前等待 CR6-RV-001 审计纠正独立复审
 - 限制：其他 Agent 不得抢占或修改上述实施路径；不得 RELEASED、HANDED_OFF、增加、减少或改变 Owner
 - 三项规格锁：继续保持 RELEASED，不重新认领
-- CR 文档临时锁：CR-0006 三项最小文档锁已 RELEASED；不影响 Backend 实施锁
+- CR 文档临时锁：CR6-RV-001 四项最小文档锁已 RELEASED；不影响 Backend 实施锁
 - 恢复目标：IN_PROGRESS
 
 ## 冲突处理示例

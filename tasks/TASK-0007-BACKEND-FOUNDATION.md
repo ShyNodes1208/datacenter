@@ -64,7 +64,7 @@
 - 当前实现：尚未开始写代码
 - 下一步：Codex Backend 按批准范围开始最小实现
 
-## 当前验证规则阻塞
+## CR6-RV-001 审计纠正（当前阻塞）
 
 - 原状态：IN_PROGRESS
 - 新状态：BLOCKED
@@ -79,21 +79,20 @@
   - 单元测试 7/7、集成测试 12/12、全部测试 20/20 通过；
   - `dotnet restore`、`dotnet build`、`dotnet test` 通过，构建 0 warnings / 0 errors；
   - 工作流校验 `PASS=20 FAIL=0 TOTAL=20`，`git diff --check` 通过。
-- 缺失验证入口：`scripts/build.ps1`、`scripts/test.ps1`
-- 缺口证据：两个脚本在当前仓库及 Git 历史中均不存在；当前任务禁止修改 `scripts/`，且新增文件与现有文件修改预算均已用满，Codex Backend 无权自行新增脚本或突破预算
+- 原始批准规格：`675dc437^` 中的 TASK-0007 从未要求 `scripts/build.ps1` 或 `scripts/test.ps1`；`scripts/verify-project.ps1` 属于 TASK-0006，也不是 TASK-0007 验证入口
+- 错误流程来源：仓库外实施提示词增加了两个不存在脚本的要求；Codex Backend 因该提示词停止提交，随后 `675dc437` 将其错误登记为既有任务规格缺口
 - 提交状态：当前实现尚未提交；完整保留在工作区，实施文件未暂存
 - 仓库外备份：
   - `/home/shy/task-0007-implementation-tracked-20260719-093436.patch`（SHA256 `b72bffec21459fcd239c724f0cc8999c4b1df407f937ac7ae89b5fe10b3d7d0e`）；
   - `/home/shy/task-0007-implementation-untracked-20260719-093436.tar.gz`（SHA256 `6578d5a48bc984736d0e71d19afdacc3385da4a64b47f5cf5701a5c9e0b4867b`）。
-- 技术流程裁决角色：Codex Architect
-- Architect 裁决：CR-0006 已提出；废止不存在的 `scripts/build.ps1`、`scripts/test.ps1` 要求，并确认 TASK-0006 专用的 `scripts/verify-project.ps1` 不适用于 TASK-0007
-- 裁决状态：等待独立 Codex Reviewer 审核；Reviewer PASS 前不得恢复任务或提交实现
+- Reviewer 结论：CR-0006 审核为 NEEDS_CHANGES；`CR6-RV-001` 证明原 Blocker 的技术依据无法从批准规格和 Git 历史复现
+- Architect 纠正：CR-0006 改为 `REJECTED`，撤销其新增验证规则，恢复 `675dc437^` 的已批准验证基线；不回滚 CR-0005 或其他有效历史
+- 当前阻塞原因：等待独立 Codex Reviewer 对 CR6-RV-001 审计纠正进行复审
 - 恢复目标：IN_PROGRESS
 - 解除条件：
-  1. 独立 Codex Reviewer 审核 CR-0006 并 PASS；
+  1. 独立 Codex Reviewer 对 CR6-RV-001 审计纠正复审并 PASS；
   2. 当前 Owner 执行合法的 `BLOCKED → IN_PROGRESS`；
-  3. 重新运行 CR-0006 批准的全部验证门禁；
-  4. 验证通过后才允许提交当前实现。
+  3. 按恢复后的 TASK-0007 已批准规格继续提交前流程。
 
 ## 前置条件
 
@@ -824,43 +823,14 @@ N/A：本任务使用 ASP.NET Core 内置 Cookie 认证中间件 + EF Core SQLit
 
 ## 构建命令
 
-### TASK-0007 正式提交前验证门禁（CR-0006）
-
-以下规则取代对不存在的 `scripts/build.ps1`、`scripts/test.ps1` 的要求。`scripts/verify-project.ps1` 是 TASK-0006 脚手架专用脚本，其“API 无 PackageReference”“测试项目仅原 xUnit 依赖”“禁止 EF Core/SQLite/Mvc.Testing”“后端恰好 1 个测试”等断言与 TASK-0007 已批准范围冲突，因此不适用于本任务。不得新增或修改 scripts 文件。
-
-```powershell
-dotnet restore
-dotnet build
-dotnet test
-pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
-git diff --check
-git status --short
-git diff --stat
-git diff --name-status
-git ls-files --others --exclude-standard
-```
-
-```bash
-find . -type f \( \
-  -name "*.db" -o \
-  -name "*.db-wal" -o \
-  -name "*.db-shm" -o \
-  -name "appsettings.Development.json" \
-\) -not -path "./.git/*"
-```
-
-所有必跑命令必须退出码为 0，所有测试必须通过。文件检查必须确认新增实施文件不超过 16 个、修改现有实施文件不超过 5 个、Migration 恰好 3 个、无预算外路径、tasks/reviews 不进入实施提交，且 bin/obj、数据库、日志、秘密文件未进入提交。安全运行时文件检查输出须逐项核对；被忽略的本地 `appsettings.Development.json` 可以存在，但不得修改、暂存或提交。
-
-禁止使用 `|| true`、跳过/删除/放宽测试、使用 `--no-restore` 隐藏问题、修改验证脚本降低门禁，或提交数据库、WAL、SHM、日志、凭据、Token 和真实开发配置。
-
 ```powershell
 # 恢复本地工具
 cd <repo-root>
 dotnet tool restore
 
 # 后端构建
-dotnet restore
-dotnet build
+dotnet restore Datacenter.sln
+dotnet build Datacenter.sln --no-restore
 
 # 生成初始迁移（仅 Users 表，含 Role CHECK 约束）
 dotnet tool run dotnet-ef migrations add InitialCreate --project src/backend/Datacenter.Api/Datacenter.Api.csproj
@@ -883,13 +853,13 @@ dotnet tool restore
 
 # 后端全部测试
 cd <repo-root>
-dotnet test
+dotnet test tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj --no-build
 
 # 仅单元测试
-dotnet test tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj --filter "FullyQualifiedName~UnitTests"
+dotnet test tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj --no-build --filter "FullyQualifiedName~UnitTests"
 
 # 仅集成测试
-dotnet test tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj --filter "FullyQualifiedName~IntegrationTests"
+dotnet test tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj --no-build --filter "FullyQualifiedName~IntegrationTests"
 
 # 工作流校验
 pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
@@ -932,7 +902,7 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | 2026-07-19 00:37:55 +08:00 | Codex Backend（当前真实 Codex Backend 会话） | READY | IN_PROGRESS | Codex Backend | 权威封闭迁移 READY → IN_PROGRESS；READY 门禁报告 `reviews/tasks/TASK-0007-BACKEND-FOUNDATION-READY-GATE-2.md`，门禁提交 `380316dae6e06e2c36d749cdd7205eecf3474c7e`，结论 READY_APPROVED；全部批准的最小实施锁已成功登记为 CLAIMED，Owner 为 Codex Backend，Reviewer 为 Codex Reviewer；当前实现尚未产生代码修改 |
 | 2026-07-19 01:08:26 +08:00 | Codex Backend（当前真实 Codex Backend 会话） | IN_PROGRESS | BLOCKED | Codex Architect（待创建正式 Change Request） | 阻塞类型 `BLOCKED_SPEC_DEPENDENCY_VERSION`：`Microsoft.AspNetCore.Mvc.Testing` 在任务依赖章节与 AC-BF-34 中缺少精确版本，测试项目当前也不存在该依赖；Codex Backend 无权自行选择版本，已停止且未修改实施文件。待裁决值为 8.0.29，但尚未通过正式 CR 生效。恢复目标为 IN_PROGRESS；普通 BLOCKED 期间全部实施锁保持 CLAIMED by Codex Backend |
 | 2026-07-19 | Codex Backend（当前真实 Codex Backend 会话） | BLOCKED | IN_PROGRESS | Codex Backend | 权威封闭迁移 `BLOCKED → IN_PROGRESS`；原 Blocker `BLOCKED_SPEC_DEPENDENCY_VERSION` 已解除。CR-0005 已写入 `Microsoft.AspNetCore.Mvc.Testing 8.0.29`；定点复审 PASS（审核提交 `0aab9b0813941d2a7581f1caf2da82956ae2bc14`；Findings 0/0/0/0；`CR5-RV-001` CLOSED）。19 项实施锁继续 CLAIMED；三项规格锁及 CR 临时文档锁保持 RELEASED；尚未开始写代码 |
-| 2026-07-19 | Codex Backend（当前真实 Codex Backend 会话） | IN_PROGRESS | BLOCKED | Codex Architect（待创建最小验证规则 CR） | `BLOCKED_CHANGE_REQUEST_REQUIRED`：实现已按 16/5 文件预算完成，20/20 测试及 restore/build/test、工作流、diff 检查均通过；提交前要求的 `scripts/build.ps1` 与 `scripts/test.ps1` 在仓库及 Git 历史中不存在，且 Backend 无权修改 scripts 或突破已满文件预算。实现尚未提交，完整保留在工作区并已建立仓库外双备份；普通 BLOCKED 期间 19 项实施锁继续 CLAIMED；恢复目标 IN_PROGRESS |
+| 2026-07-19 | Codex Backend（当前真实 Codex Backend 会话） | IN_PROGRESS | BLOCKED | Codex Architect | **历史记录；技术前提后经 CR6-RV-001 判定无效。** `BLOCKED_CHANGE_REQUEST_REQUIRED` 当时依据仓库外提示词中的 `scripts/build.ps1`/`scripts/test.ps1` 要求登记；`675dc437^` 的批准规格并无该要求。实现已按 16/5 预算完成，20/20 测试及 restore/build/test、工作流、diff 检查通过，尚未提交；19 项实施锁继续 CLAIMED；恢复目标 IN_PROGRESS |
 
 ## 审核结论
 
@@ -1029,15 +999,16 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 - 更新后的 Requirement Source：不变；仍为 hangyu 提出的企业机房服务器落位可视化需求。
 - 批准状态：APPROVED；独立 Codex Reviewer 定点复审 PASS（提交 `0aab9b0813941d2a7581f1caf2da82956ae2bc14`；Findings 0/0/0/0；`CR5-RV-001` CLOSED）
 
-### CR-0006：验证门禁适用范围修正
+### CR-0006：验证门禁适用范围修正（REJECTED）
 
 - Change Request ID：CR-0006
 - 记录位置：`tasks/CR-0006-TASK-0007-VALIDATION-GATE-SCOPE.md`
 - 原始 Blocker：`BLOCKED_CHANGE_REQUEST_REQUIRED`
 - 原始 BLOCKED 提交：`675dc43792953ec4d57536f2a7ded02381173c5a`
-- Architect 裁决：APPROVED；废止不存在的 build.ps1/test.ps1 要求，确认 TASK-0006 专用 verify-project.ps1 不适用，并采用本任务正式验证门禁。
-- 当前状态：等待独立 Codex Reviewer 审核；不得预先记录 PASS 或 Reviewer 提交。
-- 恢复条件：Reviewer PASS、有权角色合法恢复到 `IN_PROGRESS`、Backend 重跑全部批准门禁通过；此前不得提交实现。
+- Reviewer 结论：NEEDS_CHANGES；`CR6-RV-001` 确认原前提没有批准规格或 Git 历史依据。
+- Architect 纠正：REJECTED；撤销 CR-0006 新增门禁，恢复 `675dc437^` 已批准验证基线。
+- 当前状态：等待独立 Reviewer 复审纠正结果；不得预先记录 PASS 或 Reviewer 提交。
+- 恢复条件：纠正复审 PASS 后，由 Owner 合法执行 `BLOCKED → IN_PROGRESS`；此前不得提交实现。
 
 ## Git 提交与推送
 
@@ -1085,5 +1056,5 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 > Owner 为 Codex Backend，Reviewer 为 Codex Reviewer。
 > 规格已按 Codex Reviewer 六次审核报告（cc44f8b SPEC-REVIEW、a84624c SPEC-RETEST、f517ee3 SPEC-RETEST-2、53a5fbc SPEC-RETEST-3、7ac9cbc SPEC-RETEST-4、6844cfc SPEC-RETEST-5）全面修正。第六次复审 SPEC-RETEST-6（提交 3d532fd）结论 PASS，Findings 0/0/0/0。
 > 全部 BF-SR、BF-RT1、BF-RT2、BF-RT3、BF-RT4 和 BF-RT5 finding 已 CLOSED。
-> 当前有效状态为 BLOCKED。此前依赖版本阻塞已通过 CR-0005 解除；本次 Codex Backend 在实现完成、提交前最终验证阶段因验证入口缺失合法执行 IN_PROGRESS → BLOCKED。Blocker 为 `BLOCKED_CHANGE_REQUEST_REQUIRED`，恢复目标为 IN_PROGRESS。
+> 当前有效状态为 BLOCKED。此前依赖版本阻塞已通过 CR-0005 解除；`675dc437` 登记的 `BLOCKED_CHANGE_REQUEST_REQUIRED` 技术依据已由 CR6-RV-001 证明无法从批准规格复现。CR-0006 已纠正为 REJECTED 并撤销新增门禁；当前仅等待独立 Reviewer 复审审计纠正，恢复目标为 IN_PROGRESS。
 > 提交 322e240 的 DRAFT → READY 及三项规格锁释放仍为 INVALID，第一阶段 CORRECTION 历史继续保留。三项规格文档锁和 CR 临时文档锁保持 RELEASED；19 项实施锁继续保持 CLAIMED，Owner 为 Codex Backend。实现代码已完成但尚未提交，完整保留在工作区并已建立仓库外备份。

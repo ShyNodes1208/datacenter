@@ -81,9 +81,9 @@
 
 ## 下一步
 
-独立 Codex Reviewer 定点审核 CR-0006；PASS 前不得提交当前完整实现。
+独立 Codex Reviewer 定点复审 CR6-RV-001 审计纠正；PASS 前不得提交当前完整实现。
 
-## 当前验证规则阻塞记录
+## CR6-RV-001 审计纠正记录（当前阻塞）
 
 - 原状态：IN_PROGRESS
 - 新状态：BLOCKED
@@ -92,19 +92,19 @@
 - Blocker：`BLOCKED_CHANGE_REQUEST_REQUIRED`
 - 阻塞发生阶段：实现完成、提交前最终验证阶段
 - 实现结果：16/16 新增文件、5/5 修改文件、3 个 Migration；单元测试 7/7、集成测试 12/12、全部测试 20/20；restore/build/test、工作流校验和 `git diff --check` 均通过
-- 缺失验证入口：`scripts/build.ps1`、`scripts/test.ps1`；当前仓库及 Git 历史中均不存在
-- 权限与预算：当前任务禁止修改 `scripts/`，文件预算已满，Codex Backend 无权自行新增脚本
+- 原始批准规格：`675dc437^` 中 TASK/current-task 从未要求 `scripts/build.ps1` 或 `scripts/test.ps1`；TASK-0006 专用的 `scripts/verify-project.ps1` 也不是 TASK-0007 验证入口
+- 错误来源：仓库外实施提示词增加脚本要求；`675dc437` 随后将其错误登记成既有任务规格缺口
 - 实现状态：代码已完成但尚未提交
 - 实现工作区：完整保留；仓库外备份为 `/home/shy/task-0007-implementation-tracked-20260719-093436.patch` 和 `/home/shy/task-0007-implementation-untracked-20260719-093436.tar.gz`
 - 实施锁：19 项继续 CLAIMED by Codex Backend
 - Reviewer：Codex Reviewer
 - 技术流程裁决角色：Codex Architect
-- Architect 裁决：CR-0006 已提出；以直接 `dotnet restore/build/test`、工作流、Git 格式、文件预算和安全运行时文件检查构成正式门禁
-- 不适用脚本：不存在的 `scripts/build.ps1`、`scripts/test.ps1` 均废止；TASK-0006 专用 `scripts/verify-project.ps1` 与 TASK-0007 已批准依赖和测试数量冲突，不适用且不得修改
-- 当前状态：继续 BLOCKED，等待独立 Codex Reviewer 审核；CR PASS 前不得提交完整实现
+- Reviewer Finding：`CR6-RV-001`（MAJOR）确认 `BLOCKED_CHANGE_REQUEST_REQUIRED` 的原技术依据无法从批准规格和提交历史复现
+- Architect 纠正：CR-0006 改为 `REJECTED`；撤销其新增验证门禁，恢复 `675dc437^` 已批准验证基线
+- 当前状态：继续 BLOCKED，仅等待独立 Codex Reviewer 对审计纠正进行复审；复审 PASS 前不得提交完整实现
 - 实现保持：完整实现继续原样保留且未提交；19 项实施锁继续 CLAIMED by Codex Backend
 - 恢复目标：IN_PROGRESS
-- Next Action：独立 Codex Reviewer 定点审核 CR-0006
+- Next Action：独立 Codex Reviewer 定点复审 CR6-RV-001 审计纠正
 
 ## 当前阻塞记录
 
