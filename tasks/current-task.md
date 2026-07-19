@@ -4,16 +4,17 @@
 
 ## 当前状态
 
-- Status：BLOCKED
+- Status：IN_PROGRESS
 - Owner：Codex Backend
 - Reviewer：Codex Reviewer
 - 任务：TASK-0007 — 后端 SQLite 基础与最小认证骨架
 - 分支：feature/task-0007-backend-foundation
 - 规格文件：tasks/TASK-0007-BACKEND-FOUNDATION.md
 - 当前阶段：TASK-0007 后端基础实施
-- Blocker：BLOCKED_SPEC_DEPENDENCY_VERSION
-- 实施锁：继续保留，全部 CLAIMED by Codex Backend
-- 实现状态：暂停，尚未开始写代码
+- 原 Blocker：`BLOCKED_SPEC_DEPENDENCY_VERSION`（已解除）
+- CR-0005：PASS（审核提交 `0aab9b0813941d2a7581f1caf2da82956ae2bc14`；Findings 0/0/0/0；`CR5-RV-001` CLOSED）
+- 实施锁：已认领并继续保留，19 项全部 CLAIMED by Codex Backend
+- 实现状态：尚未开始写代码
 
 ## 规格审核记录
 
@@ -73,13 +74,13 @@
 - TASK-0006 已 fast-forward 合并 main
 - main、origin/main 哈希一致（d3bfc52）
 - 全部 TASK-0006 模块锁已 RELEASED
-- TASK-0007 当前有效状态为 BLOCKED（Codex Backend 因依赖精确版本规格缺口合法执行 IN_PROGRESS → BLOCKED）
+- TASK-0007 当前有效状态为 IN_PROGRESS（CR-0005 定点复审 PASS 后由 Codex Backend 合法执行 BLOCKED → IN_PROGRESS）
 - 实施 Owner：Codex Backend
 - TASK-0007 实施锁已由 Codex Backend 认领，尚未开始写代码
 
 ## 下一步
 
-独立 Codex Reviewer 对 CR-0005 的最小依赖版本变更执行定点复审。Reviewer PASS 前任务保持 BLOCKED，Codex Backend 不得继续编码。
+Codex Backend 按 35 条 AC、16/5 文件预算和批准依赖开始最小实现。
 
 ## 当前阻塞记录
 
@@ -99,6 +100,23 @@
 - 解除条件：`CR5-RV-001` 修正完成；独立 Codex Reviewer 对 CR-0005 复审并返回 PASS；有权责任角色合法执行 `BLOCKED → IN_PROGRESS`；恢复前不得继续实现
 - 恢复目标状态：IN_PROGRESS
 - 实施文件变化：无
+
+## 状态恢复记录
+
+- 原状态：BLOCKED
+- 新状态：IN_PROGRESS
+- 执行角色：Codex Backend
+- 实际执行环境：当前 Codex Backend 会话
+- 迁移依据：权威封闭迁移表 `BLOCKED → IN_PROGRESS`
+- 原 Blocker：`BLOCKED_SPEC_DEPENDENCY_VERSION`，已解除
+- 原始阻塞提交：`909a59cb99aa1c9a8bb7abf293e73c970bb2ded0`
+- 解除依据：CR-0005 已写入 `Microsoft.AspNetCore.Mvc.Testing 8.0.29`；定点复审 PASS；审核提交 `0aab9b0813941d2a7581f1caf2da82956ae2bc14`；Findings 0/0/0/0；`CR5-RV-001` CLOSED
+- Owner：Codex Backend
+- Reviewer：Codex Reviewer
+- 实施锁：已认领并继续保留，19 项全部 CLAIMED by Codex Backend
+- 规格锁和 CR 临时文档锁：继续保持 RELEASED
+- 实现状态：尚未开始写代码
+- Next Action：Codex Backend 按 35 条 AC、16/5 文件预算和批准依赖开始最小实现
 
 ## 实施启动记录
 

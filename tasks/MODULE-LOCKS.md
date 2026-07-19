@@ -75,10 +75,10 @@
 - **CORRECTION**：当前有效状态恢复为 SPEC-RETEST-6 PASS 后的 DRAFT；这是对无效迁移及无效锁释放的审计纠正，不是新的业务状态倒退。三项规格文档锁由当前实际修正规格的正式角色 Codex Architect 恢复为 CLAIMED；原 322e240 历史保留。
 - **VALID RELEASE（2026-07-19）**：原状态 CLAIMED，原 Owner Codex Architect；当前真实 Codex Architect 会话依据 SPEC-RETEST-6 PASS（Reviewer 提交 3d532fd，Findings 0/0/0/0）合法执行 DRAFT → READY 后，将三项规格文档锁全部变更为 RELEASED。当前不再持有规格编写锁；无 CLAIMED/HANDED_OFF 遗留；未转交 Codex Backend，未认领实施锁。
 
-## TASK-0007 BLOCKED 锁保留记录
+## TASK-0007 BLOCKED 锁保留历史与恢复记录
 
 - 记录时间：2026-07-19 01:08:26 +08:00
-- 当前任务状态：BLOCKED
+- 阻塞期间任务状态：BLOCKED
 - 阻塞类型：BLOCKED_SPEC_DEPENDENCY_VERSION
 - 锁状态：上述 19 项实施锁全部继续保持 CLAIMED
 - Owner：Codex Backend
@@ -88,6 +88,13 @@
 - 范围：未扩大、未新增、未减少任何实施锁路径
 - 三项规格锁：继续保持 RELEASED，不重新认领
 - 恢复目标状态：IN_PROGRESS
+- 保留说明结束：CR-0005 定点复审 PASS 后，Codex Backend 于 2026-07-19 合法执行 `BLOCKED → IN_PROGRESS`
+- 当前任务状态：IN_PROGRESS
+- 恢复依据：CR-0005 已写入 `Microsoft.AspNetCore.Mvc.Testing 8.0.29`；定点复审 PASS；审核提交 `0aab9b0813941d2a7581f1caf2da82956ae2bc14`；Findings 0/0/0/0；`CR5-RV-001` CLOSED
+- 当前锁状态：原 19 项实施锁继续有效，全部保持 CLAIMED by Codex Backend；未新增、减少、释放或交接任何路径
+- 当前 Reviewer：Codex Reviewer
+- 实现状态：尚未开始写代码
+- 三项 TASK-0007 规格锁、三项 CR-0005 临时文档锁和三项 CR5-RV-001 临时文档锁：继续保持 RELEASED，不重新认领
 
 ## 冲突处理示例
 
