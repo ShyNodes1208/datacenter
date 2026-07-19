@@ -4,7 +4,7 @@
 
 - Task ID：TASK-0007
 - Task Name：后端 SQLite 基础与最小认证骨架
-- Status：IN_PROGRESS
+- Status：BLOCKED
 - Owner：Codex Backend（AGENTS.md 第 3 节；实施 Owner）
 - Reviewer：Codex Reviewer
 - Branch：feature/task-0007-backend-foundation
@@ -63,6 +63,39 @@
 - 实施锁：原 19 项实施锁继续保持 CLAIMED by Codex Backend，未新增、减少、释放或交接
 - 当前实现：尚未开始写代码
 - 下一步：Codex Backend 按批准范围开始最小实现
+
+## 当前验证规则阻塞
+
+- 原状态：IN_PROGRESS
+- 新状态：BLOCKED
+- 执行角色：Codex Backend
+- 实际执行环境：当前 Codex Backend 会话
+- 迁移依据：权威封闭迁移表 `IN_PROGRESS → BLOCKED`
+- Blocker：`BLOCKED_CHANGE_REQUEST_REQUIRED`
+- 阻塞发生阶段：实现完成、提交前最终验证阶段
+- 实现结果：
+  - 批准的新增实施文件已完成 16/16；
+  - 批准的现有实施文件修改已完成 5/5；
+  - 单元测试 7/7、集成测试 12/12、全部测试 20/20 通过；
+  - `dotnet restore`、`dotnet build`、`dotnet test` 通过，构建 0 warnings / 0 errors；
+  - 工作流校验 `PASS=20 FAIL=0 TOTAL=20`，`git diff --check` 通过。
+- 缺失验证入口：`scripts/build.ps1`、`scripts/test.ps1`
+- 缺口证据：两个脚本在当前仓库及 Git 历史中均不存在；当前任务禁止修改 `scripts/`，且新增文件与现有文件修改预算均已用满，Codex Backend 无权自行新增脚本或突破预算
+- 提交状态：当前实现尚未提交；完整保留在工作区，实施文件未暂存
+- 仓库外备份：
+  - `/home/shy/task-0007-implementation-tracked-20260719-093436.patch`（SHA256 `b72bffec21459fcd239c724f0cc8999c4b1df407f937ac7ae89b5fe10b3d7d0e`）；
+  - `/home/shy/task-0007-implementation-untracked-20260719-093436.tar.gz`（SHA256 `6578d5a48bc984736d0e71d19afdacc3385da4a64b47f5cf5701a5c9e0b4867b`）。
+- 技术流程裁决角色：Codex Architect
+- 推荐最小裁决方向：使用现有 `scripts/verify-project.ps1`，配合 `dotnet restore`、`dotnet build`、`dotnet test`，替代不存在的 `build.ps1`/`test.ps1`
+- 推荐方向状态：尚未通过正式 Change Request 生效，不作为当前验证规则
+- 恢复目标：IN_PROGRESS
+- 解除条件：
+  1. Codex Architect 创建最小验证规则 Change Request；
+  2. CR 明确批准验证替代方案，或批准其他合法处理；
+  3. 独立 Codex Reviewer 审核 CR 并 PASS；
+  4. 当前 Owner 执行合法的 `BLOCKED → IN_PROGRESS`；
+  5. 重新运行 CR 批准的验证命令；
+  6. 验证通过后才允许提交当前实现。
 
 ## 前置条件
 
@@ -872,6 +905,7 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | 2026-07-19 00:37:55 +08:00 | Codex Backend（当前真实 Codex Backend 会话） | READY | IN_PROGRESS | Codex Backend | 权威封闭迁移 READY → IN_PROGRESS；READY 门禁报告 `reviews/tasks/TASK-0007-BACKEND-FOUNDATION-READY-GATE-2.md`，门禁提交 `380316dae6e06e2c36d749cdd7205eecf3474c7e`，结论 READY_APPROVED；全部批准的最小实施锁已成功登记为 CLAIMED，Owner 为 Codex Backend，Reviewer 为 Codex Reviewer；当前实现尚未产生代码修改 |
 | 2026-07-19 01:08:26 +08:00 | Codex Backend（当前真实 Codex Backend 会话） | IN_PROGRESS | BLOCKED | Codex Architect（待创建正式 Change Request） | 阻塞类型 `BLOCKED_SPEC_DEPENDENCY_VERSION`：`Microsoft.AspNetCore.Mvc.Testing` 在任务依赖章节与 AC-BF-34 中缺少精确版本，测试项目当前也不存在该依赖；Codex Backend 无权自行选择版本，已停止且未修改实施文件。待裁决值为 8.0.29，但尚未通过正式 CR 生效。恢复目标为 IN_PROGRESS；普通 BLOCKED 期间全部实施锁保持 CLAIMED by Codex Backend |
 | 2026-07-19 | Codex Backend（当前真实 Codex Backend 会话） | BLOCKED | IN_PROGRESS | Codex Backend | 权威封闭迁移 `BLOCKED → IN_PROGRESS`；原 Blocker `BLOCKED_SPEC_DEPENDENCY_VERSION` 已解除。CR-0005 已写入 `Microsoft.AspNetCore.Mvc.Testing 8.0.29`；定点复审 PASS（审核提交 `0aab9b0813941d2a7581f1caf2da82956ae2bc14`；Findings 0/0/0/0；`CR5-RV-001` CLOSED）。19 项实施锁继续 CLAIMED；三项规格锁及 CR 临时文档锁保持 RELEASED；尚未开始写代码 |
+| 2026-07-19 | Codex Backend（当前真实 Codex Backend 会话） | IN_PROGRESS | BLOCKED | Codex Architect（待创建最小验证规则 CR） | `BLOCKED_CHANGE_REQUEST_REQUIRED`：实现已按 16/5 文件预算完成，20/20 测试及 restore/build/test、工作流、diff 检查均通过；提交前要求的 `scripts/build.ps1` 与 `scripts/test.ps1` 在仓库及 Git 历史中不存在，且 Backend 无权修改 scripts 或突破已满文件预算。实现尚未提交，完整保留在工作区并已建立仓库外双备份；普通 BLOCKED 期间 19 项实施锁继续 CLAIMED；恢复目标 IN_PROGRESS |
 
 ## 审核结论
 
@@ -1014,5 +1048,5 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 > Owner 为 Codex Backend，Reviewer 为 Codex Reviewer。
 > 规格已按 Codex Reviewer 六次审核报告（cc44f8b SPEC-REVIEW、a84624c SPEC-RETEST、f517ee3 SPEC-RETEST-2、53a5fbc SPEC-RETEST-3、7ac9cbc SPEC-RETEST-4、6844cfc SPEC-RETEST-5）全面修正。第六次复审 SPEC-RETEST-6（提交 3d532fd）结论 PASS，Findings 0/0/0/0。
 > 全部 BF-SR、BF-RT1、BF-RT2、BF-RT3、BF-RT4 和 BF-RT5 finding 已 CLOSED。
-> 当前有效状态为 IN_PROGRESS。Codex Backend 因 `Microsoft.AspNetCore.Mvc.Testing` 精确版本规格缺口曾合法执行 IN_PROGRESS → BLOCKED；CR-0005 已由 Codex Architect 补充精确版本 8.0.29，并经独立 Codex Reviewer 定点复审 PASS。当前 Codex Backend 会话已合法执行 BLOCKED → IN_PROGRESS；实现尚未开始。
-> 提交 322e240 的 DRAFT → READY 及三项规格锁释放仍为 INVALID，第一阶段 CORRECTION 历史继续保留。三项规格文档锁和 CR 临时文档锁保持 RELEASED；19 项实施锁继续保持 CLAIMED，Owner 为 Codex Backend；尚未开始写代码。
+> 当前有效状态为 BLOCKED。此前依赖版本阻塞已通过 CR-0005 解除；本次 Codex Backend 在实现完成、提交前最终验证阶段因验证入口缺失合法执行 IN_PROGRESS → BLOCKED。Blocker 为 `BLOCKED_CHANGE_REQUEST_REQUIRED`，恢复目标为 IN_PROGRESS。
+> 提交 322e240 的 DRAFT → READY 及三项规格锁释放仍为 INVALID，第一阶段 CORRECTION 历史继续保留。三项规格文档锁和 CR 临时文档锁保持 RELEASED；19 项实施锁继续保持 CLAIMED，Owner 为 Codex Backend。实现代码已完成但尚未提交，完整保留在工作区并已建立仓库外备份。

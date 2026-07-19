@@ -96,6 +96,22 @@
 - 实现状态：尚未开始写代码
 - 三项 TASK-0007 规格锁、三项 CR-0005 临时文档锁和三项 CR5-RV-001 临时文档锁：继续保持 RELEASED，不重新认领
 
+## TASK-0007 验证规则阻塞锁保留记录
+
+- 记录时间：2026-07-19
+- 当前任务状态：BLOCKED
+- Blocker：`BLOCKED_CHANGE_REQUEST_REQUIRED`
+- 阻塞阶段：实现完成、提交前最终验证阶段
+- 实现状态：批准的 16 个新增文件和 5 个修改文件已完成，但尚未提交；完整保留在工作区并已建立仓库外双备份
+- 锁状态：上述 19 项实施锁全部继续保持 CLAIMED by Codex Backend
+- Owner：Codex Backend
+- Reviewer：Codex Reviewer
+- 保留依据：普通 BLOCKED 不自动释放；当前等待 Codex Architect 创建最小验证规则 CR 及独立 Codex Reviewer PASS
+- 限制：其他 Agent 不得抢占或修改上述实施路径；不得 RELEASED、HANDED_OFF、增加、减少或改变 Owner
+- 三项规格锁：继续保持 RELEASED，不重新认领
+- CR 文档临时锁：继续保持 RELEASED
+- 恢复目标：IN_PROGRESS
+
 ## 冲突处理示例
 
 若 TASK-1001 已以 `CLAIMED` 占用 `src/backend/Assets/`，TASK-1002 申请 `src/backend/Assets/Racks/` 时属于子路径重叠。TASK-1002 不得认领或修改，必须转为 `BLOCKED` 并记录 TASK-1001；待 TASK-1001 释放后重新检查并认领。

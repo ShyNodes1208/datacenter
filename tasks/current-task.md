@@ -4,17 +4,18 @@
 
 ## 当前状态
 
-- Status：IN_PROGRESS
+- Status：BLOCKED
 - Owner：Codex Backend
 - Reviewer：Codex Reviewer
 - 任务：TASK-0007 — 后端 SQLite 基础与最小认证骨架
 - 分支：feature/task-0007-backend-foundation
 - 规格文件：tasks/TASK-0007-BACKEND-FOUNDATION.md
 - 当前阶段：TASK-0007 后端基础实施
-- 原 Blocker：`BLOCKED_SPEC_DEPENDENCY_VERSION`（已解除）
+- Blocker：`BLOCKED_CHANGE_REQUEST_REQUIRED`
 - CR-0005：PASS（审核提交 `0aab9b0813941d2a7581f1caf2da82956ae2bc14`；Findings 0/0/0/0；`CR5-RV-001` CLOSED）
-- 实施锁：已认领并继续保留，19 项全部 CLAIMED by Codex Backend
-- 实现状态：尚未开始写代码
+- 实施锁：继续保留，19 项全部 CLAIMED by Codex Backend
+- 实现状态：代码已完成但尚未提交
+- 实现工作区：完整保留且已建立仓库外 tracked patch 与 untracked archive 双备份
 
 ## 规格审核记录
 
@@ -74,13 +75,33 @@
 - TASK-0006 已 fast-forward 合并 main
 - main、origin/main 哈希一致（d3bfc52）
 - 全部 TASK-0006 模块锁已 RELEASED
-- TASK-0007 当前有效状态为 IN_PROGRESS（CR-0005 定点复审 PASS 后由 Codex Backend 合法执行 BLOCKED → IN_PROGRESS）
+- TASK-0007 当前有效状态为 BLOCKED（Codex Backend 在实现完成、提交前最终验证阶段合法执行 IN_PROGRESS → BLOCKED）
 - 实施 Owner：Codex Backend
 - TASK-0007 实施锁已由 Codex Backend 认领，尚未开始写代码
 
 ## 下一步
 
-Codex Backend 按 35 条 AC、16/5 文件预算和批准依赖开始最小实现。
+Codex Architect 创建最小验证规则 Change Request。
+
+## 当前验证规则阻塞记录
+
+- 原状态：IN_PROGRESS
+- 新状态：BLOCKED
+- 执行角色：Codex Backend
+- 实际执行环境：当前 Codex Backend 会话
+- Blocker：`BLOCKED_CHANGE_REQUEST_REQUIRED`
+- 阻塞发生阶段：实现完成、提交前最终验证阶段
+- 实现结果：16/16 新增文件、5/5 修改文件、3 个 Migration；单元测试 7/7、集成测试 12/12、全部测试 20/20；restore/build/test、工作流校验和 `git diff --check` 均通过
+- 缺失验证入口：`scripts/build.ps1`、`scripts/test.ps1`；当前仓库及 Git 历史中均不存在
+- 权限与预算：当前任务禁止修改 `scripts/`，文件预算已满，Codex Backend 无权自行新增脚本
+- 实现状态：代码已完成但尚未提交
+- 实现工作区：完整保留；仓库外备份为 `/home/shy/task-0007-implementation-tracked-20260719-093436.patch` 和 `/home/shy/task-0007-implementation-untracked-20260719-093436.tar.gz`
+- 实施锁：19 项继续 CLAIMED by Codex Backend
+- Reviewer：Codex Reviewer
+- 技术流程裁决角色：Codex Architect
+- 推荐最小裁决方向：现有 `scripts/verify-project.ps1` 配合 `dotnet restore/build/test` 替代缺失入口；尚未通过正式 CR 生效
+- 恢复目标：IN_PROGRESS
+- Next Action：Codex Architect 创建最小验证规则 Change Request
 
 ## 当前阻塞记录
 
