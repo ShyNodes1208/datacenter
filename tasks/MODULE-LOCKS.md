@@ -41,25 +41,25 @@
 | TASK-0007 | tasks/TASK-0007-BACKEND-FOUNDATION.md | Codex Architect | 2026-07-18（READY-GATE 审计纠正重新认领） | RELEASED | SPEC-RETEST-6 PASS（Reviewer 提交 3d532fd）；当前真实 Codex Architect 会话执行 DRAFT→READY 后释放；不转交 Codex Backend | 2026-07-19 00:24:46 +08:00（Codex Architect 实际释放） |
 | TASK-0007 | tasks/current-task.md | Codex Architect | 2026-07-18（READY-GATE 审计纠正重新认领） | RELEASED | SPEC-RETEST-6 PASS（Reviewer 提交 3d532fd）；当前真实 Codex Architect 会话执行 DRAFT→READY 后释放；不转交 Codex Backend | 2026-07-19 00:24:46 +08:00（Codex Architect 实际释放） |
 | TASK-0007 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-18（READY-GATE 审计纠正重新认领） | RELEASED | SPEC-RETEST-6 PASS（Reviewer 提交 3d532fd）；当前真实 Codex Architect 会话执行 DRAFT→READY 后释放；不转交 Codex Backend | 2026-07-19 00:24:46 +08:00（Codex Architect 实际释放） |
-| TASK-0007 | src/backend/Datacenter.Api/Models/User.cs | Codex Backend | 2026-07-19 00:37:55 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：User 实体；预算：新增 1/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
-| TASK-0007 | src/backend/Datacenter.Api/Models/Roles.cs | Codex Backend | 2026-07-19 00:37:55 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：固定角色常量；预算：新增 2/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
-| TASK-0007 | src/backend/Datacenter.Api/Data/AppDbContext.cs | Codex Backend | 2026-07-19 00:37:55 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：Users DbContext 与约束；预算：新增 3/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
-| TASK-0007 | src/backend/Datacenter.Api/Migrations/ | Codex Backend | 2026-07-19 00:37:55 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：仅 EF 自动生成的 InitialCreate、Designer、ModelSnapshot 三文件；预算：新增 4-6/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
-| TASK-0007 | src/backend/Datacenter.Api/Services/AuthService.cs | Codex Backend | 2026-07-19 00:37:55 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：认证业务逻辑；预算：新增 7/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
-| TASK-0007 | src/backend/Datacenter.Api/Controllers/AuthController.cs | Codex Backend | 2026-07-19 00:37:55 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：批准的 4 个认证端点；预算：新增 8/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
-| TASK-0007 | src/backend/Datacenter.Api/Auth/LoginRequest.cs | Codex Backend | 2026-07-19 00:37:55 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：登录请求 DTO；预算：新增 9/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
-| TASK-0007 | src/backend/Datacenter.Api/Auth/UserInfoResponse.cs | Codex Backend | 2026-07-19 00:37:55 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：用户信息响应 DTO；预算：新增 10/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
-| TASK-0007 | src/backend/Datacenter.Api/Auth/BootstrapExtensions.cs | Codex Backend | 2026-07-19 00:37:55 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：仅 Development Bootstrap；预算：新增 11/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
-| TASK-0007 | src/backend/Datacenter.Api/appsettings.Development.example.json | Codex Backend | 2026-07-19 00:37:55 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：无真实值的开发配置模板；预算：新增 12/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
-| TASK-0007 | .config/dotnet-tools.json | Codex Backend | 2026-07-19 00:37:55 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：dotnet-ef 8.0.29 Tool Manifest；预算：新增 13/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
-| TASK-0007 | tests/backend/Datacenter.Api.Tests/IntegrationTests/AuthTestFixture.cs | Codex Backend | 2026-07-19 00:37:55 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：认证集成测试夹具；预算：新增 14/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
-| TASK-0007 | tests/backend/Datacenter.Api.Tests/IntegrationTests/AuthIntegrationTests.cs | Codex Backend | 2026-07-19 00:37:55 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：认证集成测试；预算：新增 15/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
-| TASK-0007 | tests/backend/Datacenter.Api.Tests/UnitTests/AuthUnitTests.cs | Codex Backend | 2026-07-19 00:37:55 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：密码哈希、授权策略、角色约束单元测试；预算：新增 16/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
-| TASK-0007 | src/backend/Datacenter.Api/Datacenter.Api.csproj | Codex Backend | 2026-07-19 00:37:55 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：批准的 EF Core 包引用；预算：修改 1/5；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
-| TASK-0007 | src/backend/Datacenter.Api/Program.cs | Codex Backend | 2026-07-19 00:37:55 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：批准的后端管道配置；预算：修改 2/5；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
-| TASK-0007 | src/backend/Datacenter.Api/appsettings.json | Codex Backend | 2026-07-19 00:37:55 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：连接字符串模板与日志配置；预算：修改 3/5；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
-| TASK-0007 | tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj | Codex Backend | 2026-07-19 00:37:55 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：批准的 Mvc.Testing 包引用；预算：修改 4/5；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
-| TASK-0007 | .gitignore | Codex Backend | 2026-07-19 00:37:55 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：仅追加 .data/ 排除；预算：修改 5/5；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
+| TASK-0007 | src/backend/Datacenter.Api/Models/User.cs | Codex Backend | 2026-07-19 00:37:55 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：User 实体；预算：新增 1/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
+| TASK-0007 | src/backend/Datacenter.Api/Models/Roles.cs | Codex Backend | 2026-07-19 00:37:55 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：固定角色常量；预算：新增 2/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
+| TASK-0007 | src/backend/Datacenter.Api/Data/AppDbContext.cs | Codex Backend | 2026-07-19 00:37:55 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：Users DbContext 与约束；预算：新增 3/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
+| TASK-0007 | src/backend/Datacenter.Api/Migrations/ | Codex Backend | 2026-07-19 00:37:55 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：仅 EF 自动生成的 InitialCreate、Designer、ModelSnapshot 三文件；预算：新增 4-6/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
+| TASK-0007 | src/backend/Datacenter.Api/Services/AuthService.cs | Codex Backend | 2026-07-19 00:37:55 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：认证业务逻辑；预算：新增 7/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
+| TASK-0007 | src/backend/Datacenter.Api/Controllers/AuthController.cs | Codex Backend | 2026-07-19 00:37:55 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：批准的 4 个认证端点；预算：新增 8/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
+| TASK-0007 | src/backend/Datacenter.Api/Auth/LoginRequest.cs | Codex Backend | 2026-07-19 00:37:55 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：登录请求 DTO；预算：新增 9/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
+| TASK-0007 | src/backend/Datacenter.Api/Auth/UserInfoResponse.cs | Codex Backend | 2026-07-19 00:37:55 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：用户信息响应 DTO；预算：新增 10/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
+| TASK-0007 | src/backend/Datacenter.Api/Auth/BootstrapExtensions.cs | Codex Backend | 2026-07-19 00:37:55 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：仅 Development Bootstrap；预算：新增 11/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
+| TASK-0007 | src/backend/Datacenter.Api/appsettings.Development.example.json | Codex Backend | 2026-07-19 00:37:55 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：无真实值的开发配置模板；预算：新增 12/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
+| TASK-0007 | .config/dotnet-tools.json | Codex Backend | 2026-07-19 00:37:55 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：dotnet-ef 8.0.29 Tool Manifest；预算：新增 13/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
+| TASK-0007 | tests/backend/Datacenter.Api.Tests/IntegrationTests/AuthTestFixture.cs | Codex Backend | 2026-07-19 00:37:55 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：认证集成测试夹具；预算：新增 14/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
+| TASK-0007 | tests/backend/Datacenter.Api.Tests/IntegrationTests/AuthIntegrationTests.cs | Codex Backend | 2026-07-19 00:37:55 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：认证集成测试；预算：新增 15/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
+| TASK-0007 | tests/backend/Datacenter.Api.Tests/UnitTests/AuthUnitTests.cs | Codex Backend | 2026-07-19 00:37:55 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：密码哈希、授权策略、角色约束单元测试；预算：新增 16/16；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
+| TASK-0007 | src/backend/Datacenter.Api/Datacenter.Api.csproj | Codex Backend | 2026-07-19 00:37:55 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：批准的 EF Core 包引用；预算：修改 1/5；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
+| TASK-0007 | src/backend/Datacenter.Api/Program.cs | Codex Backend | 2026-07-19 00:37:55 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：批准的后端管道配置；预算：修改 2/5；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
+| TASK-0007 | src/backend/Datacenter.Api/appsettings.json | Codex Backend | 2026-07-19 00:37:55 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：连接字符串模板与日志配置；预算：修改 3/5；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
+| TASK-0007 | tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj | Codex Backend | 2026-07-19 00:37:55 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：批准的 Mvc.Testing 包引用；预算：修改 4/5；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
+| TASK-0007 | .gitignore | Codex Backend | 2026-07-19 00:37:55 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；依据：READY-GATE-2 / READY_APPROVED；范围：仅追加 .data/ 排除；预算：修改 5/5；TASK-0007 进入 COMPLETED 或 CANCELLED 时释放 | — |
 | CR-0005 | tasks/TASK-0007-BACKEND-FOUNDATION.md | Codex Architect | 2026-07-19 01:24:45 +08:00 | RELEASED | 仅补充 Microsoft.AspNetCore.Mvc.Testing 8.0.29；提交独立 CR 定点复审后释放 | 2026-07-19（Codex Architect 完成 CR 文档修改并释放） |
 | CR-0005 | tasks/current-task.md | Codex Architect | 2026-07-19 01:24:45 +08:00 | RELEASED | 仅同步 CR-0005 审计与下一步；提交独立 CR 定点复审后释放 | 2026-07-19（Codex Architect 完成 CR 文档修改并释放） |
 | CR-0005 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-19 01:24:45 +08:00 | RELEASED | 仅登记 CR-0005 最小文档锁；不修改 TASK-0007 实施锁 | 2026-07-19（Codex Architect 完成 CR 文档修改并释放） |
@@ -134,6 +134,22 @@
 - 实现工作区：保持不变；批准的 16 个新增文件和 5 个修改文件继续完整保留，未在状态恢复提交中暂存或提交
 - 规格锁及 CR 临时文档锁：三项 TASK-0007 规格锁及全部 CR 临时文档锁继续保持 RELEASED
 - 下一步：Codex Backend 在下一独立步骤执行 `675dc437^` 已批准基线下的提交前验证；CR-0006 新增验证门禁不再适用
+
+## TASK-0007 实现审核交接记录
+
+- 记录时间：2026-07-20
+- 原任务状态：IN_PROGRESS
+- 新任务状态：READY_FOR_REVIEW
+- 迁移依据：权威封闭迁移表 `IN_PROGRESS → READY_FOR_REVIEW`
+- 交接角色与原实施者：Codex Backend
+- 接收角色与 Reviewer：Codex Reviewer（只读审核，不成为实现 Owner）
+- 实现提交：`957ddab48e055409bf6c024d91ae20ad55813a32`
+- 原锁状态：19 项 CLAIMED by Codex Backend
+- 新锁状态：19 项 HANDED_OFF；路径、数量和 Owner 完全不变，不新增、不减少、不扩大、不重复认领
+- 交接原因：TASK-0007 实现、构建、测试和验收证据齐备，进入 READY_FOR_REVIEW
+- 修改限制：Reviewer 结论前 Codex Backend 不得修改上述实施路径
+- 后续处理：Reviewer 若要求修复，进入 CHANGES_REQUESTED 时保持 HANDED_OFF，进入 IN_FIX 前由修复者重新检查并改为 CLAIMED；Reviewer 通过并转 COMPLETED 前才释放
+- 规格锁及 CR 临时文档锁：继续保持 RELEASED
 
 ## 冲突处理示例
 

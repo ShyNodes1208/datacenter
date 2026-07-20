@@ -4,21 +4,28 @@
 
 ## 当前状态
 
-- Status：IN_PROGRESS
+- Status：READY_FOR_REVIEW
 - Owner：Codex Backend
 - Reviewer：Codex Reviewer
 - 任务：TASK-0007 — 后端 SQLite 基础与最小认证骨架
 - 分支：feature/task-0007-backend-foundation
 - 规格文件：tasks/TASK-0007-BACKEND-FOUNDATION.md
-- 当前阶段：TASK-0007 后端基础实施
+- 当前阶段：TASK-0007 完整实现等待独立审核
 - Blocker：无
 - 原 Blocker：`BLOCKED_CHANGE_REQUEST_REQUIRED`，已解除
 - CR-0005：PASS（审核提交 `0aab9b0813941d2a7581f1caf2da82956ae2bc14`；Findings 0/0/0/0；`CR5-RV-001` CLOSED）
 - CR6-RV-001：CLOSED（独立复审 PASS；Reviewer 提交 `2170b2464e2286e6fbe86279ebc7ebc76838d03d`）
 - CR-0006：REJECTED
-- 实施锁：继续保留，19 项全部 CLAIMED by Codex Backend
-- 实现状态：代码已完成但尚未提交
-- 实现工作区：完整保留且已建立仓库外 tracked patch 与 untracked archive 双备份
+- 实施锁：19 项全部由 CLAIMED 变更为 HANDED_OFF；Owner 仍为 Codex Backend，接收角色为只读 Codex Reviewer
+- 实现状态：已提交并推送，等待独立审核
+- 实现提交：`957ddab48e055409bf6c024d91ae20ad55813a32`（`feat: implement task-0007 backend foundation`）
+- Build：PASS，0 errors、0 warnings
+- Tests：UnitTests 7/7、IntegrationTests 20/20、总测试 28/28 PASS；failed 0，skipped 0
+- 工作流与差异检查：PASS=20，FAIL=0，TOTAL=20；`git diff --check` PASS
+- AC-BF-27：PASS；example 配置已被 Git 跟踪并包含于实现提交，只含占位值且无真实秘密
+- AC-BF-35：等待本轮状态交接提交推送后的最终 Git 检查
+- Next Action：独立 Codex Reviewer 审核完整实现
+- Backend 限制：Reviewer 结论前不得继续修改 19 项实施路径
 
 ## 规格审核记录
 
@@ -78,13 +85,33 @@
 - TASK-0006 已 fast-forward 合并 main
 - main、origin/main 哈希一致（d3bfc52）
 - 全部 TASK-0006 模块锁已 RELEASED
-- TASK-0007 当前有效状态为 BLOCKED（Codex Backend 在实现完成、提交前最终验证阶段合法执行 IN_PROGRESS → BLOCKED）
+- TASK-0007 当前有效状态为 READY_FOR_REVIEW；历史 BLOCKED 已经 CR6-RV-001 纠正并解除
 - 实施 Owner：Codex Backend
-- TASK-0007 实施锁已由 Codex Backend 认领，尚未开始写代码
+- TASK-0007 的 19 项实施锁已由 Codex Backend 交接为 HANDED_OFF，等待独立只读审核
 
 ## 下一步
 
-Codex Backend 在下一独立步骤执行批准基线下的提交前验证，不得重新实现或扩大范围；验证通过后再单独提交实现代码。
+独立 Codex Reviewer 审核提交 `957ddab48e055409bf6c024d91ae20ad55813a32` 的完整实现；Codex Backend 在 Reviewer 结论前不得修改实施路径。
+
+## 实现交审记录（2026-07-20）
+
+- 原状态：IN_PROGRESS
+- 新状态：READY_FOR_REVIEW
+- 执行角色与 Owner：Codex Backend
+- Reviewer / 接收角色：Codex Reviewer
+- 迁移依据：权威封闭迁移表 `IN_PROGRESS → READY_FOR_REVIEW`
+- Blocker：无
+- 实现提交：`957ddab48e055409bf6c024d91ae20ad55813a32`
+- 提交说明：`feat: implement task-0007 backend foundation`
+- 文件范围：21（16 新增、5 修改、3 Migration）；实现提交未包含任务管理文件
+- Build：PASS，0 errors、0 warnings
+- Tests：UnitTests 7/7、IntegrationTests 20/20、总测试 28/28 PASS；failed 0，skipped 0
+- 工作流：PASS=20，FAIL=0，TOTAL=20；`git diff --check` PASS
+- AC-BF-01 至 AC-BF-34：证据齐备；AC-BF-27 PASS
+- AC-BF-35：状态交接提交推送后执行最终 Git 门禁
+- 锁交接：19 项 CLAIMED → HANDED_OFF；Owner 不变，Reviewer 只读，不释放
+- Next Action：独立 Codex Reviewer 执行实现审核
+- Backend 限制：Reviewer 结论前停止修改所有实施路径
 
 ## CR6-RV-001 复审后的状态恢复记录
 

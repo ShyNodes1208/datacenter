@@ -4,14 +4,14 @@
 
 - Task ID：TASK-0007
 - Task Name：后端 SQLite 基础与最小认证骨架
-- Status：IN_PROGRESS
+- Status：READY_FOR_REVIEW
 - Owner：Codex Backend（AGENTS.md 第 3 节；实施 Owner）
 - Reviewer：Codex Reviewer
 - Branch：feature/task-0007-backend-foundation
 - Requirement Source：hangyu 提出的企业机房服务器落位可视化需求
 - Product Baseline：docs/product/MVP-PRODUCT-BASELINE.md（TASK-0004，COMPLETED，PASS）
 - Architecture Reference：docs/architecture/MVP-ARCHITECTURE-BASELINE.md（TASK-0005，COMPLETED，PASS）
-- Module Lock：三项规格文档锁保持 RELEASED；19 项实施锁继续由 Codex Backend 保持 CLAIMED
+- Module Lock：三项规格文档锁保持 RELEASED；19 项实施锁由 Codex Backend 保持 Owner 并已交接为 HANDED_OFF，等待 Codex Reviewer 只读审核
 
 ## Reviewer 独立性检查
 
@@ -925,6 +925,7 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | 2026-07-19 | Codex Backend（当前真实 Codex Backend 会话） | BLOCKED | IN_PROGRESS | Codex Backend | 权威封闭迁移 `BLOCKED → IN_PROGRESS`；原 Blocker `BLOCKED_SPEC_DEPENDENCY_VERSION` 已解除。CR-0005 已写入 `Microsoft.AspNetCore.Mvc.Testing 8.0.29`；定点复审 PASS（审核提交 `0aab9b0813941d2a7581f1caf2da82956ae2bc14`；Findings 0/0/0/0；`CR5-RV-001` CLOSED）。19 项实施锁继续 CLAIMED；三项规格锁及 CR 临时文档锁保持 RELEASED；尚未开始写代码 |
 | 2026-07-19 | Codex Backend（当前真实 Codex Backend 会话） | IN_PROGRESS | BLOCKED | Codex Architect | **历史记录；技术前提后经 CR6-RV-001 判定无效。** `BLOCKED_CHANGE_REQUEST_REQUIRED` 当时依据仓库外提示词中的 `scripts/build.ps1`/`scripts/test.ps1` 要求登记；`675dc437^` 的批准规格并无该要求。实现已按 16/5 预算完成，20/20 测试及 restore/build/test、工作流、diff 检查通过，尚未提交；19 项实施锁继续 CLAIMED；恢复目标 IN_PROGRESS |
 | 2026-07-20 | Codex Backend（当前真实 Codex Backend 会话） | BLOCKED | IN_PROGRESS | Codex Backend | 权威封闭迁移 `BLOCKED → IN_PROGRESS`；CR6-RV-001 独立复审 PASS 并 CLOSED（报告 `reviews/tasks/CR-0006-TASK-0007-VALIDATION-GATE-SCOPE-RETEST.md`；Reviewer 提交 `2170b2464e2286e6fbe86279ebc7ebc76838d03d`）；CR-0006 最终为 REJECTED；原 Blocker `BLOCKED_CHANGE_REQUEST_REQUIRED` 已解除；恢复 `675dc437^` 已批准验证基线，CR-0006 新增门禁不再适用；19 项实施锁继续 CLAIMED；完整实现保持未暂存、未提交 |
+| 2026-07-20 | Codex Backend | IN_PROGRESS | READY_FOR_REVIEW | Codex Reviewer | 权威封闭迁移 `IN_PROGRESS → READY_FOR_REVIEW`；实现提交 `957ddab48e055409bf6c024d91ae20ad55813a32` 已推送；build 0 errors/0 warnings，UnitTests 7/7、IntegrationTests 20/20、总测试 28/28，工作流 20/20，diff check PASS；AC-BF-01 至 AC-BF-34 已有证据；19 项实施锁 CLAIMED → HANDED_OFF；等待独立实现审核，Backend 停止修改实施路径 |
 
 ## 审核结论
 
@@ -1034,11 +1035,52 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 
 ## Git 提交与推送
 
-- 提交说明：
-- 提交哈希：
-- 推送结果：
-- 本地哈希：
-- 远端哈希：
+- 实现角色：Codex Backend
+- 提交说明：`feat: implement task-0007 backend foundation`
+- 实现提交：`957ddab48e055409bf6c024d91ae20ad55813a32`
+- 提交文件：21（新增 16/16，修改 5/5，Migration 3/3）
+- 推送结果：成功；实现提交未包含任务管理文件
+- 本地哈希：`957ddab48e055409bf6c024d91ae20ad55813a32`
+- 远端哈希：`957ddab48e055409bf6c024d91ae20ad55813a32`
+- 本地与远端实现提交一致：是
+
+## 实现交审证据（2026-07-20）
+
+### 构建和测试证据
+
+- `dotnet tool restore`：PASS
+- `dotnet restore Datacenter.sln`：PASS
+- `dotnet build Datacenter.sln --no-restore`：PASS；errors 0，warnings 0
+- UnitTests：7/7 PASS
+- IntegrationTests：20/20 PASS
+- 总测试：28/28 PASS；failed 0，skipped 0
+- 工作流验证：PASS=20，FAIL=0，TOTAL=20
+- `git diff --check`：PASS
+
+### 验收和范围证据
+
+- AC-BF-01 至 AC-BF-26：PASS
+- AC-BF-27：PASS；example 配置已由 Git 跟踪，包含于实现提交 `957ddab48e055409bf6c024d91ae20ad55813a32`，只含示例占位值且不含真实秘密
+- AC-BF-28 至 AC-BF-34：PASS
+- AC-BF-35：实现提交部分已完成；状态交接提交推送后以最终 Git 输出完成门禁
+- API 范围：4 个认证 API；角色范围：4 个固定角色
+- 依赖范围：4 项批准依赖，版本均为 8.0.29；Migration 文件预算：3/3
+- 防过度开发检查：PASS；无 JWT、Refresh Token、RBAC Schema、Repository、Unit of Work、事件总线、业务实体、业务 API 或 TASK-0008 内容
+
+### READY_FOR_REVIEW 迁移与交接
+
+- 原状态：IN_PROGRESS
+- 新状态：READY_FOR_REVIEW
+- 执行角色：Codex Backend
+- Owner：Codex Backend
+- Reviewer / 接收角色：Codex Reviewer
+- 迁移依据：权威封闭迁移表 `IN_PROGRESS → READY_FOR_REVIEW`
+- 实现提交：`957ddab48e055409bf6c024d91ae20ad55813a32`
+- 构建及测试证据：全部通过
+- Blocker：无
+- 锁交接：19 项实施锁由 CLAIMED 变更为 HANDED_OFF，不释放；Owner 仍为 Codex Backend，Reviewer 只读审核
+- 下一步：独立 Codex Reviewer 审核完整实现
+- 限制：Codex Backend 在 Reviewer 结论前停止修改全部实施路径
 
 ## 已知限制
 
@@ -1078,5 +1120,5 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 > Owner 为 Codex Backend，Reviewer 为 Codex Reviewer。
 > 规格已按 Codex Reviewer 六次审核报告（cc44f8b SPEC-REVIEW、a84624c SPEC-RETEST、f517ee3 SPEC-RETEST-2、53a5fbc SPEC-RETEST-3、7ac9cbc SPEC-RETEST-4、6844cfc SPEC-RETEST-5）全面修正。第六次复审 SPEC-RETEST-6（提交 3d532fd）结论 PASS，Findings 0/0/0/0。
 > 全部 BF-SR、BF-RT1、BF-RT2、BF-RT3、BF-RT4 和 BF-RT5 finding 已 CLOSED。
-> 当前有效状态为 IN_PROGRESS。此前依赖版本阻塞已通过 CR-0005 解除；`675dc437` 登记的 `BLOCKED_CHANGE_REQUEST_REQUIRED` 技术依据已由 CR6-RV-001 证明无法从批准规格复现。CR-0006 已纠正为 REJECTED，CR6-RV-001 已经独立 Reviewer 复审 PASS 并 CLOSED；Codex Backend 已合法执行 BLOCKED → IN_PROGRESS，恢复 `675dc437^` 已批准验证基线。
-> 提交 322e240 的 DRAFT → READY 及三项规格锁释放仍为 INVALID，第一阶段 CORRECTION 历史继续保留。三项规格文档锁和 CR 临时文档锁保持 RELEASED；19 项实施锁继续保持 CLAIMED，Owner 为 Codex Backend。实现代码已完成但尚未提交，完整保留在工作区并已建立仓库外备份。
+> 当前有效状态为 READY_FOR_REVIEW。此前依赖版本阻塞已通过 CR-0005 解除；CR-0006 已纠正为 REJECTED，CR6-RV-001 已独立复审 PASS 并 CLOSED；Codex Backend 已完成实现、验证、纯实现提交和审核交接，等待独立 Codex Reviewer 审核。
+> 提交 322e240 的 DRAFT → READY 及三项规格锁释放仍为 INVALID，第一阶段 CORRECTION 历史继续保留。三项规格文档锁和 CR 临时文档锁保持 RELEASED；19 项实施锁为 HANDED_OFF，Owner 仍为 Codex Backend，Reviewer 只读审核；Backend 在 Reviewer 结论前不得修改实施路径。
