@@ -29,6 +29,7 @@ appsettings.Development.json
 appsettings.*.local.json
 
 # Database
+.data/
 *.db
 *.db-shm
 *.db-wal
