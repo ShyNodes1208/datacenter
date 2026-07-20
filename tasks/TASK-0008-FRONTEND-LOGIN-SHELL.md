@@ -153,11 +153,17 @@
 
 `src/frontend/vite.config.ts` 的唯一修改职责是使用 Vite 内置配置能力提供开发期 `/api` proxy；不得加入生产部署、通用代理或其他环境系统。原 12 个预算文件均仍为必要文件，因此不删除任何路径；新增这一项后总量由 12（新增 8、修改 4）变为 13（新增 8、修改 5）。禁止目录级预算、未来占位文件、后端文件、部署文件、TASK-0007、Room 文件、数据库或 Migration 修改。
 
+依赖兼容性证据不增加实施文件：`src/frontend/package.json` 与 `src/frontend/package-lock.json` 已准确列为修改，`src/frontend/vite.config.ts` 也已包含在上述 13 文件预算中；列表与新增 8、修改 5 的统计一致。
+
 ## 精确依赖预算
 
-- 新增生产依赖仅 1 项：`vue-router` 精确版本 `4.6.3`，在 `package.json` 使用 `"vue-router": "4.6.3"`，并由现有 npm lockfileVersion 3 锁定传递依赖。
+- 当前工程版本证据（U03-B 只读取得）：Node.js `v24.18.0`、npm `11.16.0`；`package.json` 声明 Vue `^3.5.39`、Vite `^8.1.1`、TypeScript `~6.0.2`、`@vitejs/plugin-vue` `^6.0.7`、Vitest `^4.1.10`，当前实际安装分别为 Vue `3.5.40`、Vite `8.1.5`、TypeScript `6.0.3`、`@vitejs/plugin-vue` `6.0.8`、Vitest `4.1.10`。项目未声明 `engines` 或 `packageManager`，未安装 `@vue/test-utils`、jsdom 或 `vue-router`；lockfileVersion 为 3。
+- 官方包元数据证据：执行 `npm view vue-router@4.6.3 version peerDependencies engines --json` 返回版本 `4.6.3`、peerDependencies 为 `{ "vue": "^3.5.0" }`，且未声明 `engines`；补充执行 `npm view vue-router@4.6.3 dependencies --json` 返回传递依赖 `{ "@vue/devtools-api": "^6.6.4" }`。当前 Vue 声明范围和实际版本均满足 peer 要求；Router 无额外 Node engine 要求，当前 Node 可用；元数据未声明与 Vite或 TypeScript 的直接 peer/engine 约束，现有 Vite、TypeScript 和 Vue 插件无需变更。
+- 兼容性裁决：保留 `vue-router` 精确版本 `4.6.3`。新增直接生产依赖仅此 1 项，必须位于 `package.json` 的 `dependencies`，准确字符串为 `"vue-router": "4.6.3"`；禁止使用 `^4.6.3`、`~4.6.3`、`latest` 或 `4.x`。`@vue/devtools-api` 仅由 npm 作为传递依赖解析，不得另列为直接依赖。
+- `package-lock.json` 必须与 `package.json` 在同一次精确安装中由 npm 正常同步更新，锁定 `vue-router` 及其传递依赖；禁止手工编辑 lock 文件。不得升级现有依赖、增加其他直接依赖或运行 `npm audit fix`。
 - 新增开发依赖：0。
 - 继续使用现有 Vue、Vitest、TypeScript、Vite 和 Vue 自带服务端渲染能力；不新增组件挂载或 DOM 仿真工具。
+- 当前 Vitest 与 `createMemoryHistory` 足以测试 Router；不修改 Vite 插件或 TypeScript 配置，不新增 `@vue/test-utils`、jsdom 或其他测试框架/依赖。
 - 禁止 Pinia、Axios、UI/表单/验证/CSS 框架及其他生产依赖；禁止新增测试框架。
 
 ## 测试要求
@@ -208,6 +214,7 @@
 | U02 | 5～10 分钟 | 独立 Reviewer 规格审核；仅新增审核报告 |
 | U03 | 5～10 分钟/轮 | 每轮仅修复一个或一组紧密相关 Finding；只改任务文档及必要状态记录 |
 | U04 | 5～10 分钟 | 独立规格复审；PASS 后由有权 Architect 单独执行 DRAFT → READY，不实施代码 |
+| U04-A | 5～10 分钟 | 仅在任务已合法进入 READY 且实施锁已认领后，于 `src/frontend/` 执行 `npm install --save-exact vue-router@4.6.3`，核对 `package.json` 和 `package-lock.json` 的实际依赖差异并报告；不得顺带实现 Router、升级其他包或运行 `npm audit fix`，失败立即停止 |
 | U05 | 5～10 分钟 | 仅新增 Router 并接入 `main.ts`/`App.vue`，不写页面逻辑 |
 | U06 | 5～10 分钟 | 仅实现静态登录表单，不接 API |
 | U07 | 5～10 分钟 | 仅实现最小 fetch 与错误契约，不实现认证状态 |
