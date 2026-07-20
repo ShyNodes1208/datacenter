@@ -4,6 +4,9 @@
 
 | Task ID | Module or Path | Owner | Claimed At | Status | Release Condition | Released At |
 |---|---|---|---|---|---|---|
+| TASK-0008 | tasks/TASK-0008-FRONTEND-LOGIN-SHELL.md | Codex Architect | 2026-07-20 +08:00 | CLAIMED | U02 独立规格审核及必要 U03 修正完成，Reviewer PASS 后由有权 Architect 执行 DRAFT → READY 时释放；取消则按工作流释放 | — |
+| TASK-0008 | tasks/current-task.md | Codex Architect | 2026-07-20 +08:00 | CLAIMED | U02 独立规格审核及必要 U03 修正完成，Reviewer PASS 后由有权 Architect 执行 DRAFT → READY 时释放；取消则按工作流释放 | — |
+| TASK-0008 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-20 +08:00 | CLAIMED | 仅维护 TASK-0008 规格锁；Reviewer PASS 后由有权 Architect 执行 DRAFT → READY 时释放；取消则按工作流释放 | — |
 | TASK-0002 | AGENTS.md | Codex Architect | 2026-07-16 +08:00 | RELEASED | TASK-0002 进入 COMPLETED 或 CANCELLED | 2026-07-16 16:48:08 +08:00 |
 | TASK-0002 | agents/ | Codex Architect | 2026-07-16 +08:00 | RELEASED | TASK-0002 进入 COMPLETED 或 CANCELLED | 2026-07-16 16:48:08 +08:00 |
 | TASK-0002 | docs/architecture/AGENT-WORKFLOW.md | Codex Architect | 2026-07-16 +08:00 | RELEASED | TASK-0002 进入 COMPLETED 或 CANCELLED | 2026-07-16 16:48:08 +08:00 |

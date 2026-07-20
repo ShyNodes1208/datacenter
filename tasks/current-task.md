@@ -4,6 +4,40 @@
 
 ## 当前状态
 
+- Status：DRAFT
+- Owner：Codex Architect
+- Reviewer：Codex Reviewer
+- 任务：TASK-0008 — 前端基础与登录壳
+- 分支：feature/task-0008-frontend-login-shell
+- 规格文件：tasks/TASK-0008-FRONTEND-LOGIN-SHELL.md
+- 当前执行单元：U01
+- 当前阶段：规格编写
+- Blocker：无
+- Next Action：Codex Reviewer 执行 U02 规格审核
+- 实现许可：否；当前仅允许规格审核与后续受控规格修正
+
+## 前序任务完成基线
+
+- TASK-0007：COMPLETED
+- TASK-0007 实施锁：19 项全部 RELEASED
+- TASK-0007 回归基线：28/28 PASS
+
+## TASK-0008 U01 规格交接
+
+- Status：DRAFT
+- Owner：Codex Architect
+- Reviewer：Codex Reviewer
+- 当前执行单元：U01
+- 当前阶段：规格编写
+- 变更范围：仅 TASK-0008 任务文档、current-task 和本轮规格锁
+- 规格锁：三项 CLAIMED by Codex Architect；未认领任何实施路径
+- Next Action：Codex Reviewer 执行 U02 规格审核
+- Blocker：无
+- 允许进入 U02：是
+- 允许开始实现：否
+
+## TASK-0007 完成归档
+
 - Status：COMPLETED
 - Owner：Codex Backend
 - Reviewer：Codex Reviewer
@@ -30,7 +64,7 @@
 - AC：35/35 PASS；AC-BF-27 PASS；AC-BF-35 PASS
 - 文件预算：新增 16/16、修改 5/5；依赖预算 PASS；防过度开发 PASS
 - 任务结束时间：2026-07-20 14:40:40 +08:00
-- Next Action：TASK-0007 已完成，等待独立合并门禁
+- Next Action：已由 TASK-0008 DRAFT 指针取代；本节仅保留完成历史
 - 完成限制：不得继续修改 TASK-0007 实施路径；尚未允许直接合并 main；不得自动切换或开始 TASK-0008
 
 ## 规格审核记录
