@@ -30,6 +30,21 @@
 - 认证 Cookie 名称为 `Datacenter.Auth`，HttpOnly、SameSite=Lax、非持久、固定 8 小时且无滑动续期；Cookie 和 Antiforgery Cookie 均由浏览器管理，前端不得读取或保存。
 - 统一错误响应为 `{"error":"人类可读的失败原因"}`；认证失败响应为 401。
 
+## 开发环境同源联调路径
+
+- 前端 API 路径始终使用相对 `/api`，不得硬编码后端或生产服务器地址。开发联调仅在现有 `src/frontend/vite.config.ts` 中配置 `/api` proxy，将请求转发到本地 .NET 后端；浏览器始终访问 Vite 前端地址并以同源 `/api/auth/*` 发起请求。
+- proxy 默认目标采用当前后端 `src/backend/Datacenter.Api/Properties/launchSettings.json` 的 HTTP profile：`http://localhost:5142`。允许在现有配置中使用 Vite 内置 `loadEnv` 读取仅用于开发代理的 `VITE_API_PROXY_TARGET` 覆盖该目标；未配置时使用上述默认值。不得为此增加环境配置框架、依赖或新的配置文件。
+- proxy 仅属于开发联调，不定义或改变生产部署方式，不修改后端代码，也不增加 CORS。该路径不改变 TASK-0007 的 Cookie Authentication 与 Antiforgery 契约：Cookie 和 Antiforgery Cookie 仍由浏览器管理，前端不读取、保存或复制 Cookie。
+- 所有 fetch 请求使用 `credentials: "include"`；认证信息、Cookie 和 CSRF Token 不得写入 `localStorage` 或 `sessionStorage`。不得以跨域 URL、新增 CORS、Axios、后端静态托管或测试专用生产端点绕过同源路径。
+
+实现完成后的联调顺序（仅 U15-A、U15-B 执行，本轮不得启动）：
+
+1. 在仓库根目录启动本地 .NET 后端：`dotnet run --project src/backend/Datacenter.Api/Datacenter.Api.csproj --launch-profile http`。
+2. 在 `src/frontend/` 启动 Vite 开发服务：`npm run dev`。
+3. 浏览器访问 Vite 输出的前端地址（默认 `http://localhost:5173`）。
+4. 前端只通过相对 `/api/auth/*` 经 Vite proxy 调用后端。
+5. 按 U15-A、U15-B 验证 csrf、login、me、logout 的最小完整流程并记录结果。
+
 ## 严格实施范围
 
 1. Vue Router 基础配置并接入应用入口。
@@ -56,7 +71,7 @@
 ## `useApi` 最小职责
 
 - 仅接收相对 `/api` 路径，拒绝或不支持任意外部 URL。
-- 使用原生 `fetch`，默认 `credentials: "same-origin"` 携带同源 Cookie。
+- 使用原生 `fetch`，默认 `credentials: "include"`；浏览器经 Vite proxy 仍以同源方式管理 Cookie。
 - 处理 JSON 请求/响应和 204 空响应。
 - 从非成功 JSON 响应提取统一 `{"error":"..."}`；无有效统一错误时提供不泄露敏感信息的通用错误。
 - 对需要 Antiforgery 的认证 POST 添加真实 Header 名 `X-XSRF-TOKEN`。
@@ -118,7 +133,7 @@
 
 ## 精确文件预算
 
-预算总计 12 个文件：新增 8，修改 4。仅以下完整路径可由实施单元修改；任何增加或替换均需 Change Request。
+预算总计 13 个文件：新增 8，修改 5。仅以下完整路径可由实施单元修改；任何增加或替换均需 Change Request。
 
 | 操作 | 完整路径 | 对应 AC |
 |---|---|---|
@@ -132,10 +147,11 @@
 | 新增 | `src/frontend/src/__tests__/router-and-views.test.ts` | AC-01、AC-02、AC-03、AC-08 |
 | 修改 | `src/frontend/src/main.ts` | AC-01 |
 | 修改 | `src/frontend/src/App.vue` | AC-01 |
+| 修改 | `src/frontend/vite.config.ts` | AC-04、AC-11 |
 | 修改 | `src/frontend/package.json` | AC-11 |
 | 修改 | `src/frontend/package-lock.json` | AC-11 |
 
-禁止目录级预算、未来占位文件、后端文件、TASK-0007、Room 文件、数据库或 Migration 修改。当前 `vite.config.ts` 不在预算内：认证调用使用相对 `/api`，真实联调通过后端同源托管或现有运行方式验证；若实施发现必须修改代理，先停止并走 Change Request。
+`src/frontend/vite.config.ts` 的唯一修改职责是使用 Vite 内置配置能力提供开发期 `/api` proxy；不得加入生产部署、通用代理或其他环境系统。原 12 个预算文件均仍为必要文件，因此不删除任何路径；新增这一项后总量由 12（新增 8、修改 4）变为 13（新增 8、修改 5）。禁止目录级预算、未来占位文件、后端文件、部署文件、TASK-0007、Room 文件、数据库或 Migration 修改。
 
 ## 精确依赖预算
 
@@ -147,6 +163,10 @@
 ## 测试要求
 
 使用现有 Vitest 与 Node 环境。页面基本渲染通过 Vue 自带服务端渲染能力验证；路由测试使用 `createMemoryHistory`，不新增 DOM 工具。测试必须覆盖：
+
+- 单元测试只使用 fetch mock 验证请求与认证流程，不启动真实服务。
+- U15 使用真实本地 .NET 后端与 Vite 开发服务器，经实际 `/api` proxy 联调；不依赖外部服务、不连接远程数据库，SQLite 使用 TASK-0007 已有开发配置。
+- 联调失败立即停止并记录，不修改代码、不现场修复，也不得增加或调用测试专用生产端点绕过失败。
 
 1. 登录页用户名、密码、按钮和错误区域基本渲染。
 2. 登录成功后进入 `/`。
@@ -175,7 +195,7 @@
 | AC-08 | 守卫使匿名访问 `/` 转至 `/login`、已登录访问 `/login` 转至 `/`，初始化只执行一次且无无限重定向。 | 路由测试 |
 | AC-09 | `X-XSRF-TOKEN` 生命周期与 TASK-0007 一致，匿名旧令牌不用于登录后状态变更。 | 请求顺序测试 |
 | AC-10 | 密码、Cookie、CSRF Token 不写入持久存储或日志，前端不读取 Cookie。 | 单元测试、代码审查 |
-| AC-11 | 实际变更不超出 12 文件预算，依赖仅新增 `vue-router` 4.6.3，前端构建/测试 0 errors、0 warnings。 | Git、npm 命令 |
+| AC-11 | 实际变更不超出 13 文件预算，依赖仅新增 `vue-router` 4.6.3，前端构建/测试 0 errors、0 warnings。 | Git、npm 命令 |
 | AC-12 | 无明确不实现内容、TASK-0009 内容、后端/数据库修改或未来抽象，后端 28/28 测试不回归。 | 范围审查、dotnet test |
 
 ## 5～10 分钟执行单元
@@ -198,7 +218,8 @@
 | U12 | 5～10 分钟 | 仅实现用户名、角色和登出按钮的受保护首页壳 |
 | U13 | 5～10 分钟 | 仅补 `useApi`/`useAuth` 测试 |
 | U14 | 5～10 分钟 | 仅补页面、跳转、守卫与错误展示测试 |
-| U15 | 5～10 分钟 | 不改范围；仅联调验证四个认证 API |
+| U15-A | 5～10 分钟 | 不改代码；启动或确认本地后端与 Vite，仅经 `/api` proxy 验证匿名 csrf → login → 认证后 csrf → me 并记录结果；任一步失败立即停止报告，不修复 |
+| U15-B | 5～10 分钟 | 不改代码；确认 U15-A 的真实本地进程和登录态，仅经 `/api` proxy 验证认证后 csrf → logout → me 返回 401/登录态清除并记录结果；任一步失败立即停止报告，不修复 |
 | U16 | 5～10 分钟 | 不改实现且不得顺手修复；只运行完整前端构建/测试和后端 28/28 回归 |
 | U17 | 5～10 分钟 | 不改实现；仅显式暂存批准文件、提交、推送、登记证据并执行合法交审迁移 |
 
