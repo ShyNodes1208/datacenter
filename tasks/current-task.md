@@ -4,15 +4,18 @@
 
 ## 当前状态
 
-- Status：BLOCKED
+- Status：IN_PROGRESS
 - Owner：Codex Backend
 - Reviewer：Codex Reviewer
 - 任务：TASK-0007 — 后端 SQLite 基础与最小认证骨架
 - 分支：feature/task-0007-backend-foundation
 - 规格文件：tasks/TASK-0007-BACKEND-FOUNDATION.md
 - 当前阶段：TASK-0007 后端基础实施
-- Blocker：`BLOCKED_CHANGE_REQUEST_REQUIRED`
+- Blocker：无
+- 原 Blocker：`BLOCKED_CHANGE_REQUEST_REQUIRED`，已解除
 - CR-0005：PASS（审核提交 `0aab9b0813941d2a7581f1caf2da82956ae2bc14`；Findings 0/0/0/0；`CR5-RV-001` CLOSED）
+- CR6-RV-001：CLOSED（独立复审 PASS；Reviewer 提交 `2170b2464e2286e6fbe86279ebc7ebc76838d03d`）
+- CR-0006：REJECTED
 - 实施锁：继续保留，19 项全部 CLAIMED by Codex Backend
 - 实现状态：代码已完成但尚未提交
 - 实现工作区：完整保留且已建立仓库外 tracked patch 与 untracked archive 双备份
@@ -81,7 +84,26 @@
 
 ## 下一步
 
-独立 Codex Reviewer 定点复审 CR6-RV-001 审计纠正；PASS 前不得提交当前完整实现。
+Codex Backend 在下一独立步骤执行批准基线下的提交前验证，不得重新实现或扩大范围；验证通过后再单独提交实现代码。
+
+## CR6-RV-001 复审后的状态恢复记录
+
+- 原状态：BLOCKED
+- 新状态：IN_PROGRESS
+- 执行角色：Codex Backend
+- Owner：Codex Backend
+- Reviewer：Codex Reviewer
+- 合法迁移：权威封闭迁移表 `BLOCKED → IN_PROGRESS`
+- 原 Blocker：`BLOCKED_CHANGE_REQUEST_REQUIRED`，已解除
+- 解除依据：`reviews/tasks/CR-0006-TASK-0007-VALIDATION-GATE-SCOPE-RETEST.md`
+- Reviewer PASS 提交：`2170b2464e2286e6fbe86279ebc7ebc76838d03d`
+- CR6-RV-001：CLOSED
+- CR-0006：REJECTED
+- 恢复的验证基线：`675dc437^` 已批准基线；CR-0006 新增验证门禁不再适用
+- 实现状态：代码已完成但尚未提交；完整保留在工作区
+- 实施锁：19 项继续 CLAIMED by Codex Backend；规格锁及 CR 临时文档锁继续 RELEASED
+- 状态恢复提交范围：仅三份任务管理文件；实现文件不暂存、不提交
+- Next Action：Codex Backend 执行批准基线下的提交前验证，不得重新实现或扩大范围
 
 ## CR6-RV-001 审计纠正记录（当前阻塞）
 

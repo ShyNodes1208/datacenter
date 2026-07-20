@@ -119,6 +119,22 @@
 - CR 文档临时锁：CR6-RV-001 四项最小文档锁已 RELEASED；不影响 Backend 实施锁
 - 恢复目标：IN_PROGRESS
 
+## TASK-0007 CR6-RV-001 复审后状态恢复审计
+
+- 记录时间：2026-07-20
+- 原任务状态：BLOCKED
+- 新任务状态：IN_PROGRESS
+- 执行角色与 Owner：Codex Backend
+- Reviewer：Codex Reviewer
+- 原 Blocker：`BLOCKED_CHANGE_REQUEST_REQUIRED`，已解除
+- 解除依据：CR6-RV-001 独立 Reviewer PASS；报告 `reviews/tasks/CR-0006-TASK-0007-VALIDATION-GATE-SCOPE-RETEST.md`；提交 `2170b2464e2286e6fbe86279ebc7ebc76838d03d`
+- CR6-RV-001：CLOSED
+- CR-0006：REJECTED
+- 锁状态：上述 19 项实施锁继续保持 CLAIMED by Codex Backend；未修改现有锁表行的路径、Owner 或状态，未新增、减少、释放、交接或重复认领
+- 实现工作区：保持不变；批准的 16 个新增文件和 5 个修改文件继续完整保留，未在状态恢复提交中暂存或提交
+- 规格锁及 CR 临时文档锁：三项 TASK-0007 规格锁及全部 CR 临时文档锁继续保持 RELEASED
+- 下一步：Codex Backend 在下一独立步骤执行 `675dc437^` 已批准基线下的提交前验证；CR-0006 新增验证门禁不再适用
+
 ## 冲突处理示例
 
 若 TASK-1001 已以 `CLAIMED` 占用 `src/backend/Assets/`，TASK-1002 申请 `src/backend/Assets/Racks/` 时属于子路径重叠。TASK-1002 不得认领或修改，必须转为 `BLOCKED` 并记录 TASK-1001；待 TASK-1001 释放后重新检查并认领。

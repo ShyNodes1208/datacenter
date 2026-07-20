@@ -4,7 +4,7 @@
 
 - Task ID：TASK-0007
 - Task Name：后端 SQLite 基础与最小认证骨架
-- Status：BLOCKED
+- Status：IN_PROGRESS
 - Owner：Codex Backend（AGENTS.md 第 3 节；实施 Owner）
 - Reviewer：Codex Reviewer
 - Branch：feature/task-0007-backend-foundation
@@ -93,6 +93,27 @@
   1. 独立 Codex Reviewer 对 CR6-RV-001 审计纠正复审并 PASS；
   2. 当前 Owner 执行合法的 `BLOCKED → IN_PROGRESS`；
   3. 按恢复后的 TASK-0007 已批准规格继续提交前流程。
+
+## CR6-RV-001 复审后的状态恢复
+
+- 原状态：BLOCKED
+- 新状态：IN_PROGRESS
+- 执行角色：Codex Backend
+- 当前 Owner：Codex Backend
+- Reviewer：Codex Reviewer
+- 迁移依据：权威封闭迁移表 `BLOCKED → IN_PROGRESS`
+- 原 Blocker：`BLOCKED_CHANGE_REQUEST_REQUIRED`
+- Blocker 处理结果：已解除
+- 解除依据：`reviews/tasks/CR-0006-TASK-0007-VALIDATION-GATE-SCOPE-RETEST.md`
+- Reviewer PASS 提交：`2170b2464e2286e6fbe86279ebc7ebc76838d03d`
+- CR6-RV-001：CLOSED
+- CR-0006：REJECTED
+- 恢复的验证基线：`675dc437^` 已批准基线
+- CR-0006 新增验证门禁：不再适用
+- 实施锁：19 项继续保持 CLAIMED by Codex Backend；未释放、交接、增加、减少或重新认领
+- 当前实现状态：代码已完成但尚未提交
+- 当前实现工作区：完整保留；实现文件未在本次状态恢复提交中暂存或提交
+- 下一步：Codex Backend 在下一独立步骤执行批准基线下的提交前验证，验证通过后再单独提交实现代码
 
 ## 前置条件
 
@@ -903,6 +924,7 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 | 2026-07-19 01:08:26 +08:00 | Codex Backend（当前真实 Codex Backend 会话） | IN_PROGRESS | BLOCKED | Codex Architect（待创建正式 Change Request） | 阻塞类型 `BLOCKED_SPEC_DEPENDENCY_VERSION`：`Microsoft.AspNetCore.Mvc.Testing` 在任务依赖章节与 AC-BF-34 中缺少精确版本，测试项目当前也不存在该依赖；Codex Backend 无权自行选择版本，已停止且未修改实施文件。待裁决值为 8.0.29，但尚未通过正式 CR 生效。恢复目标为 IN_PROGRESS；普通 BLOCKED 期间全部实施锁保持 CLAIMED by Codex Backend |
 | 2026-07-19 | Codex Backend（当前真实 Codex Backend 会话） | BLOCKED | IN_PROGRESS | Codex Backend | 权威封闭迁移 `BLOCKED → IN_PROGRESS`；原 Blocker `BLOCKED_SPEC_DEPENDENCY_VERSION` 已解除。CR-0005 已写入 `Microsoft.AspNetCore.Mvc.Testing 8.0.29`；定点复审 PASS（审核提交 `0aab9b0813941d2a7581f1caf2da82956ae2bc14`；Findings 0/0/0/0；`CR5-RV-001` CLOSED）。19 项实施锁继续 CLAIMED；三项规格锁及 CR 临时文档锁保持 RELEASED；尚未开始写代码 |
 | 2026-07-19 | Codex Backend（当前真实 Codex Backend 会话） | IN_PROGRESS | BLOCKED | Codex Architect | **历史记录；技术前提后经 CR6-RV-001 判定无效。** `BLOCKED_CHANGE_REQUEST_REQUIRED` 当时依据仓库外提示词中的 `scripts/build.ps1`/`scripts/test.ps1` 要求登记；`675dc437^` 的批准规格并无该要求。实现已按 16/5 预算完成，20/20 测试及 restore/build/test、工作流、diff 检查通过，尚未提交；19 项实施锁继续 CLAIMED；恢复目标 IN_PROGRESS |
+| 2026-07-20 | Codex Backend（当前真实 Codex Backend 会话） | BLOCKED | IN_PROGRESS | Codex Backend | 权威封闭迁移 `BLOCKED → IN_PROGRESS`；CR6-RV-001 独立复审 PASS 并 CLOSED（报告 `reviews/tasks/CR-0006-TASK-0007-VALIDATION-GATE-SCOPE-RETEST.md`；Reviewer 提交 `2170b2464e2286e6fbe86279ebc7ebc76838d03d`）；CR-0006 最终为 REJECTED；原 Blocker `BLOCKED_CHANGE_REQUEST_REQUIRED` 已解除；恢复 `675dc437^` 已批准验证基线，CR-0006 新增门禁不再适用；19 项实施锁继续 CLAIMED；完整实现保持未暂存、未提交 |
 
 ## 审核结论
 
@@ -1007,8 +1029,8 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 - 原始 BLOCKED 提交：`675dc43792953ec4d57536f2a7ded02381173c5a`
 - Reviewer 结论：NEEDS_CHANGES；`CR6-RV-001` 确认原前提没有批准规格或 Git 历史依据。
 - Architect 纠正：REJECTED；撤销 CR-0006 新增门禁，恢复 `675dc437^` 已批准验证基线。
-- 当前状态：等待独立 Reviewer 复审纠正结果；不得预先记录 PASS 或 Reviewer 提交。
-- 恢复条件：纠正复审 PASS 后，由 Owner 合法执行 `BLOCKED → IN_PROGRESS`；此前不得提交实现。
+- 最终状态：REJECTED；CR6-RV-001 独立复审 PASS 并 CLOSED（Reviewer 提交 `2170b2464e2286e6fbe86279ebc7ebc76838d03d`）。
+- 处理结果：原 Blocker 已解除；Owner 已合法执行 `BLOCKED → IN_PROGRESS`；恢复 `675dc437^` 已批准验证基线，CR-0006 新增验证门禁不再适用。
 
 ## Git 提交与推送
 
@@ -1056,5 +1078,5 @@ pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1
 > Owner 为 Codex Backend，Reviewer 为 Codex Reviewer。
 > 规格已按 Codex Reviewer 六次审核报告（cc44f8b SPEC-REVIEW、a84624c SPEC-RETEST、f517ee3 SPEC-RETEST-2、53a5fbc SPEC-RETEST-3、7ac9cbc SPEC-RETEST-4、6844cfc SPEC-RETEST-5）全面修正。第六次复审 SPEC-RETEST-6（提交 3d532fd）结论 PASS，Findings 0/0/0/0。
 > 全部 BF-SR、BF-RT1、BF-RT2、BF-RT3、BF-RT4 和 BF-RT5 finding 已 CLOSED。
-> 当前有效状态为 BLOCKED。此前依赖版本阻塞已通过 CR-0005 解除；`675dc437` 登记的 `BLOCKED_CHANGE_REQUEST_REQUIRED` 技术依据已由 CR6-RV-001 证明无法从批准规格复现。CR-0006 已纠正为 REJECTED 并撤销新增门禁；当前仅等待独立 Reviewer 复审审计纠正，恢复目标为 IN_PROGRESS。
+> 当前有效状态为 IN_PROGRESS。此前依赖版本阻塞已通过 CR-0005 解除；`675dc437` 登记的 `BLOCKED_CHANGE_REQUEST_REQUIRED` 技术依据已由 CR6-RV-001 证明无法从批准规格复现。CR-0006 已纠正为 REJECTED，CR6-RV-001 已经独立 Reviewer 复审 PASS 并 CLOSED；Codex Backend 已合法执行 BLOCKED → IN_PROGRESS，恢复 `675dc437^` 已批准验证基线。
 > 提交 322e240 的 DRAFT → READY 及三项规格锁释放仍为 INVALID，第一阶段 CORRECTION 历史继续保留。三项规格文档锁和 CR 临时文档锁保持 RELEASED；19 项实施锁继续保持 CLAIMED，Owner 为 Codex Backend。实现代码已完成但尚未提交，完整保留在工作区并已建立仓库外备份。
