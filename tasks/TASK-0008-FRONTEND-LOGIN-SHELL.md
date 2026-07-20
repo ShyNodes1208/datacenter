@@ -174,16 +174,16 @@
 - U15 使用真实本地 .NET 后端与 Vite 开发服务器，经实际 `/api` proxy 联调；不依赖外部服务、不连接远程数据库，SQLite 使用 TASK-0007 已有开发配置。
 - 联调失败立即停止并记录，不修改代码、不现场修复，也不得增加或调用测试专用生产端点绕过失败。
 
-1. 登录页最小渲染（AC-03）。
-2. 受保护首页最小渲染（AC-04）。
-3. 相对 `/api`、Cookie 请求模式与统一错误解析（AC-05、AC-06）。
-4. 调用方提供 CSRF Token 时使用准确 Header（AC-07）。
-5. 共享内存认证状态与 `/me` 身份恢复（AC-08、AC-09）。
-6. API 401 清理内存认证状态（AC-10）。
-7. 登录协议顺序与失败清理（AC-11、AC-12）。
-8. 登出协议顺序（AC-13）。
-9. 匿名、已登录与初始化中的守卫行为（AC-14、AC-15、AC-16）。
-10. 敏感认证数据不进入浏览器持久存储（AC-17）。
+1. 登录页最小渲染（AC-03，U14-A）。
+2. 受保护首页最小渲染（AC-04，U14-C）。
+3. 相对 `/api`、Cookie 请求模式与 JSON 请求/响应（AC-05，U13-A）。
+4. 统一错误解析、非 JSON/异常响应、401 返回约定与调用方 CSRF Header（AC-06、AC-07、AC-10，U13-B）。
+5. 共享内存认证状态、`/me` 身份恢复与 401 清理（AC-08、AC-09、AC-10，U13-C）。
+6. 登录协议顺序与失败清理（AC-11、AC-12，U13-D、U14-B）。
+7. 登出协议顺序与页面登出动作（AC-13，U13-E、U14-C）。
+8. 匿名和已登录守卫行为（AC-14、AC-15，U14-D）。
+9. 初始化等待与无重定向循环（AC-16，U14-E）。
+10. 敏感认证数据不进入浏览器持久存储（AC-17，U13-A～U13-E）。
 11. 开发期 `/api` proxy 实际联调（AC-18）。
 12. 精确文件/依赖预算与禁止范围回归（AC-01、AC-19、AC-20）；`npm run build` 为 0 errors、0 warnings，`npm test` 全部通过，TASK-0007 后端 `dotnet test` 保持 28/28 PASS。
 
@@ -193,24 +193,24 @@
 |---|---|---|---|---|---|
 | AC-01 | `vue-router` 以精确版本 `4.6.3` 作为唯一新增直接生产依赖，并由 npm lock 文件锁定。 | 两个依赖清单仅新增目标包及其传递依赖。 | `npm ls vue-router --depth=0`；审查 `git diff -- src/frontend/package.json src/frontend/package-lock.json`。 | `src/frontend/package.json`；`src/frontend/package-lock.json` | U04-A |
 | AC-02 | Router 只注册 `/login` 与受保护 `/` 两条页面路由。 | Router 定义及应用入口只接入这两条路由。 | `npm test -- router-and-views.test.ts`。 | `src/frontend/src/router.ts`；`src/frontend/src/main.ts`；`src/frontend/src/App.vue`；`src/frontend/src/__tests__/router-and-views.test.ts` | U05 |
-| AC-03 | `/login` 页面渲染用户名输入、密码输入、登录按钮和固定错误区域。 | 登录视图包含四个指定元素。 | `npm test -- router-and-views.test.ts`。 | `src/frontend/src/views/LoginView.vue`；`src/frontend/src/__tests__/router-and-views.test.ts` | U06、U14 |
-| AC-04 | 受保护 `/` 页面只显示当前用户名、角色和登出按钮。 | 首页壳只包含三项指定认证内容。 | `npm test -- router-and-views.test.ts`。 | `src/frontend/src/views/HomeView.vue`；`src/frontend/src/__tests__/router-and-views.test.ts` | U12、U14 |
-| AC-05 | `useApi` 仅向相对 `/api` 路径发起原生 fetch，并使用 `credentials: "include"` 让浏览器管理 Cookie。 | API 封装固定路径边界和 credentials。 | `npm test -- useApi.test.ts`。 | `src/frontend/src/composables/useApi.ts`；`src/frontend/src/__tests__/useApi.test.ts` | U07、U13 |
-| AC-06 | `useApi` 对非成功响应解析后端统一 `{"error":"..."}` 并返回该错误。 | 错误分支只提取统一 error 或安全通用消息。 | `npm test -- useApi.test.ts`。 | `src/frontend/src/composables/useApi.ts`；`src/frontend/src/__tests__/useApi.test.ts` | U07、U13 |
-| AC-07 | 调用方提供 CSRF Token 时，`useApi` 将其准确设置到 `X-XSRF-TOKEN` Header。 | 请求构造使用固定 Header 名和调用方令牌。 | `npm test -- useApi.test.ts`。 | `src/frontend/src/composables/useApi.ts`；`src/frontend/src/__tests__/useApi.test.ts` | U07、U13 |
-| AC-08 | 每次调用 `useAuth` 均引用同一份模块级内存认证状态。 | 用户、初始化态和初始化 Promise 在模块级共享。 | `npm test -- useAuth.test.ts`。 | `src/frontend/src/composables/useAuth.ts`；`src/frontend/src/__tests__/useAuth.test.ts` | U08、U13 |
-| AC-09 | 首次初始化通过 `GET /api/auth/me` 恢复当前身份。 | `restore()` 以 `/me` 响应设置共享当前用户。 | `npm test -- useAuth.test.ts`。 | `src/frontend/src/composables/useAuth.ts`；`src/frontend/src/__tests__/useAuth.test.ts` | U08、U13 |
-| AC-10 | 任意 API 401 通知会清除共享内存认证状态。 | 401 回调只执行内存用户与相关认证态清理。 | `npm test -- useApi.test.ts useAuth.test.ts`。 | `src/frontend/src/composables/useApi.ts`；`src/frontend/src/composables/useAuth.ts`；`src/frontend/src/__tests__/useApi.test.ts`；`src/frontend/src/__tests__/useAuth.test.ts` | U07、U08、U13 |
-| AC-11 | 登录严格执行匿名 csrf → login → 认证后 csrf → me 的协议顺序。 | `login()` 的四次请求顺序固定且后一步仅在前一步成功后发生。 | `npm test -- useAuth.test.ts`；U15-A 实际联调记录。 | `src/frontend/src/composables/useAuth.ts`；`src/frontend/src/__tests__/useAuth.test.ts` | U09、U13、U15-A |
-| AC-12 | 登录失败在登录页显示后端统一错误，且失败结束后密码字段为空。 | 失败分支传递统一错误并清空密码模型。 | `npm test -- useAuth.test.ts router-and-views.test.ts`。 | `src/frontend/src/composables/useAuth.ts`；`src/frontend/src/views/LoginView.vue`；`src/frontend/src/__tests__/useAuth.test.ts`；`src/frontend/src/__tests__/router-and-views.test.ts` | U09、U14 |
-| AC-13 | 登出严格执行认证后 csrf → logout → 清除身份的协议顺序。 | `logout()` 只使用新取令牌，204 或 401 后清空内存身份。 | `npm test -- useAuth.test.ts router-and-views.test.ts`；U15-B 实际联调记录。 | `src/frontend/src/composables/useAuth.ts`；`src/frontend/src/views/HomeView.vue`；`src/frontend/src/__tests__/useAuth.test.ts`；`src/frontend/src/__tests__/router-and-views.test.ts` | U10、U12、U13、U14、U15-B |
-| AC-14 | 匿名访问 `/` 时路由守卫跳转到 `/login`。 | 受保护路由的匿名分支返回登录路径。 | `npm test -- router-and-views.test.ts`。 | `src/frontend/src/router.ts`；`src/frontend/src/__tests__/router-and-views.test.ts` | U11、U14 |
-| AC-15 | 已登录访问 `/login` 时路由守卫跳转到 `/`。 | 登录路由的已认证分支返回首页路径。 | `npm test -- router-and-views.test.ts`。 | `src/frontend/src/router.ts`；`src/frontend/src/__tests__/router-and-views.test.ts` | U11、U14 |
-| AC-16 | 初始化未完成时路由守卫等待同一个恢复 Promise，完成后只按最终认证态导航且不产生重定向循环。 | 守卫复用共享初始化 Promise并避免目标自跳转。 | `npm test -- router-and-views.test.ts`。 | `src/frontend/src/router.ts`；`src/frontend/src/__tests__/router-and-views.test.ts` | U11、U14 |
-| AC-17 | 密码、Cookie、CSRF Token 和认证状态均不写入 `localStorage` 或 `sessionStorage`。 | 认证/API 实现无 Web Storage 写入。 | `npm test -- useApi.test.ts useAuth.test.ts`；`rg -n 'localStorage|sessionStorage' src/frontend/src` 人工判读不得出现认证写入。 | `src/frontend/src/composables/useApi.ts`；`src/frontend/src/composables/useAuth.ts`；`src/frontend/src/__tests__/useApi.test.ts`；`src/frontend/src/__tests__/useAuth.test.ts` | U07、U08、U09、U10、U13 |
+| AC-03 | `/login` 页面渲染用户名输入、密码输入、登录按钮和固定错误区域。 | 登录视图包含四个指定元素。 | `npm test -- router-and-views.test.ts`。 | `src/frontend/src/views/LoginView.vue`；`src/frontend/src/__tests__/router-and-views.test.ts` | U06、U14-A |
+| AC-04 | 受保护 `/` 页面只显示当前用户名、角色和登出按钮。 | 首页壳只包含三项指定认证内容。 | `npm test -- router-and-views.test.ts`。 | `src/frontend/src/views/HomeView.vue`；`src/frontend/src/__tests__/router-and-views.test.ts` | U12、U14-C |
+| AC-05 | `useApi` 仅向相对 `/api` 路径发起原生 fetch，并使用 `credentials: "include"` 让浏览器管理 Cookie。 | API 封装固定路径边界和 credentials。 | `npm test -- useApi.test.ts`。 | `src/frontend/src/composables/useApi.ts`；`src/frontend/src/__tests__/useApi.test.ts` | U07、U13-A |
+| AC-06 | `useApi` 对非成功响应解析后端统一 `{"error":"..."}` 并返回该错误。 | 错误分支只提取统一 error 或安全通用消息。 | `npm test -- useApi.test.ts`。 | `src/frontend/src/composables/useApi.ts`；`src/frontend/src/__tests__/useApi.test.ts` | U07、U13-B |
+| AC-07 | 调用方提供 CSRF Token 时，`useApi` 将其准确设置到 `X-XSRF-TOKEN` Header。 | 请求构造使用固定 Header 名和调用方令牌。 | `npm test -- useApi.test.ts`。 | `src/frontend/src/composables/useApi.ts`；`src/frontend/src/__tests__/useApi.test.ts` | U07、U13-B |
+| AC-08 | 每次调用 `useAuth` 均引用同一份模块级内存认证状态。 | 用户、初始化态和初始化 Promise 在模块级共享。 | `npm test -- useAuth.test.ts`。 | `src/frontend/src/composables/useAuth.ts`；`src/frontend/src/__tests__/useAuth.test.ts` | U08、U13-C |
+| AC-09 | 首次初始化通过 `GET /api/auth/me` 恢复当前身份。 | `restore()` 以 `/me` 响应设置共享当前用户。 | `npm test -- useAuth.test.ts`。 | `src/frontend/src/composables/useAuth.ts`；`src/frontend/src/__tests__/useAuth.test.ts` | U08、U13-C |
+| AC-10 | 任意 API 401 通知会清除共享内存认证状态。 | 401 回调只执行内存用户与相关认证态清理。 | `npm test -- useApi.test.ts useAuth.test.ts`。 | `src/frontend/src/composables/useApi.ts`；`src/frontend/src/composables/useAuth.ts`；`src/frontend/src/__tests__/useApi.test.ts`；`src/frontend/src/__tests__/useAuth.test.ts` | U07、U08、U13-B、U13-C |
+| AC-11 | 登录严格执行匿名 csrf → login → 认证后 csrf → me 的协议顺序。 | `login()` 的四次请求顺序固定且后一步仅在前一步成功后发生。 | `npm test -- useAuth.test.ts`；U15-A 实际联调记录。 | `src/frontend/src/composables/useAuth.ts`；`src/frontend/src/__tests__/useAuth.test.ts` | U09、U13-D、U15-A |
+| AC-12 | 登录失败在登录页显示后端统一错误，且失败结束后密码字段为空。 | 失败分支传递统一错误并清空密码模型。 | `npm test -- useAuth.test.ts router-and-views.test.ts`。 | `src/frontend/src/composables/useAuth.ts`；`src/frontend/src/views/LoginView.vue`；`src/frontend/src/__tests__/useAuth.test.ts`；`src/frontend/src/__tests__/router-and-views.test.ts` | U09、U13-D、U14-B |
+| AC-13 | 登出严格执行认证后 csrf → logout → 清除身份的协议顺序。 | `logout()` 只使用新取令牌，204 或 401 后清空内存身份。 | `npm test -- useAuth.test.ts router-and-views.test.ts`；U15-B 实际联调记录。 | `src/frontend/src/composables/useAuth.ts`；`src/frontend/src/views/HomeView.vue`；`src/frontend/src/__tests__/useAuth.test.ts`；`src/frontend/src/__tests__/router-and-views.test.ts` | U10、U12、U13-E、U14-C、U15-B |
+| AC-14 | 匿名访问 `/` 时路由守卫跳转到 `/login`。 | 受保护路由的匿名分支返回登录路径。 | `npm test -- router-and-views.test.ts`。 | `src/frontend/src/router.ts`；`src/frontend/src/__tests__/router-and-views.test.ts` | U11、U14-D |
+| AC-15 | 已登录访问 `/login` 时路由守卫跳转到 `/`。 | 登录路由的已认证分支返回首页路径。 | `npm test -- router-and-views.test.ts`。 | `src/frontend/src/router.ts`；`src/frontend/src/__tests__/router-and-views.test.ts` | U11、U14-D |
+| AC-16 | 初始化未完成时路由守卫等待同一个恢复 Promise，完成后只按最终认证态导航且不产生重定向循环。 | 守卫复用共享初始化 Promise并避免目标自跳转。 | `npm test -- router-and-views.test.ts`。 | `src/frontend/src/router.ts`；`src/frontend/src/__tests__/router-and-views.test.ts` | U11、U14-E |
+| AC-17 | 密码、Cookie、CSRF Token 和认证状态均不写入 `localStorage` 或 `sessionStorage`。 | 认证/API 实现无 Web Storage 写入。 | `npm test -- useApi.test.ts useAuth.test.ts`；`rg -n 'localStorage|sessionStorage' src/frontend/src` 人工判读不得出现认证写入。 | `src/frontend/src/composables/useApi.ts`；`src/frontend/src/composables/useAuth.ts`；`src/frontend/src/__tests__/useApi.test.ts`；`src/frontend/src/__tests__/useAuth.test.ts` | U07、U08、U09、U10、U13-A～U13-E |
 | AC-18 | Vite 开发配置将相对 `/api` 请求 proxy 到本地 .NET 后端默认地址 `http://localhost:5142`。 | Vite server proxy 仅配置 `/api` 及批准的可选目标覆盖。 | U15-A、U15-B 实际联调记录；审查 `git diff -- src/frontend/vite.config.ts`。 | `src/frontend/vite.config.ts` | U15-A、U15-B |
-| AC-19 | 实际文件变化不超出批准的 13 个文件，且直接依赖变化不超出 AC-01。 | Git 变更清单与精确预算逐项一致。 | `git diff --name-status`；`git diff -- src/frontend/package.json src/frontend/package-lock.json`。 | `src/frontend/package.json`；`src/frontend/package-lock.json` | U04-A、U16、U17 |
-| AC-20 | 实现不包含 TASK-0009、JWT、Refresh Token、Pinia、Axios、其他明确禁止范围或后端修改。 | 变更审查不存在禁止内容。 | `git diff --name-status`；对批准变更执行 `rg -n 'JWT|Refresh Token|Pinia|Axios|TASK-0009'` 并人工判读；`dotnet test Datacenter.sln --no-restore` 保持 28/28 PASS。 | `src/frontend/src/router.ts`；`src/frontend/src/views/LoginView.vue`；`src/frontend/src/views/HomeView.vue`；`src/frontend/src/composables/useApi.ts`；`src/frontend/src/composables/useAuth.ts` | U16、U17 |
+| AC-19 | 实际文件变化不超出批准的 13 个文件，且直接依赖变化不超出 AC-01。 | Git 变更清单与精确预算逐项一致。 | `git diff --name-status`；`git diff -- src/frontend/package.json src/frontend/package-lock.json`。 | `src/frontend/package.json`；`src/frontend/package-lock.json` | U04-A、U16、U17-A、U17-B、U17-D |
+| AC-20 | 实现不包含 TASK-0009、JWT、Refresh Token、Pinia、Axios、其他明确禁止范围或后端修改。 | 变更审查不存在禁止内容。 | `git diff --name-status`；对批准变更执行 `rg -n 'JWT|Refresh Token|Pinia|Axios|TASK-0009'` 并人工判读；`dotnet test Datacenter.sln --no-restore` 保持 28/28 PASS。 | `src/frontend/src/router.ts`；`src/frontend/src/views/LoginView.vue`；`src/frontend/src/views/HomeView.vue`；`src/frontend/src/composables/useApi.ts`；`src/frontend/src/composables/useAuth.ts` | U16、U17-A、U17-D |
 
 ## 5～10 分钟执行单元
 
@@ -231,12 +231,48 @@
 | U10 | 5～10 分钟 | 仅实现 CSRF + logout（AC-13、AC-17） |
 | U11 | 5～10 分钟 | 仅实现匿名和已登录重定向守卫（AC-14、AC-15、AC-16） |
 | U12 | 5～10 分钟 | 仅实现用户名、角色和登出按钮的受保护首页壳（AC-04、AC-13） |
-| U13 | 5～10 分钟 | 仅补 `useApi`/`useAuth` 测试（AC-05～AC-13、AC-17） |
-| U14 | 5～10 分钟 | 仅补页面、跳转、守卫与错误展示测试（AC-03、AC-04、AC-12～AC-16） |
+| U13-A | 5～10 分钟 | 仅在已批准的 `useApi.test.ts` 补相对 `/api`、credentials 与 JSON 请求/响应测试；不涉及 `useAuth`、CSRF、页面或 Router（AC-05、AC-17） |
+| U13-B | 5～10 分钟 | 仅在已批准的 `useApi.test.ts` 补统一错误、非 JSON/异常响应、调用方 CSRF Header 与 401 返回约定测试；不修改认证状态（AC-06、AC-07、AC-10、AC-17） |
+| U13-C | 5～10 分钟 | 仅在已批准的 `useAuth.test.ts` 补 `/me` 初始化恢复、authenticated/anonymous/loading 与 401 清理共享内存状态测试；不测试 login、logout 或 Router（AC-08、AC-09、AC-10、AC-17） |
+| U13-D | 5～10 分钟 | 仅在已批准的 `useAuth.test.ts` 补匿名 csrf → login → 认证后 csrf → me 顺序、统一失败错误和密码不保留测试；不测试 logout 或 Router（AC-11、AC-12、AC-17） |
+| U13-E | 5～10 分钟 | 仅在已批准的 `useAuth.test.ts` 补认证后 csrf → logout、内存身份清除及二次身份检查规格行为测试；不测试 login 或 Router（AC-13、AC-17） |
+| U14-A | 5～10 分钟 | 仅在已批准的 `router-and-views.test.ts` 补登录页用户名、密码、登录按钮和错误区域渲染测试；不调用真实后端、不测试 Router（AC-03） |
+| U14-B | 5～10 分钟 | 仅在已批准的 `router-and-views.test.ts` 补表单调用 login、成功导航请求、失败错误显示和密码输入处理测试；不测试完整路由守卫（AC-12） |
+| U14-C | 5～10 分钟 | 仅在已批准的 `router-and-views.test.ts` 补受保护页用户名、角色、登出按钮和登出动作测试；不测试登录页或路由守卫（AC-04、AC-13） |
+| U14-D | 5～10 分钟 | 仅在已批准的 `router-and-views.test.ts` 补 anonymous 访问 `/` 跳转 `/login` 与 authenticated 访问 `/login` 跳转 `/`；不测试初始化等待（AC-14、AC-15） |
+| U14-E | 5～10 分钟 | 仅在已批准的 `router-and-views.test.ts` 补 loading/unknown 期间等待、初始化后单次正确导航和无无限重定向；不测试页面表单逻辑（AC-16） |
 | U15-A | 5～10 分钟 | 不改代码；启动或确认本地后端与 Vite，仅经 `/api` proxy 验证匿名 csrf → login → 认证后 csrf → me 并记录结果；任一步失败立即停止报告，不修复（AC-11、AC-18） |
 | U15-B | 5～10 分钟 | 不改代码；确认 U15-A 的真实本地进程和登录态，仅经 `/api` proxy 验证认证后 csrf → logout → me 返回 401/登录态清除并记录结果；任一步失败立即停止报告，不修复（AC-13、AC-18） |
 | U16 | 5～10 分钟 | 不改实现且不得顺手修复；只运行完整前端构建/测试和后端 28/28 回归（AC-19、AC-20） |
-| U17 | 5～10 分钟 | 不改实现；仅显式暂存批准文件、提交、推送、登记证据并执行合法交审迁移（AC-19、AC-20） |
+| U17-A | 5～10 分钟 | 只读核对批准的 13 个文件、新增 8/修改 5、唯一新增直接依赖 `vue-router` `4.6.3`、空暂存区及 U16 通过证据；不修改、暂存、提交、迁移状态或改锁（AC-19、AC-20） |
+| U17-B | 5～10 分钟 | 仅显式暂存批准实施文件、检查 staged 范围与 `git diff --cached --check`、创建纯实现提交、推送 feature 分支并核对本地/远端一致；不修改三份任务管理文件、不迁移状态，实施锁保持原状态（AC-19） |
+| U17-C | 5～10 分钟 | 仅只读准备并核对实现 hash、Build、前端测试、后端 28/28、U15-A/U15-B、AC 矩阵、文件/依赖预算和防过度开发证据草案；不修改文件、不提交、不迁移状态或改锁 |
+| U17-D | 5～10 分钟 | 按权威工作流原子登记完整交审证据，执行合法 `IN_PROGRESS → READY_FOR_REVIEW`，将实施锁 `CLAIMED → HANDED_OFF`，只提交并推送 `TASK/current-task/MODULE-LOCKS` 管理文件；不修改实现、不执行 Reviewer 审核（AC-19、AC-20） |
+
+### 拆分单元时间盒矩阵
+
+权威工作流第 3.1、4、5、10 节要求开发证据和书面交接完整、实施锁转为 `HANDED_OFF`，任务才可进入 `READY_FOR_REVIEW`。因此 U17-C 不单独写入或提交证据；U17-D 将证据登记、合法状态迁移和锁交接作为唯一原子管理提交，避免出现仓库内证据、状态和锁相互矛盾的中间态。
+
+以下每个单元失败时立即停止并记录实际修改文件、命令和结果；超过 10 分钟立即停止并进一步拆分，不得在该单元修复，也不得自动进入下一单元。
+
+| 微任务 | 单一目标 | 预计时间 | 允许修改文件 | 验证 | 超时处理 |
+|---|---|---:|---|---|---|
+| U13-A | `useApi` 基础请求测试 | 5～10 分钟 | `src/frontend/src/__tests__/useApi.test.ts` | `npm test -- useApi.test.ts`，仅运行本单元用例范围 | 超过 10 分钟立即停止，不修复、不进入 U13-B |
+| U13-B | `useApi` 错误与 CSRF Header 测试 | 5～10 分钟 | `src/frontend/src/__tests__/useApi.test.ts` | `npm test -- useApi.test.ts`，仅运行本单元用例范围 | 超过 10 分钟立即停止，不修复、不进入 U13-C |
+| U13-C | `useAuth` 身份恢复与 401 测试 | 5～10 分钟 | `src/frontend/src/__tests__/useAuth.test.ts` | `npm test -- useAuth.test.ts`，仅运行本单元用例范围 | 超过 10 分钟立即停止，不修复、不进入 U13-D |
+| U13-D | `useAuth` 登录流程测试 | 5～10 分钟 | `src/frontend/src/__tests__/useAuth.test.ts` | `npm test -- useAuth.test.ts`，仅运行本单元用例范围 | 超过 10 分钟立即停止，不修复、不进入 U13-E |
+| U13-E | `useAuth` 登出流程测试 | 5～10 分钟 | `src/frontend/src/__tests__/useAuth.test.ts` | `npm test -- useAuth.test.ts`，仅运行本单元用例范围 | 超过 10 分钟立即停止，不修复、不进入 U14-A |
+| U14-A | 登录页面渲染测试 | 5～10 分钟 | `src/frontend/src/__tests__/router-and-views.test.ts` | `npm test -- router-and-views.test.ts`，仅运行登录页渲染用例 | 超过 10 分钟立即停止，不修复、不进入 U14-B |
+| U14-B | 登录页面交互与错误展示测试 | 5～10 分钟 | `src/frontend/src/__tests__/router-and-views.test.ts` | `npm test -- router-and-views.test.ts`，仅运行登录页交互用例 | 超过 10 分钟立即停止，不修复、不进入 U14-C |
+| U14-C | 受保护页面测试 | 5～10 分钟 | `src/frontend/src/__tests__/router-and-views.test.ts` | `npm test -- router-and-views.test.ts`，仅运行受保护页用例 | 超过 10 分钟立即停止，不修复、不进入 U14-D |
+| U14-D | 匿名与已登录路由守卫测试 | 5～10 分钟 | `src/frontend/src/__tests__/router-and-views.test.ts` | `npm test -- router-and-views.test.ts`，仅运行两向守卫用例 | 超过 10 分钟立即停止，不修复、不进入 U14-E |
+| U14-E | 初始化等待与重定向循环测试 | 5～10 分钟 | `src/frontend/src/__tests__/router-and-views.test.ts` | `npm test -- router-and-views.test.ts`，仅运行初始化/循环用例 | 超过 10 分钟立即停止，不修复、不进入 U15-A |
+| U15-A | 真实登录协议联调并记录 | 5～10 分钟 | 无 | 真实后端与 Vite：csrf → login → 认证后 csrf → me；失败立即停止 | 超过 10 分钟立即停止，不修复、不进入 U15-B |
+| U15-B | 真实登出协议联调并记录 | 5～10 分钟 | 无 | 真实后端与 Vite：认证后 csrf → logout → me 401，并验证前端内存身份清除；失败立即停止 | 超过 10 分钟立即停止，不修复、不进入 U16 |
+| U17-A | 提交前范围核验 | 5～10 分钟 | 无 | `git diff --name-status`、`git diff --cached --name-status`、依赖 diff 与 U16 证据只读核对 | 超过 10 分钟立即停止，不修改、不进入 U17-B |
+| U17-B | 纯实现提交与推送 | 5～10 分钟 | 批准的 13 个实施文件（仅暂存/提交，不再修改内容） | staged 范围、`git diff --cached --check`、push、本地/远端 hash | 超过 10 分钟立即停止，不修复、不进入 U17-C |
+| U17-C | 准备并核对交审证据草案 | 5～10 分钟 | 无 | 只读核对实现 hash、构建/测试、联调、AC、预算和防过度开发证据 | 超过 10 分钟立即停止，不写入、不进入 U17-D |
+| U17-D | 原子交审管理提交 | 5～10 分钟 | `tasks/TASK-0008-FRONTEND-LOGIN-SHELL.md`；`tasks/current-task.md`；`tasks/MODULE-LOCKS.md` | 合法迁移、证据完整、锁 HANDED_OFF、工作流校验、管理文件 staged 范围、push 与 hash | 超过 10 分钟立即停止，不修复、不执行 Reviewer 审核 |
 
 ## 构建与验证命令
 
