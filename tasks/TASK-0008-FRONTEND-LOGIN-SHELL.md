@@ -4,8 +4,8 @@
 
 - Task ID：TASK-0008
 - Task Name：前端基础与登录壳
-- Status：DRAFT
-- Owner：Codex Architect（当前仅负责规格）
+- Status：READY
+- Owner：Cursor Frontend
 - Implementation Owner：Cursor Frontend（仅在规格审核通过并进入 READY 后认领）
 - Reviewer：Codex Reviewer
 - Branch：feature/task-0008-frontend-login-shell
@@ -300,22 +300,38 @@ U16 预期：前端测试全通过，构建 0 errors/0 warnings，后端 28/28 P
 
 ## 状态迁移、锁与审核要求
 
-- 当前为 `DRAFT`；DRAFT 内只允许澄清、设计、补全文档，禁止业务代码和实施锁。
+- 当前为 `READY`；规格已获准开始但尚未开发。未完成模块冲突检查并逐项认领精确实施锁前，禁止修改实施文件。
 - U01 仅认领 `tasks/TASK-0008-FRONTEND-LOGIN-SHELL.md`、`tasks/current-task.md`、`tasks/MODULE-LOCKS.md` 三项规格文档锁；不得提前锁定 `src/frontend/`、`src/backend/`、`tests/`、package/lock 文件或 TASK-0009。
 - U01 提交推送后保持 DRAFT 和规格锁 CLAIMED，等待独立 Codex Reviewer 执行 U02；Reviewer 只读，不修改本规格。
 - U02 若有 Finding，Architect 在独立 U03 修正；Reviewer 独立复审。只有 Reviewer PASS 且 READY 条件完整后，才由有权 Architect 在独立步骤合法执行 `DRAFT → READY` 并释放规格锁。
 - 进入实施前，Cursor Frontend 必须重新检查冲突、按精确文件逐项认领实施锁，再执行 `READY → IN_PROGRESS`。不得使用目录级 `src/frontend/` 锁替代精确预算。
 - 实现交审必须遵守 `IN_PROGRESS → READY_FOR_REVIEW`，锁转 HANDED_OFF；最终 Reviewer 必须独立。只有 Reviewer 验收、提交推送、哈希一致、工作区/暂存区干净并释放锁后才可转 COMPLETED。
 
-## U01 交接
+## U04 规格放行记录
 
-- 当前执行单元：U01
-- 当前阶段：规格编写完成
+- 原状态：`DRAFT`
+- 新状态：`READY`
+- 执行角色：Codex Architect
+- Owner：Cursor Frontend；规格放行执行角色为 Codex Architect
+- Reviewer：Codex Reviewer
+- 状态迁移依据：`docs/architecture/AGENT-WORKFLOW.md` 第 3.1、3.2 节，合法迁移 `DRAFT → READY`
 - Blocker：无
-- Next Action：Codex Reviewer 执行 U02 规格审核
-- 允许进入 U02：是
-- 允许开始实现：否
+- 规格初审：`NEEDS_CHANGES`；报告 `reviews/tasks/TASK-0008-FRONTEND-LOGIN-SHELL-SPEC-REVIEW.md`
+- 初审 Findings：T8-SR-001、T8-SR-002、T8-SR-003、T8-SR-004，全部 `CLOSED`
+- 修复提交：`2638a3747ec199b0cec33c68ce3cd9900e546ebc`、`f670c0ccd12808e2451d204f631d2ad04723b14f`、`84d6537459ef2d30acd7e6b0622e6db8ab6386fd`、`bf724b68241b96654995ebb28371decfdd5b1790`
+- 规格复审：`PASS`；报告 `reviews/tasks/TASK-0008-FRONTEND-LOGIN-SHELL-SPEC-RETEST.md`；提交 `e28d4f5bfa5a6d36f0673db79342ffd6a4fab085`
+- 复审 Findings：BLOCKER 0 / MAJOR 0 / MINOR 0 / NOTE 0
+- AC：AC-01～AC-20，20/20 PASS
+- 文件预算：13/13 PASS；新增 8，修改 5
+- 依赖预算：唯一新增直接生产依赖 `vue-router` `4.6.3`
+- 微任务时间盒：30/30 PASS
+- 测试规格：PASS
+- 防过度开发：PASS
+- 规格状态：已放行；实施尚未开始；实施锁 0
+- 规格锁：三项由 `CLAIMED` 释放为 `RELEASED`
+- Next Action：Cursor Frontend 按权威工作流检查父子路径冲突、逐项认领批准的精确实施锁，再执行合法 `READY → IN_PROGRESS`
+- 限制：实施启动门禁完成前不得安装依赖、修改前端或执行 U04-A；不得认领目录级 `src/frontend/` 锁
 
 ---
 
-> 本文件当前仅为 DRAFT。未经独立规格审核 PASS、Architect 合法迁移到 READY 和实施 Owner 认领精确模块锁，不得实施。
+> 本文件当前为 READY。实施 Owner 完成冲突检查、逐项认领精确实施锁并合法执行 `READY → IN_PROGRESS` 前，不得实施。

@@ -4,17 +4,24 @@
 
 ## 当前状态
 
-- Status：DRAFT
-- Owner：Codex Architect
+- Status：READY
+- Owner：Cursor Frontend
 - Reviewer：Codex Reviewer
 - 任务：TASK-0008 — 前端基础与登录壳
 - 分支：feature/task-0008-frontend-login-shell
 - 规格文件：tasks/TASK-0008-FRONTEND-LOGIN-SHELL.md
-- 当前执行单元：U01
-- 当前阶段：规格编写
+- 当前执行单元：U04
+- 当前阶段：规格已放行，等待实施启动
 - Blocker：无
-- Next Action：Codex Reviewer 执行 U02 规格审核
-- 实现许可：否；当前仅允许规格审核与后续受控规格修正
+- 规格复审：PASS；Findings：BLOCKER 0 / MAJOR 0 / MINOR 0 / NOTE 0
+- AC：20/20 PASS
+- 文件预算：13/13 PASS（新增 8、修改 5）
+- 依赖预算：唯一新增直接生产依赖 `vue-router` `4.6.3`
+- 微任务时间盒：30/30 PASS
+- Implementation Started：NO
+- 实施锁：0
+- Next Action：Cursor Frontend 按权威工作流检查父子路径冲突、逐项认领批准的精确实施锁，再执行合法 `READY → IN_PROGRESS`
+- 实现许可：否；实施启动门禁完成前不得安装依赖或修改实施文件
 
 ## 前序任务完成基线
 
@@ -22,18 +29,26 @@
 - TASK-0007 实施锁：19 项全部 RELEASED
 - TASK-0007 回归基线：28/28 PASS
 
-## TASK-0008 U01 规格交接
+## TASK-0008 U04 规格放行
 
-- Status：DRAFT
-- Owner：Codex Architect
+- Status：READY
+- Owner：Cursor Frontend
 - Reviewer：Codex Reviewer
-- 当前执行单元：U01
-- 当前阶段：规格编写
-- 变更范围：仅 TASK-0008 任务文档、current-task 和本轮规格锁
-- 规格锁：三项 CLAIMED by Codex Architect；未认领任何实施路径
-- Next Action：Codex Reviewer 执行 U02 规格审核
+- 当前执行单元：U04
+- 当前阶段：规格已放行，等待实施启动
+- 原状态：DRAFT
+- 新状态：READY
+- 迁移依据：权威工作流第 3.1、3.2 节合法迁移 `DRAFT → READY`；规格放行执行角色 Codex Architect
+- 规格初审：NEEDS_CHANGES；T8-SR-001、T8-SR-002、T8-SR-003、T8-SR-004 全部 CLOSED
+- 规格复审：PASS；提交 `e28d4f5bfa5a6d36f0673db79342ffd6a4fab085`；Findings 0/0/0/0
+- AC：20/20 PASS；文件预算 13/13；微任务时间盒 30/30 PASS
+- 依赖预算：唯一新增直接生产依赖 `vue-router` `4.6.3`
+- 测试规格：PASS；防过度开发：PASS
+- 规格锁：三项 RELEASED by Codex Architect；未认领任何实施路径
+- Implementation Started：NO；实施锁：0
+- Next Action：Cursor Frontend 检查冲突、逐项认领精确实施锁，再执行合法 `READY → IN_PROGRESS`
 - Blocker：无
-- 允许进入 U02：是
+- 允许执行实施启动门禁：是
 - 允许开始实现：否
 
 ## TASK-0007 完成归档
