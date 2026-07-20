@@ -137,19 +137,19 @@
 
 | 操作 | 完整路径 | 对应 AC |
 |---|---|---|
-| 新增 | `src/frontend/src/router.ts` | AC-01、AC-08 |
-| 新增 | `src/frontend/src/views/LoginView.vue` | AC-02、AC-06 |
-| 新增 | `src/frontend/src/views/HomeView.vue` | AC-03、AC-07 |
-| 新增 | `src/frontend/src/composables/useApi.ts` | AC-04、AC-10 |
-| 新增 | `src/frontend/src/composables/useAuth.ts` | AC-05、AC-06、AC-07、AC-09、AC-10 |
-| 新增 | `src/frontend/src/__tests__/useApi.test.ts` | AC-04、AC-10 |
-| 新增 | `src/frontend/src/__tests__/useAuth.test.ts` | AC-05、AC-06、AC-07、AC-09、AC-10 |
-| 新增 | `src/frontend/src/__tests__/router-and-views.test.ts` | AC-01、AC-02、AC-03、AC-08 |
-| 修改 | `src/frontend/src/main.ts` | AC-01 |
-| 修改 | `src/frontend/src/App.vue` | AC-01 |
-| 修改 | `src/frontend/vite.config.ts` | AC-04、AC-11 |
-| 修改 | `src/frontend/package.json` | AC-11 |
-| 修改 | `src/frontend/package-lock.json` | AC-11 |
+| 新增 | `src/frontend/src/router.ts` | AC-02、AC-14、AC-15、AC-16 |
+| 新增 | `src/frontend/src/views/LoginView.vue` | AC-03、AC-12 |
+| 新增 | `src/frontend/src/views/HomeView.vue` | AC-04、AC-13 |
+| 新增 | `src/frontend/src/composables/useApi.ts` | AC-05、AC-06、AC-07、AC-10、AC-17 |
+| 新增 | `src/frontend/src/composables/useAuth.ts` | AC-08、AC-09、AC-10、AC-11、AC-12、AC-13、AC-17 |
+| 新增 | `src/frontend/src/__tests__/useApi.test.ts` | AC-05、AC-06、AC-07、AC-10、AC-17 |
+| 新增 | `src/frontend/src/__tests__/useAuth.test.ts` | AC-08、AC-09、AC-10、AC-11、AC-12、AC-13、AC-17 |
+| 新增 | `src/frontend/src/__tests__/router-and-views.test.ts` | AC-02、AC-03、AC-04、AC-12、AC-13、AC-14、AC-15、AC-16 |
+| 修改 | `src/frontend/src/main.ts` | AC-02 |
+| 修改 | `src/frontend/src/App.vue` | AC-02 |
+| 修改 | `src/frontend/vite.config.ts` | AC-18 |
+| 修改 | `src/frontend/package.json` | AC-01、AC-19 |
+| 修改 | `src/frontend/package-lock.json` | AC-01、AC-19 |
 
 `src/frontend/vite.config.ts` 的唯一修改职责是使用 Vite 内置配置能力提供开发期 `/api` proxy；不得加入生产部署、通用代理或其他环境系统。原 12 个预算文件均仍为必要文件，因此不删除任何路径；新增这一项后总量由 12（新增 8、修改 4）变为 13（新增 8、修改 5）。禁止目录级预算、未来占位文件、后端文件、部署文件、TASK-0007、Room 文件、数据库或 Migration 修改。
 
@@ -174,35 +174,43 @@
 - U15 使用真实本地 .NET 后端与 Vite 开发服务器，经实际 `/api` proxy 联调；不依赖外部服务、不连接远程数据库，SQLite 使用 TASK-0007 已有开发配置。
 - 联调失败立即停止并记录，不修改代码、不现场修复，也不得增加或调用测试专用生产端点绕过失败。
 
-1. 登录页用户名、密码、按钮和错误区域基本渲染。
-2. 登录成功后进入 `/`。
-3. 登录失败展示统一错误。
-4. 匿名访问 `/` 跳转 `/login`。
-5. 已登录访问 `/login` 跳转 `/`。
-6. 刷新初始化调用 `/api/auth/me` 恢复状态，且并发守卫共享一次初始化。
-7. API 401 清理内存认证状态。
-8. 登出成功或 401 后返回 `/login`。
-9. Antiforgery 顺序严格符合 TASK-0007，旧匿名令牌不复用。
-10. 测试监视 localStorage/sessionStorage 与日志，证明密码、Cookie、CSRF Token 未写入持久存储或日志。
-11. `npm run build` 为 0 errors、0 warnings；`npm test` 全部通过。
-12. TASK-0007 后端 `dotnet test` 保持 28/28 PASS。
+1. 登录页最小渲染（AC-03）。
+2. 受保护首页最小渲染（AC-04）。
+3. 相对 `/api`、Cookie 请求模式与统一错误解析（AC-05、AC-06）。
+4. 调用方提供 CSRF Token 时使用准确 Header（AC-07）。
+5. 共享内存认证状态与 `/me` 身份恢复（AC-08、AC-09）。
+6. API 401 清理内存认证状态（AC-10）。
+7. 登录协议顺序与失败清理（AC-11、AC-12）。
+8. 登出协议顺序（AC-13）。
+9. 匿名、已登录与初始化中的守卫行为（AC-14、AC-15、AC-16）。
+10. 敏感认证数据不进入浏览器持久存储（AC-17）。
+11. 开发期 `/api` proxy 实际联调（AC-18）。
+12. 精确文件/依赖预算与禁止范围回归（AC-01、AC-19、AC-20）；`npm run build` 为 0 errors、0 warnings，`npm test` 全部通过，TASK-0007 后端 `dotnet test` 保持 28/28 PASS。
 
-## 验收标准（12 条）
+## 验收标准（20 条）
 
-| ID | 单一可测试标准 | 证据 |
-|---|---|---|
-| AC-01 | 应用安装 Vue Router，且仅定义 `/login` 与 `/` 两条页面路由。 | 代码审查、构建、路由测试 |
-| AC-02 | `/login` 渲染用户名、密码、登录按钮和错误信息区域。 | 页面渲染测试 |
-| AC-03 | `/` 仅渲染当前用户名、角色和登出按钮。 | 页面渲染测试 |
-| AC-04 | `useApi` 使用相对 `/api`、原生 fetch、同源 Cookie、JSON/204、统一错误提取和 401 通知，且无缓存或重试。 | 单元测试、代码审查 |
-| AC-05 | `useAuth` 仅以内存管理用户和初始化态，通过 `/me` 恢复身份，并在 401 时清空用户。 | 单元测试 |
-| AC-06 | 登录严格执行匿名 CSRF、login、认证后 CSRF、me，并在成功后进入 `/`，失败时展示统一错误。 | 单元/页面测试 |
-| AC-07 | 登出严格执行认证态 CSRF、logout，204 或 401 后清空认证态并进入 `/login`。 | 单元/页面测试 |
-| AC-08 | 守卫使匿名访问 `/` 转至 `/login`、已登录访问 `/login` 转至 `/`，初始化只执行一次且无无限重定向。 | 路由测试 |
-| AC-09 | `X-XSRF-TOKEN` 生命周期与 TASK-0007 一致，匿名旧令牌不用于登录后状态变更。 | 请求顺序测试 |
-| AC-10 | 密码、Cookie、CSRF Token 不写入持久存储或日志，前端不读取 Cookie。 | 单元测试、代码审查 |
-| AC-11 | 实际变更不超出 13 文件预算，依赖仅新增 `vue-router` 4.6.3，前端构建/测试 0 errors、0 warnings。 | Git、npm 命令 |
-| AC-12 | 无明确不实现内容、TASK-0009 内容、后端/数据库修改或未来抽象，后端 28/28 测试不回归。 | 范围审查、dotnet test |
+| AC | 单一验收要求 | 实现证据 | 测试/命令证据 | 对应文件 | 对应微任务 |
+|---|---|---|---|---|---|
+| AC-01 | `vue-router` 以精确版本 `4.6.3` 作为唯一新增直接生产依赖，并由 npm lock 文件锁定。 | 两个依赖清单仅新增目标包及其传递依赖。 | `npm ls vue-router --depth=0`；审查 `git diff -- src/frontend/package.json src/frontend/package-lock.json`。 | `src/frontend/package.json`；`src/frontend/package-lock.json` | U04-A |
+| AC-02 | Router 只注册 `/login` 与受保护 `/` 两条页面路由。 | Router 定义及应用入口只接入这两条路由。 | `npm test -- router-and-views.test.ts`。 | `src/frontend/src/router.ts`；`src/frontend/src/main.ts`；`src/frontend/src/App.vue`；`src/frontend/src/__tests__/router-and-views.test.ts` | U05 |
+| AC-03 | `/login` 页面渲染用户名输入、密码输入、登录按钮和固定错误区域。 | 登录视图包含四个指定元素。 | `npm test -- router-and-views.test.ts`。 | `src/frontend/src/views/LoginView.vue`；`src/frontend/src/__tests__/router-and-views.test.ts` | U06、U14 |
+| AC-04 | 受保护 `/` 页面只显示当前用户名、角色和登出按钮。 | 首页壳只包含三项指定认证内容。 | `npm test -- router-and-views.test.ts`。 | `src/frontend/src/views/HomeView.vue`；`src/frontend/src/__tests__/router-and-views.test.ts` | U12、U14 |
+| AC-05 | `useApi` 仅向相对 `/api` 路径发起原生 fetch，并使用 `credentials: "include"` 让浏览器管理 Cookie。 | API 封装固定路径边界和 credentials。 | `npm test -- useApi.test.ts`。 | `src/frontend/src/composables/useApi.ts`；`src/frontend/src/__tests__/useApi.test.ts` | U07、U13 |
+| AC-06 | `useApi` 对非成功响应解析后端统一 `{"error":"..."}` 并返回该错误。 | 错误分支只提取统一 error 或安全通用消息。 | `npm test -- useApi.test.ts`。 | `src/frontend/src/composables/useApi.ts`；`src/frontend/src/__tests__/useApi.test.ts` | U07、U13 |
+| AC-07 | 调用方提供 CSRF Token 时，`useApi` 将其准确设置到 `X-XSRF-TOKEN` Header。 | 请求构造使用固定 Header 名和调用方令牌。 | `npm test -- useApi.test.ts`。 | `src/frontend/src/composables/useApi.ts`；`src/frontend/src/__tests__/useApi.test.ts` | U07、U13 |
+| AC-08 | 每次调用 `useAuth` 均引用同一份模块级内存认证状态。 | 用户、初始化态和初始化 Promise 在模块级共享。 | `npm test -- useAuth.test.ts`。 | `src/frontend/src/composables/useAuth.ts`；`src/frontend/src/__tests__/useAuth.test.ts` | U08、U13 |
+| AC-09 | 首次初始化通过 `GET /api/auth/me` 恢复当前身份。 | `restore()` 以 `/me` 响应设置共享当前用户。 | `npm test -- useAuth.test.ts`。 | `src/frontend/src/composables/useAuth.ts`；`src/frontend/src/__tests__/useAuth.test.ts` | U08、U13 |
+| AC-10 | 任意 API 401 通知会清除共享内存认证状态。 | 401 回调只执行内存用户与相关认证态清理。 | `npm test -- useApi.test.ts useAuth.test.ts`。 | `src/frontend/src/composables/useApi.ts`；`src/frontend/src/composables/useAuth.ts`；`src/frontend/src/__tests__/useApi.test.ts`；`src/frontend/src/__tests__/useAuth.test.ts` | U07、U08、U13 |
+| AC-11 | 登录严格执行匿名 csrf → login → 认证后 csrf → me 的协议顺序。 | `login()` 的四次请求顺序固定且后一步仅在前一步成功后发生。 | `npm test -- useAuth.test.ts`；U15-A 实际联调记录。 | `src/frontend/src/composables/useAuth.ts`；`src/frontend/src/__tests__/useAuth.test.ts` | U09、U13、U15-A |
+| AC-12 | 登录失败在登录页显示后端统一错误，且失败结束后密码字段为空。 | 失败分支传递统一错误并清空密码模型。 | `npm test -- useAuth.test.ts router-and-views.test.ts`。 | `src/frontend/src/composables/useAuth.ts`；`src/frontend/src/views/LoginView.vue`；`src/frontend/src/__tests__/useAuth.test.ts`；`src/frontend/src/__tests__/router-and-views.test.ts` | U09、U14 |
+| AC-13 | 登出严格执行认证后 csrf → logout → 清除身份的协议顺序。 | `logout()` 只使用新取令牌，204 或 401 后清空内存身份。 | `npm test -- useAuth.test.ts router-and-views.test.ts`；U15-B 实际联调记录。 | `src/frontend/src/composables/useAuth.ts`；`src/frontend/src/views/HomeView.vue`；`src/frontend/src/__tests__/useAuth.test.ts`；`src/frontend/src/__tests__/router-and-views.test.ts` | U10、U12、U13、U14、U15-B |
+| AC-14 | 匿名访问 `/` 时路由守卫跳转到 `/login`。 | 受保护路由的匿名分支返回登录路径。 | `npm test -- router-and-views.test.ts`。 | `src/frontend/src/router.ts`；`src/frontend/src/__tests__/router-and-views.test.ts` | U11、U14 |
+| AC-15 | 已登录访问 `/login` 时路由守卫跳转到 `/`。 | 登录路由的已认证分支返回首页路径。 | `npm test -- router-and-views.test.ts`。 | `src/frontend/src/router.ts`；`src/frontend/src/__tests__/router-and-views.test.ts` | U11、U14 |
+| AC-16 | 初始化未完成时路由守卫等待同一个恢复 Promise，完成后只按最终认证态导航且不产生重定向循环。 | 守卫复用共享初始化 Promise并避免目标自跳转。 | `npm test -- router-and-views.test.ts`。 | `src/frontend/src/router.ts`；`src/frontend/src/__tests__/router-and-views.test.ts` | U11、U14 |
+| AC-17 | 密码、Cookie、CSRF Token 和认证状态均不写入 `localStorage` 或 `sessionStorage`。 | 认证/API 实现无 Web Storage 写入。 | `npm test -- useApi.test.ts useAuth.test.ts`；`rg -n 'localStorage|sessionStorage' src/frontend/src` 人工判读不得出现认证写入。 | `src/frontend/src/composables/useApi.ts`；`src/frontend/src/composables/useAuth.ts`；`src/frontend/src/__tests__/useApi.test.ts`；`src/frontend/src/__tests__/useAuth.test.ts` | U07、U08、U09、U10、U13 |
+| AC-18 | Vite 开发配置将相对 `/api` 请求 proxy 到本地 .NET 后端默认地址 `http://localhost:5142`。 | Vite server proxy 仅配置 `/api` 及批准的可选目标覆盖。 | U15-A、U15-B 实际联调记录；审查 `git diff -- src/frontend/vite.config.ts`。 | `src/frontend/vite.config.ts` | U15-A、U15-B |
+| AC-19 | 实际文件变化不超出批准的 13 个文件，且直接依赖变化不超出 AC-01。 | Git 变更清单与精确预算逐项一致。 | `git diff --name-status`；`git diff -- src/frontend/package.json src/frontend/package-lock.json`。 | `src/frontend/package.json`；`src/frontend/package-lock.json` | U04-A、U16、U17 |
+| AC-20 | 实现不包含 TASK-0009、JWT、Refresh Token、Pinia、Axios、其他明确禁止范围或后端修改。 | 变更审查不存在禁止内容。 | `git diff --name-status`；对批准变更执行 `rg -n 'JWT|Refresh Token|Pinia|Axios|TASK-0009'` 并人工判读；`dotnet test Datacenter.sln --no-restore` 保持 28/28 PASS。 | `src/frontend/src/router.ts`；`src/frontend/src/views/LoginView.vue`；`src/frontend/src/views/HomeView.vue`；`src/frontend/src/composables/useApi.ts`；`src/frontend/src/composables/useAuth.ts` | U16、U17 |
 
 ## 5～10 分钟执行单元
 
@@ -214,21 +222,21 @@
 | U02 | 5～10 分钟 | 独立 Reviewer 规格审核；仅新增审核报告 |
 | U03 | 5～10 分钟/轮 | 每轮仅修复一个或一组紧密相关 Finding；只改任务文档及必要状态记录 |
 | U04 | 5～10 分钟 | 独立规格复审；PASS 后由有权 Architect 单独执行 DRAFT → READY，不实施代码 |
-| U04-A | 5～10 分钟 | 仅在任务已合法进入 READY 且实施锁已认领后，于 `src/frontend/` 执行 `npm install --save-exact vue-router@4.6.3`，核对 `package.json` 和 `package-lock.json` 的实际依赖差异并报告；不得顺带实现 Router、升级其他包或运行 `npm audit fix`，失败立即停止 |
-| U05 | 5～10 分钟 | 仅新增 Router 并接入 `main.ts`/`App.vue`，不写页面逻辑 |
-| U06 | 5～10 分钟 | 仅实现静态登录表单，不接 API |
-| U07 | 5～10 分钟 | 仅实现最小 fetch 与错误契约，不实现认证状态 |
-| U08 | 5～10 分钟 | 仅实现 `/me` 和内存身份恢复 |
-| U09 | 5～10 分钟 | 仅实现 CSRF + login，不实现 logout |
-| U10 | 5～10 分钟 | 仅实现 CSRF + logout |
-| U11 | 5～10 分钟 | 仅实现匿名和已登录重定向守卫 |
-| U12 | 5～10 分钟 | 仅实现用户名、角色和登出按钮的受保护首页壳 |
-| U13 | 5～10 分钟 | 仅补 `useApi`/`useAuth` 测试 |
-| U14 | 5～10 分钟 | 仅补页面、跳转、守卫与错误展示测试 |
-| U15-A | 5～10 分钟 | 不改代码；启动或确认本地后端与 Vite，仅经 `/api` proxy 验证匿名 csrf → login → 认证后 csrf → me 并记录结果；任一步失败立即停止报告，不修复 |
-| U15-B | 5～10 分钟 | 不改代码；确认 U15-A 的真实本地进程和登录态，仅经 `/api` proxy 验证认证后 csrf → logout → me 返回 401/登录态清除并记录结果；任一步失败立即停止报告，不修复 |
-| U16 | 5～10 分钟 | 不改实现且不得顺手修复；只运行完整前端构建/测试和后端 28/28 回归 |
-| U17 | 5～10 分钟 | 不改实现；仅显式暂存批准文件、提交、推送、登记证据并执行合法交审迁移 |
+| U04-A | 5～10 分钟 | 仅在任务已合法进入 READY 且实施锁已认领后，于 `src/frontend/` 执行 `npm install --save-exact vue-router@4.6.3`，核对 `package.json` 和 `package-lock.json` 的实际依赖差异并报告；不得顺带实现 Router、升级其他包或运行 `npm audit fix`，失败立即停止（AC-01、AC-19） |
+| U05 | 5～10 分钟 | 仅新增 Router 并接入 `main.ts`/`App.vue`，不写页面逻辑（AC-02） |
+| U06 | 5～10 分钟 | 仅实现静态登录表单，不接 API（AC-03） |
+| U07 | 5～10 分钟 | 仅实现最小 fetch 与错误契约，不实现认证状态（AC-05、AC-06、AC-07、AC-10、AC-17） |
+| U08 | 5～10 分钟 | 仅实现 `/me` 和内存身份恢复（AC-08、AC-09、AC-10、AC-17） |
+| U09 | 5～10 分钟 | 仅实现 CSRF + login，不实现 logout（AC-11、AC-12、AC-17） |
+| U10 | 5～10 分钟 | 仅实现 CSRF + logout（AC-13、AC-17） |
+| U11 | 5～10 分钟 | 仅实现匿名和已登录重定向守卫（AC-14、AC-15、AC-16） |
+| U12 | 5～10 分钟 | 仅实现用户名、角色和登出按钮的受保护首页壳（AC-04、AC-13） |
+| U13 | 5～10 分钟 | 仅补 `useApi`/`useAuth` 测试（AC-05～AC-13、AC-17） |
+| U14 | 5～10 分钟 | 仅补页面、跳转、守卫与错误展示测试（AC-03、AC-04、AC-12～AC-16） |
+| U15-A | 5～10 分钟 | 不改代码；启动或确认本地后端与 Vite，仅经 `/api` proxy 验证匿名 csrf → login → 认证后 csrf → me 并记录结果；任一步失败立即停止报告，不修复（AC-11、AC-18） |
+| U15-B | 5～10 分钟 | 不改代码；确认 U15-A 的真实本地进程和登录态，仅经 `/api` proxy 验证认证后 csrf → logout → me 返回 401/登录态清除并记录结果；任一步失败立即停止报告，不修复（AC-13、AC-18） |
+| U16 | 5～10 分钟 | 不改实现且不得顺手修复；只运行完整前端构建/测试和后端 28/28 回归（AC-19、AC-20） |
+| U17 | 5～10 分钟 | 不改实现；仅显式暂存批准文件、提交、推送、登记证据并执行合法交审迁移（AC-19、AC-20） |
 
 ## 构建与验证命令
 
@@ -249,10 +257,10 @@ U16 预期：前端测试全通过，构建 0 errors/0 warnings，后端 28/28 P
 
 ## 防过度开发门禁
 
-- 每项实现必须同时映射 Requirement Source、本规格范围和 AC；无法映射即停止。
+- 每项实现必须同时映射 Requirement Source、本规格范围和 AC-01～AC-20；无法映射即停止。
 - 采用最简单方案：模块内 `ref` + 原生 `fetch` + 两条静态路由；不引入通用状态层、HTTP 客户端或未来业务抽象。
-- 发现新增页面、依赖、后端/API 契约变化、预算外文件、无关重构或 TASK-0009 内容，立即停止并按权威工作流发起 Change Request。
-- 实施结束逐项搜索 JWT、Refresh Token、Pinia、Axios、Room/Cabinet/Server 业务内容及持久化认证数据；存在任一项即不允许交审。
+- 发现 AC-19 预算外文件或依赖、AC-20 禁止内容、新增页面、后端/API 契约变化、无关重构或 TASK-0009 内容，立即停止并按权威工作流发起 Change Request。
+- 实施结束按 AC-17、AC-20 逐项搜索持久化认证数据、JWT、Refresh Token、Pinia、Axios、Room/Cabinet/Server 业务内容；存在任一项即不允许交审。
 
 ## 状态迁移、锁与审核要求
 
