@@ -4,14 +4,16 @@
 
 - Task ID：TASK-0008
 - Task Name：前端基础与登录壳
-- Status：READY
+- Status：IN_PROGRESS
 - Owner：Cursor Frontend
-- Implementation Owner：Cursor Frontend（仅在规格审核通过并进入 READY 后认领）
+- Implementation Owner：Cursor Frontend
 - Reviewer：Codex Reviewer
 - Branch：feature/task-0008-frontend-login-shell
 - Requirement Source：`docs/product/MVP-PRODUCT-BASELINE.md` NFR-007、AC-037；`docs/architecture/MVP-ARCHITECTURE-BASELINE.md` TASK-0008
 - Architecture Reference：`docs/architecture/MVP-ARCHITECTURE-BASELINE.md`
 - Dependency：TASK-0007（COMPLETED；认证 API 4/4 已实现；实施锁全部 RELEASED）
+- Module Lock：CLAIMED（13 项精确实施文件锁 by Cursor Frontend；2026-07-21 07:58:50 +08:00）
+- Implementation Started：NO
 
 ## 任务目标与用户价值
 
@@ -300,7 +302,7 @@ U16 预期：前端测试全通过，构建 0 errors/0 warnings，后端 28/28 P
 
 ## 状态迁移、锁与审核要求
 
-- 当前为 `READY`；规格已获准开始但尚未开发。未完成模块冲突检查并逐项认领精确实施锁前，禁止修改实施文件。
+- 当前为 `IN_PROGRESS`；实施启动门禁已由 Cursor Frontend 完成。Implementation Started 仍为 `NO`；尚未修改任何实施文件，尚未安装 `vue-router`。
 - U01 仅认领 `tasks/TASK-0008-FRONTEND-LOGIN-SHELL.md`、`tasks/current-task.md`、`tasks/MODULE-LOCKS.md` 三项规格文档锁；不得提前锁定 `src/frontend/`、`src/backend/`、`tests/`、package/lock 文件或 TASK-0009。
 - U01 提交推送后保持 DRAFT 和规格锁 CLAIMED，等待独立 Codex Reviewer 执行 U02；Reviewer 只读，不修改本规格。
 - U02 若有 Finding，Architect 在独立 U03 修正；Reviewer 独立复审。只有 Reviewer PASS 且 READY 条件完整后，才由有权 Architect 在独立步骤合法执行 `DRAFT → READY` 并释放规格锁。
@@ -332,6 +334,23 @@ U16 预期：前端测试全通过，构建 0 errors/0 warnings，后端 28/28 P
 - Next Action：Cursor Frontend 按权威工作流检查父子路径冲突、逐项认领批准的精确实施锁，再执行合法 `READY → IN_PROGRESS`
 - 限制：实施启动门禁完成前不得安装依赖、修改前端或执行 U04-A；不得认领目录级 `src/frontend/` 锁
 
+## 实施启动门禁记录
+
+- 原状态：`READY`
+- 新状态：`IN_PROGRESS`
+- 执行角色：Cursor Frontend
+- Owner：Cursor Frontend
+- Reviewer：Codex Reviewer
+- 当前执行单元：U04
+- 状态迁移依据：`docs/architecture/AGENT-WORKFLOW.md` 第 3.1、3.2 节，合法迁移 `READY → IN_PROGRESS`
+- Blocker：无
+- 冲突检查：无活跃 `CLAIMED`/`HANDED_OFF` 锁；无父子路径重叠；TASK-0007 的 19 项实施锁全部 `RELEASED`；未认领目录级 `src/frontend/`
+- 实施锁：13 项精确文件路径由 Cursor Frontend 于 2026-07-21 07:58:50 +08:00 认领为 `CLAIMED`（新增 8 + 修改 5）
+- Implementation Started：`NO`
+- 本轮范围：仅更新任务管理文件；未修改 `src/frontend/` 实施文件；未安装 `vue-router`
+- Next Action：Cursor Frontend 按任务批准范围实施 U04-A（`npm install --save-exact vue-router@4.6.3`）
+- 限制：不得开始 U05+；不得修改后端；不得释放实施锁；不得迁移为 `READY_FOR_REVIEW`
+
 ---
 
-> 本文件当前为 READY。实施 Owner 完成冲突检查、逐项认领精确实施锁并合法执行 `READY → IN_PROGRESS` 前，不得实施。
+> 本文件当前为 IN_PROGRESS。实施启动门禁已完成；Implementation Started 仍为 NO。下一步仅允许按微任务表执行 U04-A。

@@ -7,6 +7,19 @@
 | TASK-0008 | tasks/TASK-0008-FRONTEND-LOGIN-SHELL.md | Codex Architect | 2026-07-20 +08:00 | RELEASED | U02 独立规格审核及必要 U03 修正完成，Reviewer PASS 后由有权 Architect 执行 DRAFT → READY 时释放；取消则按工作流释放 | 2026-07-20 22:42:38 +08:00（Codex Architect 释放；规格复审 PASS，提交 e28d4f5bfa5a6d36f0673db79342ffd6a4fab085；DRAFT → READY 规格放行完成） |
 | TASK-0008 | tasks/current-task.md | Codex Architect | 2026-07-20 +08:00 | RELEASED | U02 独立规格审核及必要 U03 修正完成，Reviewer PASS 后由有权 Architect 执行 DRAFT → READY 时释放；取消则按工作流释放 | 2026-07-20 22:42:38 +08:00（Codex Architect 释放；规格复审 PASS，提交 e28d4f5bfa5a6d36f0673db79342ffd6a4fab085；DRAFT → READY 规格放行完成） |
 | TASK-0008 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-20 +08:00 | RELEASED | 仅维护 TASK-0008 规格锁；Reviewer PASS 后由有权 Architect 执行 DRAFT → READY 时释放；取消则按工作流释放 | 2026-07-20 22:42:38 +08:00（Codex Architect 释放；规格复审 PASS，提交 e28d4f5bfa5a6d36f0673db79342ffd6a4fab085；DRAFT → READY 规格放行完成） |
+| TASK-0008 | src/frontend/src/router.ts | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算新增 1/8；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0008 | src/frontend/src/views/LoginView.vue | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算新增 2/8；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0008 | src/frontend/src/views/HomeView.vue | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算新增 3/8；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0008 | src/frontend/src/composables/useApi.ts | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算新增 4/8；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0008 | src/frontend/src/composables/useAuth.ts | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算新增 5/8；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0008 | src/frontend/src/__tests__/useApi.test.ts | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算新增 6/8；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0008 | src/frontend/src/__tests__/useAuth.test.ts | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算新增 7/8；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0008 | src/frontend/src/__tests__/router-and-views.test.ts | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算新增 8/8；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0008 | src/frontend/src/main.ts | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算修改 1/5；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0008 | src/frontend/src/App.vue | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算修改 2/5；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0008 | src/frontend/vite.config.ts | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算修改 3/5；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0008 | src/frontend/package.json | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算修改 4/5；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0008 | src/frontend/package-lock.json | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | CLAIMED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算修改 5/5；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | |
 | TASK-0002 | AGENTS.md | Codex Architect | 2026-07-16 +08:00 | RELEASED | TASK-0002 进入 COMPLETED 或 CANCELLED | 2026-07-16 16:48:08 +08:00 |
 | TASK-0002 | agents/ | Codex Architect | 2026-07-16 +08:00 | RELEASED | TASK-0002 进入 COMPLETED 或 CANCELLED | 2026-07-16 16:48:08 +08:00 |
 | TASK-0002 | docs/architecture/AGENT-WORKFLOW.md | Codex Architect | 2026-07-16 +08:00 | RELEASED | TASK-0002 进入 COMPLETED 或 CANCELLED | 2026-07-16 16:48:08 +08:00 |

@@ -4,14 +4,14 @@
 
 ## 当前状态
 
-- Status：READY
+- Status：IN_PROGRESS
 - Owner：Cursor Frontend
 - Reviewer：Codex Reviewer
 - 任务：TASK-0008 — 前端基础与登录壳
 - 分支：feature/task-0008-frontend-login-shell
 - 规格文件：tasks/TASK-0008-FRONTEND-LOGIN-SHELL.md
 - 当前执行单元：U04
-- 当前阶段：规格已放行，等待实施启动
+- 当前阶段：实施启动门禁完成，等待正式实现
 - Blocker：无
 - 规格复审：PASS；Findings：BLOCKER 0 / MAJOR 0 / MINOR 0 / NOTE 0
 - AC：20/20 PASS
@@ -19,9 +19,9 @@
 - 依赖预算：唯一新增直接生产依赖 `vue-router` `4.6.3`
 - 微任务时间盒：30/30 PASS
 - Implementation Started：NO
-- 实施锁：0
-- Next Action：Cursor Frontend 按权威工作流检查父子路径冲突、逐项认领批准的精确实施锁，再执行合法 `READY → IN_PROGRESS`
-- 实现许可：否；实施启动门禁完成前不得安装依赖或修改实施文件
+- 实施锁：13（CLAIMED by Cursor Frontend；精确文件路径；无目录级锁）
+- Next Action：Cursor Frontend 按任务批准范围实施 U04-A
+- 实现许可：否；本轮仅完成启动门禁，尚未修改实施文件、尚未安装 vue-router
 
 ## 前序任务完成基线
 
@@ -29,13 +29,32 @@
 - TASK-0007 实施锁：19 项全部 RELEASED
 - TASK-0007 回归基线：28/28 PASS
 
-## TASK-0008 U04 规格放行
+## TASK-0008 实施启动门禁
 
-- Status：READY
+- 原状态：READY
+- 新状态：IN_PROGRESS
+- 执行角色：Cursor Frontend
 - Owner：Cursor Frontend
 - Reviewer：Codex Reviewer
 - 当前执行单元：U04
-- 当前阶段：规格已放行，等待实施启动
+- 状态迁移依据：权威工作流第 3.1、3.2 节合法迁移 `READY → IN_PROGRESS`
+- Blocker：无
+- 冲突检查：无活跃 CLAIMED/HANDED_OFF；无父子路径重叠；TASK-0007 实施锁全部 RELEASED；未认领目录级 `src/frontend/`
+- 认领时间：2026-07-21 07:58:50 +08:00
+- 实施锁：13 项精确路径 CLAIMED（新增 8 + 修改 5）
+- Implementation Started：NO
+- 本轮修改：仅 `tasks/TASK-0008-FRONTEND-LOGIN-SHELL.md`、`tasks/current-task.md`、`tasks/MODULE-LOCKS.md`
+- 未修改：`src/frontend/` 全部实施文件、`package.json`、`package-lock.json`
+- 未执行：`npm install` / `npm ci` / 编码 / 测试
+- Next Action：Cursor Frontend 按任务批准范围实施 U04-A（`npm install --save-exact vue-router@4.6.3`）
+
+## TASK-0008 U04 规格放行
+
+- Status：READY（历史放行记录；当前任务状态已为 IN_PROGRESS）
+- Owner：Cursor Frontend
+- Reviewer：Codex Reviewer
+- 当前执行单元：U04
+- 当前阶段：规格已放行后完成实施启动门禁
 - 原状态：DRAFT
 - 新状态：READY
 - 迁移依据：权威工作流第 3.1、3.2 节合法迁移 `DRAFT → READY`；规格放行执行角色 Codex Architect
@@ -44,12 +63,12 @@
 - AC：20/20 PASS；文件预算 13/13；微任务时间盒 30/30 PASS
 - 依赖预算：唯一新增直接生产依赖 `vue-router` `4.6.3`
 - 测试规格：PASS；防过度开发：PASS
-- 规格锁：三项 RELEASED by Codex Architect；未认领任何实施路径
-- Implementation Started：NO；实施锁：0
-- Next Action：Cursor Frontend 检查冲突、逐项认领精确实施锁，再执行合法 `READY → IN_PROGRESS`
+- 规格锁：三项 RELEASED by Codex Architect
+- Implementation Started：NO；实施锁：13 CLAIMED by Cursor Frontend（启动门禁后）
+- Next Action：Cursor Frontend 按任务批准范围实施 U04-A
 - Blocker：无
-- 允许执行实施启动门禁：是
-- 允许开始实现：否
+- 允许执行实施启动门禁：已完成
+- 允许开始实现：否（Implementation Started 仍为 NO；下一步仅为 U04-A）
 
 ## TASK-0007 完成归档
 
