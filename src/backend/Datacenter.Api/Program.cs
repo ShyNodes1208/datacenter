@@ -19,6 +19,7 @@ var connectionString = NormalizeSqliteConnectionString(
 
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<RoomService>();
 builder.Services.AddScoped<Microsoft.AspNetCore.Identity.IPasswordHasher<User>, Microsoft.AspNetCore.Identity.PasswordHasher<User>>();
 builder.Services.AddControllers(options => options.Filters.Add(new AuthorizeFilter()))
     .ConfigureApiBehaviorOptions(options =>
