@@ -4,7 +4,7 @@
 
 - Task ID：TASK-0008
 - Task Name：前端基础与登录壳
-- Status：READY_FOR_REVIEW
+- Status：COMPLETED
 - Owner：Cursor Frontend
 - Implementation Owner：Cursor Frontend
 - Reviewer：Codex Reviewer
@@ -12,7 +12,7 @@
 - Requirement Source：`docs/product/MVP-PRODUCT-BASELINE.md` NFR-007、AC-037；`docs/architecture/MVP-ARCHITECTURE-BASELINE.md` TASK-0008
 - Architecture Reference：`docs/architecture/MVP-ARCHITECTURE-BASELINE.md`
 - Dependency：TASK-0007（COMPLETED；认证 API 4/4 已实现；实施锁全部 RELEASED）
-- Module Lock：HANDED_OFF（13 项精确实施文件锁 by Cursor Frontend；交审 2026-07-21 15:14:29 +08:00）
+- Module Lock：RELEASED（13 项精确实施文件锁；2026-07-21 15:22:03 +08:00 由 Codex Reviewer 在审核 PASS 后释放）
 - Implementation Started：NO
 
 ## 任务目标与用户价值
@@ -411,6 +411,23 @@ U16 预期：前端测试全通过，构建 0 errors/0 warnings，后端 28/28 P
 - 下一步：独立 Codex Reviewer 审核完整实现
 - 限制：Cursor Frontend 在 Reviewer 结论前停止修改全部实施路径
 
+## 实现审核完成记录（2026-07-21）
+
+- 原状态：READY_FOR_REVIEW
+- 新状态：COMPLETED
+- 执行角色：Codex Reviewer
+- Owner：Cursor Frontend（历史 Owner 保持不变）
+- Reviewer：Codex Reviewer
+- 审核报告：`reviews/tasks/TASK-0008-FRONTEND-LOGIN-SHELL-IMPLEMENTATION-REVIEW.md`
+- 审核结论：PASS；Findings BLOCKER 0 / MAJOR 0 / MINOR 0 / NOTE 0
+- AC：AC-01～AC-20，20/20 PASS
+- 验证：前端 44/44 PASS；typecheck/build PASS；后端 28/28 PASS；workflow PASS=20/FAIL=0/TOTAL=20；`git diff --check` PASS
+- 文件预算：新增 8、修改 5，共 13；依赖预算 PASS
+- 防过度设计 / 防过度开发：PASS
+- 锁：13 项实施锁由 HANDED_OFF → RELEASED；路径与历史 Owner 不变
+- 实现代码修改：无；新增功能：无；新增测试：无
+- 下一步：独立合并门禁/分支合并流程；不得自动合并 main
+
 ---
 
-> 本文件当前为 READY_FOR_REVIEW。实现交审证据已登记；13 项实施锁为 HANDED_OFF。下一步由独立 Codex Reviewer 审核；Owner 停止修改实施路径。
+> 本文件当前为 COMPLETED。实现审核 PASS，13 项实施锁已 RELEASED；下一正式步骤为独立合并门禁/分支合并流程。

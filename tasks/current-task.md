@@ -4,14 +4,14 @@
 
 ## 当前状态
 
-- Status：READY_FOR_REVIEW
+- Status：COMPLETED
 - Owner：Cursor Frontend
 - Reviewer：Codex Reviewer
 - 任务：TASK-0008 — 前端基础与登录壳
 - 分支：feature/task-0008-frontend-login-shell
 - 规格文件：tasks/TASK-0008-FRONTEND-LOGIN-SHELL.md
-- 当前执行单元：U17-D
-- 当前阶段：实现交审完成，等待独立审核
+- 当前执行单元：Reviewer 实现审核完成
+- 当前阶段：TASK-0008 已完成，等待独立合并门禁
 - Blocker：无
 - 规格复审：PASS；Findings：BLOCKER 0 / MAJOR 0 / MINOR 0 / NOTE 0
 - AC：AC-01～AC-20 证据齐备（交审登记）
@@ -19,10 +19,26 @@
 - 依赖预算：唯一新增直接生产依赖 `vue-router` `4.6.3`
 - 微任务时间盒：30/30 PASS
 - Implementation Started：NO
-- 实施锁：13（HANDED_OFF by Cursor Frontend；精确文件路径；无目录级锁）
+- 实施锁：13（全部 RELEASED；历史 Owner 为 Cursor Frontend）
 - 实现提交：`c3b798b851fefe64a4b043f951721b1489db28ca`
-- Next Action：独立 Codex Reviewer 审核完整实现；Cursor Frontend 停止修改实施路径
+- Next Action：独立合并门禁/分支合并流程；不得自动合并 main
 - 实现许可：否；交审后 Owner 不得继续修改实施路径
+
+## TASK-0008 实现审核完成记录（2026-07-21）
+
+- 原状态：READY_FOR_REVIEW
+- 新状态：COMPLETED
+- 状态执行角色与 Reviewer：Codex Reviewer
+- Owner：Cursor Frontend（历史 Owner 保持不变）
+- 审核报告：`reviews/tasks/TASK-0008-FRONTEND-LOGIN-SHELL-IMPLEMENTATION-REVIEW.md`
+- 审核结论：PASS；Findings BLOCKER 0 / MAJOR 0 / MINOR 0 / NOTE 0
+- AC：AC-01～AC-20，20/20 PASS
+- 文件预算：新增 8、修改 5，共 13；依赖预算 PASS
+- 独立验证：前端 44/44 PASS；typecheck/build PASS；`vue-router@4.6.3`；后端 28/28 PASS；workflow 20/20；`git diff --check` PASS
+- 安全、认证、路由、页面、proxy、测试质量、防过度设计与防过度开发：全部 PASS
+- 实现修改：无；新增功能：无；新增测试：无
+- 锁状态：13 项 HANDED_OFF → RELEASED；历史 Owner 不变
+- 下一步：独立合并门禁/分支合并流程；不得自动合并 main
 
 ## TASK-0008 实现交审记录（2026-07-21）
 
