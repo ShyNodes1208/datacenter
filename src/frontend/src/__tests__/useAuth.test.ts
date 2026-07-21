@@ -320,3 +320,176 @@ describe('useAuth login protocol (U13-D)', () => {
     expect(JSON.stringify(user)).not.toContain(password)
   })
 })
+
+describe('useAuth logout protocol (U13-E)', () => {
+  it('follows authenticated csrf → logout and clears identity on 204', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({ userId: '1', username: 'admin', role: 'Admin' }),
+      )
+      .mockResolvedValueOnce(csrfResponse('logout-csrf-token'))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { useAuth } = await loadUseAuth()
+    const { user, restore, logout } = useAuth()
+    await restore()
+    expect(user.value).toEqual({ id: '1', username: 'admin', role: 'Admin' })
+
+    const result = await logout()
+
+    expect(result).toEqual({ ok: true })
+    expect(user.value).toBeNull()
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/auth/csrf')
+    expect(fetchMock.mock.calls[1]?.[1]).toMatchObject({
+      method: 'GET',
+      credentials: 'include',
+    })
+    expect(
+      new Headers((fetchMock.mock.calls[1]?.[1] as RequestInit).headers).get('X-XSRF-TOKEN'),
+    ).toBeNull()
+
+    expect(fetchMock.mock.calls[2]?.[0]).toBe('/api/auth/logout')
+    const logoutInit = fetchMock.mock.calls[2]?.[1] as RequestInit
+    expect(logoutInit.method).toBe('POST')
+    expect(logoutInit.credentials).toBe('include')
+    expect(logoutInit.body).toBeUndefined()
+    expect(new Headers(logoutInit.headers).get('X-XSRF-TOKEN')).toBe('logout-csrf-token')
+  })
+
+  it('clears identity when logout returns 401', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({ userId: '1', username: 'admin', role: 'Admin' }),
+      )
+      .mockResolvedValueOnce(csrfResponse('logout-csrf-token'))
+      .mockResolvedValueOnce(jsonResponse({ error: '未认证' }, 401))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { useAuth } = await loadUseAuth()
+    const { user, restore, logout } = useAuth()
+    await restore()
+    expect(user.value).not.toBeNull()
+
+    const result = await logout()
+
+    expect(result).toEqual({ ok: true })
+    expect(user.value).toBeNull()
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock.mock.calls[2]?.[0]).toBe('/api/auth/logout')
+  })
+
+  it('keeps user and returns unified error on non-204/401 logout failure', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({ userId: '1', username: 'admin', role: 'Admin' }),
+      )
+      .mockResolvedValueOnce(csrfResponse('logout-csrf-token'))
+      .mockResolvedValueOnce(jsonResponse({ error: '服务不可用' }, 500))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { useAuth } = await loadUseAuth()
+    const { user, restore, logout } = useAuth()
+    await restore()
+    expect(user.value).toEqual({ id: '1', username: 'admin', role: 'Admin' })
+
+    const result = await logout()
+
+    expect(result).toEqual({ ok: false, error: '服务不可用' })
+    expect(user.value).toEqual({ id: '1', username: 'admin', role: 'Admin' })
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
+
+  it('stops logout and keeps user when authenticated csrf fails', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({ userId: '1', username: 'admin', role: 'Admin' }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ error: 'csrf unavailable' }, 500))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { useAuth } = await loadUseAuth()
+    const { user, restore, logout } = useAuth()
+    await restore()
+    expect(user.value).toEqual({ id: '1', username: 'admin', role: 'Admin' })
+
+    const result = await logout()
+
+    expect(result).toEqual({ ok: false, error: 'csrf unavailable' })
+    expect(user.value).toEqual({ id: '1', username: 'admin', role: 'Admin' })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/auth/csrf')
+  })
+
+  it('treats a second logout 401 as anonymous and keeps identity cleared', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({ userId: '1', username: 'admin', role: 'Admin' }),
+      )
+      .mockResolvedValueOnce(csrfResponse('first-logout-csrf'))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(csrfResponse('second-logout-csrf'))
+      .mockResolvedValueOnce(jsonResponse({ error: '未认证' }, 401))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { useAuth } = await loadUseAuth()
+    const { user, restore, logout } = useAuth()
+    await restore()
+
+    const first = await logout()
+    expect(first).toEqual({ ok: true })
+    expect(user.value).toBeNull()
+
+    const second = await logout()
+    expect(second).toEqual({ ok: true })
+    expect(user.value).toBeNull()
+
+    expect(fetchMock).toHaveBeenCalledTimes(5)
+    expect(fetchMock.mock.calls[3]?.[0]).toBe('/api/auth/csrf')
+    expect(fetchMock.mock.calls[4]?.[0]).toBe('/api/auth/logout')
+    expect(
+      new Headers((fetchMock.mock.calls[4]?.[1] as RequestInit).headers).get('X-XSRF-TOKEN'),
+    ).toBe('second-logout-csrf')
+  })
+
+  it('does not write auth secrets to web storage during logout', async () => {
+    const localStorageMock = {
+      getItem: vi.fn(),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    }
+    const sessionStorageMock = {
+      getItem: vi.fn(),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    }
+    vi.stubGlobal('localStorage', localStorageMock)
+    vi.stubGlobal('sessionStorage', sessionStorageMock)
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({ userId: '1', username: 'admin', role: 'Admin' }),
+      )
+      .mockResolvedValueOnce(csrfResponse('logout-csrf-token'))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { useAuth } = await loadUseAuth()
+    const { restore, logout } = useAuth()
+    await restore()
+    await logout()
+
+    expect(localStorageMock.setItem).not.toHaveBeenCalled()
+    expect(sessionStorageMock.setItem).not.toHaveBeenCalled()
+  })
+})
