@@ -1,6 +1,7 @@
-import { defineComponent, h } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from './composables/useAuth'
+import HomeView from './views/HomeView.vue'
+import LoginView from './views/LoginView.vue'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -8,19 +9,11 @@ declare module 'vue-router' {
   }
 }
 
-/** Outlet shells only — page UI is out of U05/U11 scope. */
-const RouteShell = defineComponent({
-  name: 'RouteShell',
-  setup() {
-    return () => h('div')
-  },
-})
-
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/login', component: RouteShell },
-    { path: '/', component: RouteShell, meta: { requiresAuth: true } },
+    { path: '/login', component: LoginView },
+    { path: '/', component: HomeView, meta: { requiresAuth: true } },
   ],
 })
 
