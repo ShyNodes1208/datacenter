@@ -38,18 +38,18 @@ public sealed class RoomIntegrationTests(AuthTestFixture fixture)
         return response;
     }
 
-    private static async Task<(HttpClient Client, string CsrfToken)> CreateAdminClientAndTokenAsync(AuthTestFixture fixture)
+    private static async Task<(HttpClient Client, string CsrfToken)> CreateSessionForRoleAsync(
+        AuthTestFixture fixture, string username, string password, string role)
     {
-        // Seed an admin user into the test database
         await using (var scope = fixture.Factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<User>>();
-            if (!await db.Users.AnyAsync(u => u.Username == "room-admin"))
+            if (!await db.Users.AnyAsync(u => u.Username == username))
             {
-                var admin = new User { Username = "room-admin", Role = Roles.RoomAdministrator, Enabled = true };
-                admin.PasswordHash = hasher.HashPassword(admin, "admin-password");
-                db.Users.Add(admin);
+                var user = new User { Username = username, Role = role, Enabled = true };
+                user.PasswordHash = hasher.HashPassword(user, password);
+                db.Users.Add(user);
                 await db.SaveChangesAsync();
             }
         }
@@ -58,14 +58,19 @@ public sealed class RoomIntegrationTests(AuthTestFixture fixture)
         var token = await GetCsrfTokenAsync(client);
         using var loginRequest = new HttpRequestMessage(HttpMethod.Post, "/api/auth/login")
         {
-            Content = JsonContent.Create(new { username = "room-admin", password = "admin-password" })
+            Content = JsonContent.Create(new { username, password })
         };
         loginRequest.Headers.Add("X-XSRF-TOKEN", token);
         using var loginResponse = await client.SendAsync(loginRequest);
         Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
 
-        var adminToken = await GetCsrfTokenAsync(client);
-        return (client, adminToken);
+        var sessionToken = await GetCsrfTokenAsync(client);
+        return (client, sessionToken);
+    }
+
+    private static Task<(HttpClient Client, string CsrfToken)> CreateAdminClientAndTokenAsync(AuthTestFixture fixture)
+    {
+        return CreateSessionForRoleAsync(fixture, "room-admin", "admin-password", Roles.RoomAdministrator);
     }
 
     private static HttpRequestMessage CreatePost(string path, string token, object? body = null)
@@ -204,6 +209,38 @@ public sealed class RoomIntegrationTests(AuthTestFixture fixture)
         Assert.Contains("已存在", await updateResponse.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
+    // ── Group 1b: Operations role ──
+
+    [Fact]
+    public async Task OperationsRole_CanCreateAndEdit()
+    {
+        var (client, token) = await CreateSessionForRoleAsync(
+            fixture, "ops-user", "ops-password", Roles.Operations);
+
+        using var createRequest = CreatePost("/api/rooms", token, new
+        {
+            name = "Ops Room",
+            location = "DC-East",
+            notes = "Created by ops"
+        });
+        using var createResponse = await client.SendAsync(createRequest);
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+
+        var room = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        var id = room.GetProperty("id").GetInt32();
+        Assert.Equal("Ops Room", room.GetProperty("name").GetString());
+
+        token = await GetCsrfTokenAsync(client);
+        using var updateRequest = CreatePut($"/api/rooms/{id}", token, new
+        {
+            name = "Ops Room Updated"
+        });
+        using var updateResponse = await client.SendAsync(updateRequest);
+        Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
+        var updated = await updateResponse.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("Ops Room Updated", updated.GetProperty("name").GetString());
+    }
+
     // ── Group 2: Read-only user ──
 
     [Fact]
@@ -255,6 +292,35 @@ public sealed class RoomIntegrationTests(AuthTestFixture fixture)
         using var response = await client.SendAsync(request);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ReadOnlyViewerRole_CanGetButCannotModify()
+    {
+        var (client, _) = await CreateSessionForRoleAsync(
+            fixture, "viewer-user", "viewer-password", Roles.ReadOnlyViewer);
+
+        // GET all — should succeed
+        using var getAll = await client.GetAsync("/api/rooms");
+        Assert.Equal(HttpStatusCode.OK, getAll.StatusCode);
+
+        // GET by id — should succeed (404 is OK — means auth passed but room doesn't exist)
+        using var getById = await client.GetAsync("/api/rooms/1");
+        Assert.True(
+            getById.StatusCode == HttpStatusCode.OK || getById.StatusCode == HttpStatusCode.NotFound,
+            $"Expected OK or NotFound, got {getById.StatusCode}");
+
+        // POST — should be forbidden (not in CanModify policy)
+        var token = await GetCsrfTokenAsync(client);
+        using var createRequest = CreatePost("/api/rooms", token, new { name = "Should Fail" });
+        using var createResponse = await client.SendAsync(createRequest);
+        Assert.Equal(HttpStatusCode.Unauthorized, createResponse.StatusCode);
+
+        // PUT — should be forbidden
+        token = await GetCsrfTokenAsync(client);
+        using var updateRequest = CreatePut("/api/rooms/1", token, new { name = "Should Fail" });
+        using var updateResponse = await client.SendAsync(updateRequest);
+        Assert.Equal(HttpStatusCode.Unauthorized, updateResponse.StatusCode);
     }
 
     // ── Group 3: Anonymous ──

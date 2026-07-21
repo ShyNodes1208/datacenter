@@ -29,7 +29,7 @@ public sealed class RoomsController(RoomService service, IAntiforgery antiforger
     }
 
     [HttpPost]
-    [Authorize(Roles = "机房管理员,运维人员")]
+    [Authorize(Policy = "CanModify")]
     public async Task<IActionResult> Create([FromBody] CreateRoomRequest request)
     {
         if (!await HasValidAntiforgeryTokenAsync())
@@ -46,7 +46,7 @@ public sealed class RoomsController(RoomService service, IAntiforgery antiforger
     }
 
     [HttpPut("{id:int}")]
-    [Authorize(Roles = "机房管理员,运维人员")]
+    [Authorize(Policy = "CanModify")]
     public async Task<IActionResult> Update(int id, [FromBody] UpdateRoomRequest request)
     {
         if (!await HasValidAntiforgeryTokenAsync())

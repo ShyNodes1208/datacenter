@@ -71,12 +71,14 @@ public sealed class RoomService(AppDbContext db)
 
         if (location is not null)
         {
-            room.Location = location.Trim();
+            var trimmedLocation = location.Trim();
+            room.Location = trimmedLocation.Length == 0 ? null : trimmedLocation;
         }
 
         if (notes is not null)
         {
-            room.Notes = notes.Trim();
+            var trimmedNotes = notes.Trim();
+            room.Notes = trimmedNotes.Length == 0 ? null : trimmedNotes;
         }
 
         room.UpdatedAt = DateTime.UtcNow;
