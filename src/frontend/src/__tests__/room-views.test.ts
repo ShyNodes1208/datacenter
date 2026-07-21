@@ -99,3 +99,56 @@ describe('RoomListPage SSR render', () => {
     expect(html).not.toContain('新建机房')
   })
 })
+
+describe('RoomDetailPage SSR render', () => {
+  // RoomDetailPage uses useRoute() which requires a router instance during SSR.
+  // Use the same pattern as renderLoginViewHtml in router-and-views.test.ts.
+  async function renderRoomDetailHtml(): Promise<string> {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({
+        id: 1, name: 'Room A', location: 'Floor 1', notes: 'Test',
+        createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z'
+      }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    ))
+
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/rooms/:id', component: { template: '<div />' } },
+      ],
+    })
+    await router.push('/rooms/1')
+    await router.isReady()
+
+    const { default: RoomDetailPage } = await import('../views/RoomDetailPage.vue')
+    const app = createSSRApp(RoomDetailPage)
+    app.use(router)
+    return renderToString(app)
+  }
+
+  it('renders room name, location and notes', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    const html = await renderRoomDetailHtml()
+    expect(html).toContain('Room A')
+    expect(html).toContain('Floor 1')
+    expect(html).toContain('Test')
+  })
+
+  it('shows edit button for admin role', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    const html = await renderRoomDetailHtml()
+    expect(html).toContain('编辑')
+  })
+
+  it('hides edit button for readonly role', async () => {
+    userMock.value = { id: '1', username: 'viewer', role: '只读查看人员' }
+    const html = await renderRoomDetailHtml()
+    expect(html).not.toContain('编辑')
+  })
+
+  it('shows back link to room list', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    const html = await renderRoomDetailHtml()
+    expect(html).toContain('返回列表')
+  })
+})
