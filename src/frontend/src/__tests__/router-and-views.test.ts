@@ -240,3 +240,96 @@ describe('auth redirect route guards (U14-D)', () => {
     expect(router.currentRoute.value.fullPath).toBe('/')
   })
 })
+
+describe('route guard init wait (U14-E)', () => {
+  async function loadAppRouter() {
+    vi.resetModules()
+    const { router } = await import('../router')
+    return router
+  }
+
+  it('waits for a pending restore before navigating by final auth state', async () => {
+    let resolveRestore!: () => void
+    const pendingRestore = new Promise<void>((resolve) => {
+      resolveRestore = resolve
+    })
+    restoreMock.mockImplementation(() => pendingRestore)
+
+    userMock.value = null
+    const router = await loadAppRouter()
+
+    let navigationDone = false
+    const navigation = router.push('/').then(() => {
+      navigationDone = true
+    })
+
+    for (let i = 0; i < 20 && restoreMock.mock.calls.length === 0; i += 1) {
+      await Promise.resolve()
+    }
+
+    expect(restoreMock).toHaveBeenCalled()
+    expect(navigationDone).toBe(false)
+
+    resolveRestore()
+    await navigation
+    await router.isReady()
+
+    expect(navigationDone).toBe(true)
+    expect(router.currentRoute.value.fullPath).toBe('/login')
+  })
+
+  it('reuses one pending restore promise and navigates once after it resolves', async () => {
+    let resolveRestore!: () => void
+    const pendingRestore = new Promise<void>((resolve) => {
+      resolveRestore = resolve
+    })
+    restoreMock.mockImplementation(() => pendingRestore)
+
+    userMock.value = null
+    const router = await loadAppRouter()
+
+    const first = router.push('/')
+    const second = router.push('/')
+
+    for (let i = 0; i < 20 && restoreMock.mock.calls.length === 0; i += 1) {
+      await Promise.resolve()
+    }
+
+    expect(restoreMock.mock.results.length).toBeGreaterThan(0)
+    expect(
+      restoreMock.mock.results.every(
+        (result) => result.type === 'return' && result.value === pendingRestore,
+      ),
+    ).toBe(true)
+
+    userMock.value = { id: '1', username: 'admin', role: 'Admin' }
+    resolveRestore()
+    await Promise.all([first, second])
+    await router.isReady()
+
+    expect(router.currentRoute.value.fullPath).toBe('/')
+  })
+
+  it('does not enter a redirect loop after auth state settles', async () => {
+    restoreMock.mockResolvedValue(undefined)
+    userMock.value = null
+    const router = await loadAppRouter()
+
+    await router.push('/')
+    await router.isReady()
+    expect(router.currentRoute.value.fullPath).toBe('/login')
+
+    await router.push('/login')
+    await router.isReady()
+    expect(router.currentRoute.value.fullPath).toBe('/login')
+
+    userMock.value = { id: '1', username: 'admin', role: 'Admin' }
+    await router.push('/')
+    await router.isReady()
+    expect(router.currentRoute.value.fullPath).toBe('/')
+
+    await router.push('/')
+    await router.isReady()
+    expect(router.currentRoute.value.fullPath).toBe('/')
+  })
+})
