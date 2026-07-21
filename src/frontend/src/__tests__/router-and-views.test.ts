@@ -7,6 +7,7 @@ import LoginView from '../views/LoginView.vue'
 
 const loginMock = vi.fn()
 const logoutMock = vi.fn()
+const restoreMock = vi.fn().mockResolvedValue(undefined)
 const pushMock = vi.fn()
 const userMock = ref<{ id: string; username: string; role: string } | null>(null)
 
@@ -14,6 +15,7 @@ vi.mock('../composables/useAuth', () => ({
   useAuth: () => ({
     login: (...args: unknown[]) => loginMock(...args),
     logout: (...args: unknown[]) => logoutMock(...args),
+    restore: (...args: unknown[]) => restoreMock(...args),
     user: userMock,
   }),
 }))
@@ -22,6 +24,7 @@ vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
   return {
     ...actual,
+    createWebHistory: () => actual.createMemoryHistory(),
     useRouter: () => ({
       push: (...args: unknown[]) => pushMock(...args),
     }),
@@ -102,6 +105,8 @@ async function mountHomeViewState(): Promise<HomeViewSetupState> {
 afterEach(() => {
   loginMock.mockReset()
   logoutMock.mockReset()
+  restoreMock.mockReset()
+  restoreMock.mockResolvedValue(undefined)
   pushMock.mockReset()
   userMock.value = null
   vi.unstubAllGlobals()
@@ -202,5 +207,36 @@ describe('HomeView protected shell (U14-C)', () => {
     expect(logoutMock).toHaveBeenCalledTimes(1)
     expect(state.errorMessage).toBe('服务不可用')
     expect(pushMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('auth redirect route guards (U14-D)', () => {
+  async function loadAppRouter() {
+    vi.resetModules()
+    restoreMock.mockResolvedValue(undefined)
+    const { router } = await import('../router')
+    return router
+  }
+
+  it('redirects anonymous access of / to /login', async () => {
+    userMock.value = null
+    const router = await loadAppRouter()
+
+    await router.push('/')
+    await router.isReady()
+
+    expect(restoreMock).toHaveBeenCalled()
+    expect(router.currentRoute.value.fullPath).toBe('/login')
+  })
+
+  it('redirects authenticated access of /login to /', async () => {
+    userMock.value = { id: '1', username: 'admin', role: 'Admin' }
+    const router = await loadAppRouter()
+
+    await router.push('/login')
+    await router.isReady()
+
+    expect(restoreMock).toHaveBeenCalled()
+    expect(router.currentRoute.value.fullPath).toBe('/')
   })
 })
