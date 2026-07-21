@@ -141,6 +141,29 @@ async function login(username: string, password: string): Promise<AuthActionResu
   return { ok: true }
 }
 
+async function logout(): Promise<AuthActionResult> {
+  const { request } = useApi()
+
+  const authenticatedCsrf = await fetchCsrfToken()
+  if (!authenticatedCsrf.ok || !authenticatedCsrf.token) {
+    return { ok: false, error: authenticatedCsrf.error ?? 'Request failed.' }
+  }
+  csrfToken = authenticatedCsrf.token
+
+  const result = await request('/api/auth/logout', {
+    method: 'POST',
+    csrfToken: authenticatedCsrf.token,
+  })
+
+  // 204 success or 401: clear memory identity (do not fake success on other errors).
+  if (result.ok || result.status === 401) {
+    clearAuthState()
+    return { ok: true }
+  }
+
+  return { ok: false, error: result.error }
+}
+
 export function useAuth() {
   return {
     user,
@@ -148,5 +171,6 @@ export function useAuth() {
     restoreError,
     restore,
     login,
+    logout,
   }
 }
