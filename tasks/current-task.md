@@ -4,25 +4,40 @@
 
 ## 当前状态
 
-- Status：COMPLETED
-- Owner：Cursor Frontend
+- Status：DRAFT
+- Owner：Codex Architect
+- Implementation Owner：待规格审核 PASS 后由 Codex Architect 书面指定
 - Reviewer：Codex Reviewer
-- 任务：TASK-0008 — 前端基础与登录壳
-- 分支：feature/task-0008-frontend-login-shell
-- 规格文件：tasks/TASK-0008-FRONTEND-LOGIN-SHELL.md
-- 当前执行单元：Reviewer 实现审核完成
-- 当前阶段：TASK-0008 已完成，等待独立合并门禁
+- 任务：TASK-0009 — 首页只读机房列表
+- 分支：feature/task-0009-readonly-room-list
+- 规格文件：tasks/TASK-0009-READONLY-ROOM-LIST.md
+- 当前执行单元：规格初稿登记
+- 当前阶段：等待独立 Codex Reviewer 规格审核
 - Blocker：无
-- 规格复审：PASS；Findings：BLOCKER 0 / MAJOR 0 / MINOR 0 / NOTE 0
-- AC：AC-01～AC-20 证据齐备（交审登记）
-- 文件预算：13/13（新增 8、修改 5）
-- 依赖预算：唯一新增直接生产依赖 `vue-router` `4.6.3`
-- 微任务时间盒：30/30 PASS
+- 规格审核：未开始
+- AC：AC-01～AC-06（待规格审核）
+- 文件预算上限：9（新增上限 5、修改上限 4）
+- 依赖预算：NuGet 0；npm 0；DI 服务 0；路由 0；抽象层 0
 - Implementation Started：NO
-- 实施锁：13（全部 RELEASED；历史 Owner 为 Cursor Frontend）
-- 实现提交：`c3b798b851fefe64a4b043f951721b1489db28ca`
-- Next Action：独立合并门禁/分支合并流程；不得自动合并 main
-- 实现许可：否；交审后 Owner 不得继续修改实施路径
+- 规格锁：3（CLAIMED by Codex Architect）
+- 实施锁：0（未提前认领）
+- Next Action：独立 Codex Reviewer 审核 TASK-0009 规格
+- 实现许可：否；规格审核 PASS 且合法进入 READY 前禁止实施
+
+## TASK-0009 规格登记记录（2026-07-21）
+
+- 前序指针迁移：TASK-0008 `COMPLETED → IDLE`；TASK-0008 任务文件自身仍保持 `COMPLETED`
+- 新任务指针迁移：TASK-0009 `IDLE → DRAFT`
+- 执行角色与 Owner：Codex Architect
+- Reviewer：Codex Reviewer
+- 迁移依据：权威工作流合法迁移 `COMPLETED → IDLE → DRAFT`
+- 范围依据：项目负责人书面批准输入；MVP 产品基线 FR-001、BR-027、NFR-007、AC-021、AC-037
+- 本轮修改：仅 TASK-0009、current-task、MODULE-LOCKS 三份规格管理文件
+- 规格锁：3 项精确文件路径 `CLAIMED` by Codex Architect
+- 实施锁：0；未认领任何 `src/` 或 `tests/` 路径
+- Implementation Started：NO
+- 限制：不得自审、不得进入 READY、不得自动实施
+- Next Action：独立 Codex Reviewer 仅读审核规格
 
 ## TASK-0008 实现审核完成记录（2026-07-21）
 
