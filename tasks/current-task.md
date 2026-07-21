@@ -4,24 +4,50 @@
 
 ## 当前状态
 
-- Status：IN_PROGRESS
+- Status：READY_FOR_REVIEW
 - Owner：Cursor Frontend
 - Reviewer：Codex Reviewer
 - 任务：TASK-0008 — 前端基础与登录壳
 - 分支：feature/task-0008-frontend-login-shell
 - 规格文件：tasks/TASK-0008-FRONTEND-LOGIN-SHELL.md
-- 当前执行单元：U04
-- 当前阶段：实施启动门禁完成，等待正式实现
+- 当前执行单元：U17-D
+- 当前阶段：实现交审完成，等待独立审核
 - Blocker：无
 - 规格复审：PASS；Findings：BLOCKER 0 / MAJOR 0 / MINOR 0 / NOTE 0
-- AC：20/20 PASS
-- 文件预算：13/13 PASS（新增 8、修改 5）
+- AC：AC-01～AC-20 证据齐备（交审登记）
+- 文件预算：13/13（新增 8、修改 5）
 - 依赖预算：唯一新增直接生产依赖 `vue-router` `4.6.3`
 - 微任务时间盒：30/30 PASS
 - Implementation Started：NO
-- 实施锁：13（CLAIMED by Cursor Frontend；精确文件路径；无目录级锁）
-- Next Action：Cursor Frontend 按任务批准范围实施 U04-A
-- 实现许可：否；本轮仅完成启动门禁，尚未修改实施文件、尚未安装 vue-router
+- 实施锁：13（HANDED_OFF by Cursor Frontend；精确文件路径；无目录级锁）
+- 实现提交：`c3b798b851fefe64a4b043f951721b1489db28ca`
+- Next Action：独立 Codex Reviewer 审核完整实现；Cursor Frontend 停止修改实施路径
+- 实现许可：否；交审后 Owner 不得继续修改实施路径
+
+## TASK-0008 实现交审记录（2026-07-21）
+
+- 原状态：IN_PROGRESS
+- 新状态：READY_FOR_REVIEW
+- 执行角色与 Owner：Cursor Frontend
+- Reviewer / 接收角色：Codex Reviewer
+- 迁移依据：权威封闭迁移表 `IN_PROGRESS → READY_FOR_REVIEW`；TASK-0008 U17-D
+- Blocker：无
+- 实现提交：`c3b798b851fefe64a4b043f951721b1489db28ca`
+- 分支：`feature/task-0008-frontend-login-shell`
+- 提交说明（实现 tip）：`fix: add Vite api proxy for local auth`
+- 文件范围：13（新增 8、修改 5）；本轮管理提交仅含 `TASK/current-task/MODULE-LOCKS`
+- Build / typecheck：PASS
+- 前端测试：44/44 PASS；failed 0
+- 后端测试：28/28 PASS；failed 0
+- 工作流：PASS=20，FAIL=0，TOTAL=20；`git diff --check` PASS
+- U15-A：PASS（经 Vite csrf → login → csrf → me）
+- U15-B：PASS（经 Vite 认证 csrf → logout 204 → me 401）
+- AC-01～AC-20：证据齐备
+- 防过度开发：PASS；无 JWT、Pinia、Axios、localStorage/sessionStorage 认证写入、未来业务功能或后端实施改动
+- 锁交接：13 项 CLAIMED → HANDED_OFF；Owner 不变，Reviewer 只读，不释放
+- Implementation Started：NO（U17-D 未要求更新）
+- Next Action：独立 Codex Reviewer 执行实现审核
+- Frontend 限制：Reviewer 结论前停止修改所有实施路径
 
 ## 前序任务完成基线
 

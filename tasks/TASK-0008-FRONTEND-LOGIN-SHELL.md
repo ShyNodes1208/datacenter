@@ -4,7 +4,7 @@
 
 - Task ID：TASK-0008
 - Task Name：前端基础与登录壳
-- Status：IN_PROGRESS
+- Status：READY_FOR_REVIEW
 - Owner：Cursor Frontend
 - Implementation Owner：Cursor Frontend
 - Reviewer：Codex Reviewer
@@ -12,7 +12,7 @@
 - Requirement Source：`docs/product/MVP-PRODUCT-BASELINE.md` NFR-007、AC-037；`docs/architecture/MVP-ARCHITECTURE-BASELINE.md` TASK-0008
 - Architecture Reference：`docs/architecture/MVP-ARCHITECTURE-BASELINE.md`
 - Dependency：TASK-0007（COMPLETED；认证 API 4/4 已实现；实施锁全部 RELEASED）
-- Module Lock：CLAIMED（13 项精确实施文件锁 by Cursor Frontend；2026-07-21 07:58:50 +08:00）
+- Module Lock：HANDED_OFF（13 项精确实施文件锁 by Cursor Frontend；交审 2026-07-21 15:14:29 +08:00）
 - Implementation Started：NO
 
 ## 任务目标与用户价值
@@ -302,7 +302,7 @@ U16 预期：前端测试全通过，构建 0 errors/0 warnings，后端 28/28 P
 
 ## 状态迁移、锁与审核要求
 
-- 当前为 `IN_PROGRESS`；实施启动门禁已由 Cursor Frontend 完成。Implementation Started 仍为 `NO`；尚未修改任何实施文件，尚未安装 `vue-router`。
+- 当前为 `READY_FOR_REVIEW`；U17-D 已登记交审证据并将 13 项实施锁由 `CLAIMED` 交接为 `HANDED_OFF`。Implementation Started 仍为 `NO`（启动门禁历史字段；U17-D 未要求变更）。
 - U01 仅认领 `tasks/TASK-0008-FRONTEND-LOGIN-SHELL.md`、`tasks/current-task.md`、`tasks/MODULE-LOCKS.md` 三项规格文档锁；不得提前锁定 `src/frontend/`、`src/backend/`、`tests/`、package/lock 文件或 TASK-0009。
 - U01 提交推送后保持 DRAFT 和规格锁 CLAIMED，等待独立 Codex Reviewer 执行 U02；Reviewer 只读，不修改本规格。
 - U02 若有 Finding，Architect 在独立 U03 修正；Reviewer 独立复审。只有 Reviewer PASS 且 READY 条件完整后，才由有权 Architect 在独立步骤合法执行 `DRAFT → READY` 并释放规格锁。
@@ -351,6 +351,66 @@ U16 预期：前端测试全通过，构建 0 errors/0 warnings，后端 28/28 P
 - Next Action：Cursor Frontend 按任务批准范围实施 U04-A（`npm install --save-exact vue-router@4.6.3`）
 - 限制：不得开始 U05+；不得修改后端；不得释放实施锁；不得迁移为 `READY_FOR_REVIEW`
 
+## 实现交审证据（2026-07-21）
+
+### 变更文件
+
+新增 8：
+
+- `src/frontend/src/router.ts`
+- `src/frontend/src/views/LoginView.vue`
+- `src/frontend/src/views/HomeView.vue`
+- `src/frontend/src/composables/useApi.ts`
+- `src/frontend/src/composables/useAuth.ts`
+- `src/frontend/src/__tests__/useApi.test.ts`
+- `src/frontend/src/__tests__/useAuth.test.ts`
+- `src/frontend/src/__tests__/router-and-views.test.ts`
+
+修改 5：
+
+- `src/frontend/src/main.ts`
+- `src/frontend/src/App.vue`
+- `src/frontend/vite.config.ts`
+- `src/frontend/package.json`
+- `src/frontend/package-lock.json`
+
+### 构建和测试证据（U16）
+
+- `npm test`（`src/frontend/`）：44/44 PASS；failed 0
+- `npm run typecheck`：PASS
+- `npm run build`：PASS；0 errors
+- `npm ls vue-router --depth=0`：`vue-router@4.6.3`
+- `dotnet test Datacenter.sln --no-restore`：28/28 PASS；failed 0
+- `pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1`：PASS=20，FAIL=0，TOTAL=20
+- `git diff --check`：PASS
+
+### 联调与验收证据
+
+- U15-A：PASS；经 Vite `http://127.0.0.1:5173/api/...`：匿名 csrf → login → 认证后 csrf → me
+- U15-B：PASS；经 Vite：认证后 csrf → logout 204 → me 401；登录态清除
+- AC-01～AC-20：证据齐备（U17-C 只读核对）；文件预算新增 8、修改 5、总计 13
+- 依赖预算：唯一新增直接生产依赖 `"vue-router": "4.6.3"`
+- 防过度开发：PASS；无 JWT、Refresh Token、Pinia、Axios、localStorage/sessionStorage 认证写入、菜单/仪表盘/角色矩阵、Room/Cabinet/Server 业务或 TASK-0009 内容；无后端实施改动
+
+### READY_FOR_REVIEW 迁移与交接
+
+- 记录时间：2026-07-21 15:14:29 +08:00
+- 原状态：IN_PROGRESS
+- 新状态：READY_FOR_REVIEW
+- 执行角色：Cursor Frontend
+- Owner：Cursor Frontend
+- Reviewer / 接收角色：Codex Reviewer
+- 迁移依据：权威封闭迁移表 `IN_PROGRESS → READY_FOR_REVIEW`；TASK-0008 U17-D
+- 实现提交：`c3b798b851fefe64a4b043f951721b1489db28ca`
+- 分支：`feature/task-0008-frontend-login-shell`
+- 提交说明（实现 tip）：`fix: add Vite api proxy for local auth`
+- Blocker：无
+- 锁交接：13 项实施锁由 CLAIMED 变更为 HANDED_OFF，不释放；Owner 仍为 Cursor Frontend；Reviewer 只读审核
+- 已知限制：开发期 `/api` proxy 仅本地联调，不定义生产部署；本任务不交付机房业务能力；Implementation Started 字段保持 NO（U17-D 未要求更新该历史门禁字段）
+- 待核验点：Codex Reviewer 独立核验 AC-01～AC-20、13 文件预算、依赖预算、U15 联调证据、防过度开发与实现提交 `c3b798b851fefe64a4b043f951721b1489db28ca`
+- 下一步：独立 Codex Reviewer 审核完整实现
+- 限制：Cursor Frontend 在 Reviewer 结论前停止修改全部实施路径
+
 ---
 
-> 本文件当前为 IN_PROGRESS。实施启动门禁已完成；Implementation Started 仍为 NO。下一步仅允许按微任务表执行 U04-A。
+> 本文件当前为 READY_FOR_REVIEW。实现交审证据已登记；13 项实施锁为 HANDED_OFF。下一步由独立 Codex Reviewer 审核；Owner 停止修改实施路径。
