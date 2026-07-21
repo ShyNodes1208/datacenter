@@ -1,15 +1,20 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createSSRApp } from 'vue'
+import { createSSRApp, ref } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import { createMemoryHistory, createRouter } from 'vue-router'
+import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/LoginView.vue'
 
 const loginMock = vi.fn()
+const logoutMock = vi.fn()
 const pushMock = vi.fn()
+const userMock = ref<{ id: string; username: string; role: string } | null>(null)
 
 vi.mock('../composables/useAuth', () => ({
   useAuth: () => ({
     login: (...args: unknown[]) => loginMock(...args),
+    logout: (...args: unknown[]) => logoutMock(...args),
+    user: userMock,
   }),
 }))
 
@@ -29,6 +34,12 @@ type LoginViewSetupState = {
   errorMessage: string
   submitting: boolean
   onSubmit: () => Promise<void>
+}
+
+type HomeViewSetupState = {
+  errorMessage: string
+  submitting: boolean
+  onLogout: () => Promise<void>
 }
 
 async function renderLoginViewHtml(): Promise<string> {
@@ -65,9 +76,34 @@ async function mountLoginViewState(): Promise<LoginViewSetupState> {
   return setupState
 }
 
+async function renderHomeViewHtml(): Promise<string> {
+  const app = createSSRApp(HomeView)
+  return renderToString(app)
+}
+
+async function mountHomeViewState(): Promise<HomeViewSetupState> {
+  let setupState: HomeViewSetupState | null = null
+  const app = createSSRApp(HomeView)
+  app.mixin({
+    created() {
+      const instance = (this as { $: { type?: { __name?: string }; setupState?: HomeViewSetupState } }).$
+      if (instance.type?.__name === 'HomeView' && instance.setupState) {
+        setupState = instance.setupState
+      }
+    },
+  })
+  await renderToString(app)
+  if (setupState === null) {
+    throw new Error('HomeView setupState was not captured')
+  }
+  return setupState
+}
+
 afterEach(() => {
   loginMock.mockReset()
+  logoutMock.mockReset()
   pushMock.mockReset()
+  userMock.value = null
   vi.unstubAllGlobals()
 })
 
@@ -126,6 +162,45 @@ describe('LoginView submit behavior (U14-B)', () => {
     expect(loginMock).toHaveBeenCalledWith('admin', 'wrong-password')
     expect(state.errorMessage).toBe('用户名或密码错误')
     expect(state.password).toBe('')
+    expect(pushMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('HomeView protected shell (U14-C)', () => {
+  it('renders current username, role, and logout button', async () => {
+    userMock.value = { id: '1', username: 'admin', role: 'Admin' }
+
+    const html = await renderHomeViewHtml()
+
+    expect(html).toContain('admin')
+    expect(html).toContain('Admin')
+    expect(html).toMatch(/<button[^>]*type="button"[^>]*>登出<\/button>/)
+  })
+
+  it('calls logout and navigates to /login after successful logout', async () => {
+    userMock.value = { id: '1', username: 'admin', role: 'Admin' }
+    logoutMock.mockResolvedValue({ ok: true })
+    pushMock.mockResolvedValue(undefined)
+
+    const state = await mountHomeViewState()
+    await state.onLogout()
+
+    expect(logoutMock).toHaveBeenCalledTimes(1)
+    expect(pushMock).toHaveBeenCalledTimes(1)
+    expect(pushMock).toHaveBeenCalledWith('/login')
+    expect(state.errorMessage).toBe('')
+  })
+
+  it('shows the unified logout error and does not navigate after failure', async () => {
+    userMock.value = { id: '1', username: 'admin', role: 'Admin' }
+    logoutMock.mockResolvedValue({ ok: false, error: '服务不可用' })
+    pushMock.mockResolvedValue(undefined)
+
+    const state = await mountHomeViewState()
+    await state.onLogout()
+
+    expect(logoutMock).toHaveBeenCalledTimes(1)
+    expect(state.errorMessage).toBe('服务不可用')
     expect(pushMock).not.toHaveBeenCalled()
   })
 })
