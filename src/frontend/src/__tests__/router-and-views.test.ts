@@ -229,7 +229,7 @@ describe('auth redirect route guards (U14-D)', () => {
     expect(router.currentRoute.value.fullPath).toBe('/login')
   })
 
-  it('redirects authenticated access of /login to /', async () => {
+  it('redirects authenticated access of /login to /rooms', async () => {
     userMock.value = { id: '1', username: 'admin', role: 'Admin' }
     const router = await loadAppRouter()
 
@@ -237,7 +237,7 @@ describe('auth redirect route guards (U14-D)', () => {
     await router.isReady()
 
     expect(restoreMock).toHaveBeenCalled()
-    expect(router.currentRoute.value.fullPath).toBe('/')
+    expect(router.currentRoute.value.fullPath).toBe('/rooms')
   })
 })
 
@@ -307,7 +307,7 @@ describe('route guard init wait (U14-E)', () => {
     await Promise.all([first, second])
     await router.isReady()
 
-    expect(router.currentRoute.value.fullPath).toBe('/')
+    expect(router.currentRoute.value.fullPath).toBe('/rooms')
   })
 
   it('does not enter a redirect loop after auth state settles', async () => {
@@ -326,10 +326,10 @@ describe('route guard init wait (U14-E)', () => {
     userMock.value = { id: '1', username: 'admin', role: 'Admin' }
     await router.push('/')
     await router.isReady()
-    expect(router.currentRoute.value.fullPath).toBe('/')
+    expect(router.currentRoute.value.fullPath).toBe('/rooms')
 
     await router.push('/')
     await router.isReady()
-    expect(router.currentRoute.value.fullPath).toBe('/')
+    expect(router.currentRoute.value.fullPath).toBe('/rooms')
   })
 })
