@@ -7,6 +7,13 @@ function jsonResponse(body: unknown, status = 200): Response {
   })
 }
 
+function csrfResponse(token: string): Response {
+  return new Response(undefined, {
+    status: 200,
+    headers: { 'X-XSRF-TOKEN': token },
+  })
+}
+
 async function loadUseAuth() {
   vi.resetModules()
   return import('../composables/useAuth')
@@ -163,5 +170,153 @@ describe('useAuth identity restoration (U13-C)', () => {
 
     expect(localStorageMock.setItem).not.toHaveBeenCalled()
     expect(sessionStorageMock.setItem).not.toHaveBeenCalled()
+  })
+})
+
+describe('useAuth login protocol (U13-D)', () => {
+  it('follows anonymous csrf → login → authenticated csrf → me and sets user only from /me', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(csrfResponse('anon-token'))
+      .mockResolvedValueOnce(
+        jsonResponse({ userId: 'login-id', username: 'login-user', role: 'LoginRole' }),
+      )
+      .mockResolvedValueOnce(csrfResponse('auth-token'))
+      .mockResolvedValueOnce(
+        jsonResponse({ userId: '1', username: 'admin', role: 'Admin' }),
+      )
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { useAuth } = await loadUseAuth()
+    const { user, login } = useAuth()
+    const result = await login('admin', 'secret')
+
+    expect(result).toEqual({ ok: true })
+    expect(user.value).toEqual({ id: '1', username: 'admin', role: 'Admin' })
+    expect(user.value).not.toEqual({
+      id: 'login-id',
+      username: 'login-user',
+      role: 'LoginRole',
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/auth/csrf')
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      method: 'GET',
+      credentials: 'include',
+    })
+    expect(
+      new Headers((fetchMock.mock.calls[0]?.[1] as RequestInit).headers).get('X-XSRF-TOKEN'),
+    ).toBeNull()
+
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/auth/login')
+    const loginInit = fetchMock.mock.calls[1]?.[1] as RequestInit
+    expect(loginInit.method).toBe('POST')
+    expect(loginInit.credentials).toBe('include')
+    expect(loginInit.body).toBe(JSON.stringify({ username: 'admin', password: 'secret' }))
+    expect(new Headers(loginInit.headers).get('X-XSRF-TOKEN')).toBe('anon-token')
+    expect(new Headers(loginInit.headers).get('Content-Type')).toBe('application/json')
+
+    expect(fetchMock.mock.calls[2]?.[0]).toBe('/api/auth/csrf')
+    expect(fetchMock.mock.calls[2]?.[1]).toMatchObject({
+      method: 'GET',
+      credentials: 'include',
+    })
+
+    expect(fetchMock.mock.calls[3]?.[0]).toBe('/api/auth/me')
+    expect(fetchMock.mock.calls[3]?.[1]).toMatchObject({
+      method: 'GET',
+      credentials: 'include',
+    })
+  })
+
+  it('returns the unified login error and does not authenticate on failed login', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(csrfResponse('anon-token'))
+      .mockResolvedValueOnce(jsonResponse({ error: '用户名或密码错误' }, 401))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { useAuth } = await loadUseAuth()
+    const { user, login } = useAuth()
+    const result = await login('admin', 'wrong-password')
+
+    expect(result).toEqual({ ok: false, error: '用户名或密码错误' })
+    expect(user.value).toBeNull()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock.mock.calls[1]?.[0]).toBe('/api/auth/login')
+  })
+
+  it('stops the login protocol when anonymous csrf fails', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ error: 'csrf unavailable' }, 500))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { useAuth } = await loadUseAuth()
+    const { user, login } = useAuth()
+    const result = await login('admin', 'secret')
+
+    expect(result).toEqual({ ok: false, error: 'csrf unavailable' })
+    expect(user.value).toBeNull()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('/api/auth/csrf')
+  })
+
+  it('clears auth and returns an error when /me fails after login', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(csrfResponse('anon-token'))
+      .mockResolvedValueOnce(
+        jsonResponse({ userId: 'login-id', username: 'login-user', role: 'LoginRole' }),
+      )
+      .mockResolvedValueOnce(csrfResponse('auth-token'))
+      .mockResolvedValueOnce(jsonResponse({ error: '未认证' }, 401))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { useAuth } = await loadUseAuth()
+    const { user, login } = useAuth()
+    const result = await login('admin', 'secret')
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.error).toBe('未认证')
+    }
+    expect(user.value).toBeNull()
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+  })
+
+  it('does not retain password or write auth secrets to web storage during login', async () => {
+    const localStorageMock = {
+      getItem: vi.fn(),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    }
+    const sessionStorageMock = {
+      getItem: vi.fn(),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    }
+    vi.stubGlobal('localStorage', localStorageMock)
+    vi.stubGlobal('sessionStorage', sessionStorageMock)
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(csrfResponse('anon-token'))
+      .mockResolvedValueOnce(jsonResponse({ error: '用户名或密码错误' }, 401))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const { useAuth } = await loadUseAuth()
+    const { user, login } = useAuth()
+    const password = 'secret-that-must-not-persist'
+    await login('admin', password)
+
+    expect(user.value).toBeNull()
+    expect(localStorageMock.setItem).not.toHaveBeenCalled()
+    expect(sessionStorageMock.setItem).not.toHaveBeenCalled()
+    expect(JSON.stringify(user)).not.toContain(password)
   })
 })
