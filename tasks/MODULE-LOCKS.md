@@ -4,6 +4,22 @@
 
 | Task ID | Module or Path | Owner | Claimed At | Status | Release Condition | Released At |
 |---|---|---|---|---|---|---|
+| TASK-0008 | tasks/TASK-0008-FRONTEND-LOGIN-SHELL.md | Codex Architect | 2026-07-20 +08:00 | RELEASED | U02 独立规格审核及必要 U03 修正完成，Reviewer PASS 后由有权 Architect 执行 DRAFT → READY 时释放；取消则按工作流释放 | 2026-07-20 22:42:38 +08:00（Codex Architect 释放；规格复审 PASS，提交 e28d4f5bfa5a6d36f0673db79342ffd6a4fab085；DRAFT → READY 规格放行完成） |
+| TASK-0008 | tasks/current-task.md | Codex Architect | 2026-07-20 +08:00 | RELEASED | U02 独立规格审核及必要 U03 修正完成，Reviewer PASS 后由有权 Architect 执行 DRAFT → READY 时释放；取消则按工作流释放 | 2026-07-20 22:42:38 +08:00（Codex Architect 释放；规格复审 PASS，提交 e28d4f5bfa5a6d36f0673db79342ffd6a4fab085；DRAFT → READY 规格放行完成） |
+| TASK-0008 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-20 +08:00 | RELEASED | 仅维护 TASK-0008 规格锁；Reviewer PASS 后由有权 Architect 执行 DRAFT → READY 时释放；取消则按工作流释放 | 2026-07-20 22:42:38 +08:00（Codex Architect 释放；规格复审 PASS，提交 e28d4f5bfa5a6d36f0673db79342ffd6a4fab085；DRAFT → READY 规格放行完成） |
+| TASK-0008 | src/frontend/src/router.ts | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | RELEASED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算新增 1/8；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-21 15:22:03 +08:00（Codex Reviewer 审核 PASS 并转 COMPLETED） |
+| TASK-0008 | src/frontend/src/views/LoginView.vue | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | RELEASED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算新增 2/8；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-21 15:22:03 +08:00（Codex Reviewer 审核 PASS 并转 COMPLETED） |
+| TASK-0008 | src/frontend/src/views/HomeView.vue | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | RELEASED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算新增 3/8；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-21 15:22:03 +08:00（Codex Reviewer 审核 PASS 并转 COMPLETED） |
+| TASK-0008 | src/frontend/src/composables/useApi.ts | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | RELEASED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算新增 4/8；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-21 15:22:03 +08:00（Codex Reviewer 审核 PASS 并转 COMPLETED） |
+| TASK-0008 | src/frontend/src/composables/useAuth.ts | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | RELEASED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算新增 5/8；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-21 15:22:03 +08:00（Codex Reviewer 审核 PASS 并转 COMPLETED） |
+| TASK-0008 | src/frontend/src/__tests__/useApi.test.ts | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | RELEASED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算新增 6/8；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-21 15:22:03 +08:00（Codex Reviewer 审核 PASS 并转 COMPLETED） |
+| TASK-0008 | src/frontend/src/__tests__/useAuth.test.ts | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | RELEASED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算新增 7/8；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-21 15:22:03 +08:00（Codex Reviewer 审核 PASS 并转 COMPLETED） |
+| TASK-0008 | src/frontend/src/__tests__/router-and-views.test.ts | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | RELEASED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算新增 8/8；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-21 15:22:03 +08:00（Codex Reviewer 审核 PASS 并转 COMPLETED） |
+| TASK-0008 | src/frontend/src/main.ts | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | RELEASED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算修改 1/5；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-21 15:22:03 +08:00（Codex Reviewer 审核 PASS 并转 COMPLETED） |
+| TASK-0008 | src/frontend/src/App.vue | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | RELEASED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算修改 2/5；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-21 15:22:03 +08:00（Codex Reviewer 审核 PASS 并转 COMPLETED） |
+| TASK-0008 | src/frontend/vite.config.ts | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | RELEASED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算修改 3/5；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-21 15:22:03 +08:00（Codex Reviewer 审核 PASS 并转 COMPLETED） |
+| TASK-0008 | src/frontend/package.json | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | RELEASED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算修改 4/5；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-21 15:22:03 +08:00（Codex Reviewer 审核 PASS 并转 COMPLETED） |
+| TASK-0008 | src/frontend/package-lock.json | Cursor Frontend | 2026-07-21 07:58:50 +08:00 | RELEASED | Reviewer：Codex Reviewer；依据：TASK-0008 精确文件预算修改 5/5；TASK-0008 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-21 15:22:03 +08:00（Codex Reviewer 审核 PASS 并转 COMPLETED） |
 | TASK-0002 | AGENTS.md | Codex Architect | 2026-07-16 +08:00 | RELEASED | TASK-0002 进入 COMPLETED 或 CANCELLED | 2026-07-16 16:48:08 +08:00 |
 | TASK-0002 | agents/ | Codex Architect | 2026-07-16 +08:00 | RELEASED | TASK-0002 进入 COMPLETED 或 CANCELLED | 2026-07-16 16:48:08 +08:00 |
 | TASK-0002 | docs/architecture/AGENT-WORKFLOW.md | Codex Architect | 2026-07-16 +08:00 | RELEASED | TASK-0002 进入 COMPLETED 或 CANCELLED | 2026-07-16 16:48:08 +08:00 |
@@ -73,6 +89,36 @@
 | CR6-RV-001 | tasks/TASK-0007-BACKEND-FOUNDATION.md | Codex Architect | 2026-07-19 | RELEASED | 仅恢复 675dc437^ 已批准验证基线；完成纠正后释放 | 2026-07-19（Codex Architect 完成审计纠正并释放） |
 | CR6-RV-001 | tasks/current-task.md | Codex Architect | 2026-07-19 | RELEASED | 仅同步等待独立纠正复审；完成纠正后释放 | 2026-07-19（Codex Architect 完成审计纠正并释放） |
 | CR6-RV-001 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-19 | RELEASED | 仅同步纠正复审说明；不修改 19 项实施锁 | 2026-07-19（Codex Architect 完成审计纠正并释放） |
+
+## TASK-0008 实现审核交接记录
+
+- 记录时间：2026-07-21 15:14:29 +08:00
+- 原任务状态：IN_PROGRESS
+- 新任务状态：READY_FOR_REVIEW
+- 迁移依据：权威封闭迁移表 `IN_PROGRESS → READY_FOR_REVIEW`；TASK-0008 U17-D
+- 交接角色与原实施者：Cursor Frontend
+- 接收角色与 Reviewer：Codex Reviewer（只读审核，不成为实现 Owner）
+- 实现提交：`c3b798b851fefe64a4b043f951721b1489db28ca`
+- 原锁状态：13 项 CLAIMED by Cursor Frontend
+- 新锁状态：13 项 HANDED_OFF；路径、数量和 Owner 完全不变，不新增、不减少、不扩大、不重复认领
+- 交接原因：TASK-0008 实现、构建、测试、联调和验收证据齐备，进入 READY_FOR_REVIEW
+- 修改限制：Reviewer 结论前 Cursor Frontend 不得修改上述实施路径
+- 后续处理：Reviewer 若要求修复，进入 CHANGES_REQUESTED 时保持 HANDED_OFF，进入 IN_FIX 前由修复者重新检查并改为 CLAIMED；Reviewer 通过并转 COMPLETED 前才释放
+- 规格锁：三项 TASK-0008 规格锁继续保持 RELEASED
+
+## TASK-0008 完成与实施锁释放记录
+
+- 释放时间：2026-07-21 15:22:03 +08:00
+- 原任务状态：READY_FOR_REVIEW
+- 新任务状态：COMPLETED
+- 状态执行角色与释放角色：Codex Reviewer
+- 独立审核报告：`reviews/tasks/TASK-0008-FRONTEND-LOGIN-SHELL-IMPLEMENTATION-REVIEW.md`
+- 审核结论：PASS；Findings BLOCKER 0 / MAJOR 0 / MINOR 0 / NOTE 0
+- 原锁状态：13 项 HANDED_OFF
+- 最终锁状态：13 项 RELEASED
+- 历史 Owner：Cursor Frontend（保持不变；Codex Reviewer 不成为实现 Owner）
+- 范围审计：13 个路径完全不变，未新增、减少或重复创建锁；未修改其他任务锁
+- 下一步：独立合并门禁/分支合并流程；不得自动合并 main
 
 ## TASK-0007 锁审计纠正
 
