@@ -6,7 +6,6 @@ namespace Datacenter.Api.Data;
 public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
     public DbSet<User> Users => Set<User>();
-    public DbSet<Room> Rooms => Set<Room>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -20,13 +19,5 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         user.Property(item => item.PasswordHash).IsRequired();
         user.Property(item => item.Role).IsRequired();
         user.Property(item => item.CreatedAt).IsRequired();
-
-        var room = modelBuilder.Entity<Room>();
-        room.ToTable("Rooms");
-        room.HasKey(r => r.Id);
-        room.HasIndex(r => r.Name).IsUnique();
-        room.Property(r => r.Name).IsRequired();
-        room.Property(r => r.CreatedAt).IsRequired();
-        room.Property(r => r.UpdatedAt).IsRequired();
     }
 }

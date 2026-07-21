@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from './composables/useAuth'
+import HomeView from './views/HomeView.vue'
 import LoginView from './views/LoginView.vue'
 
 declare module 'vue-router' {
@@ -12,9 +13,7 @@ export const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/login', component: LoginView },
-    { path: '/', redirect: '/rooms' },
-    { path: '/rooms', component: () => import('./views/RoomListPage.vue'), meta: { requiresAuth: true } },
-    { path: '/rooms/:id', component: () => import('./views/RoomDetailPage.vue'), meta: { requiresAuth: true } },
+    { path: '/', component: HomeView, meta: { requiresAuth: true } },
   ],
 })
 
