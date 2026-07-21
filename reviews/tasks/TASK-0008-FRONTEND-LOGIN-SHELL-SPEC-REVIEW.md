@@ -193,4 +193,3 @@ PASS。TASK-0008 与 current-task 均为 `DRAFT`；Owner 为 Codex Architect，R
 - current-task 状态：继续 `DRAFT`
 - 规格锁：三项继续 `CLAIMED` by Codex Architect
 - Change Request：当前 Findings 均可在 DRAFT 内最小修正，通常不需要正式 CR；若修正改变已批准架构或新增未批准依赖，则按权威工作流另行判断。
-
