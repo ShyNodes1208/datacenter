@@ -6,13 +6,13 @@
 
 - Task ID：TASK-0017
 - Task Name：TASK-0008 合并治理与跨分支状态修复
-- Status：DRAFT
+- Status：READY
 - Owner：Codex Architect
 - Reviewer：Codex Reviewer
 - Branch：`chore/task-0017-governance-repair`
 - Requirement Source：项目负责人 2026-07-22 对 G02 的书面批准；`reviews/tasks/TASK-0008-POST-MERGE-VALIDATION.md`
 - Architecture Reference：`docs/architecture/AGENT-WORKFLOW.md`
-- Module Lock：3 项精确规格锁 `CLAIMED` by Codex Architect；当前规格阶段实施锁 0；G17-05 按权威工作流认领并在 G17-06 PASS 后释放
+- Module Lock：3 项精确规格锁已由 Codex Architect `CLAIMED → RELEASED`；实施锁 0；G17-05 开始前必须重新检查冲突并按权威工作流认领
 - Implementation Started：NO
 
 ## Reviewer 独立性
@@ -166,17 +166,18 @@ git diff --cached --name-status
 | 时间 | 发起者 | 原状态 | 新状态 | 接收者 | 说明 |
 |---|---|---|---|---|---|
 | 2026-07-22 10:40:10 +08:00 | Codex Architect | IDLE | DRAFT | Codex Reviewer | TASK-0008 保持 COMPLETED；当前指针经 IDLE 建立 TASK-0017 DRAFT；登记三项规格锁，仅等待独立规格审核 |
+| 2026-07-22 11:51:49 +08:00 | Codex Architect | DRAFT | READY | Codex Architect | G17-04 规格放行；规格初审 NEEDS_CHANGES，唯一 Finding G17-SR-001；修正提交 `63b73e8510c54d9ccee572a6b18a94361c804e74`；规格复审 PASS，提交 `fd24e48d51d61898200b2f2c8797dd5f7a7e1787`；G17-SR-001 CLOSED；Findings 0/0/0/0；AC 6/6、文件预算 3/3、微任务 6/6 PASS；三项规格锁 RELEASED；实施锁 0；Implementation Started NO；等待 G17-05 启动门禁 |
 
 ## 审核与完成字段
 
-- 审核结论：NEEDS_CHANGES；`G17-SR-001`（MAJOR）要求补齐 G17-05/G17-06 的合法状态链与锁链
-- 缺陷与复审：G17-SR-001 已由本次 G17-03 定点修正；等待独立规格复审，不自行关闭 Finding
+- 审核结论：规格初审 NEEDS_CHANGES；唯一 Finding `G17-SR-001`；规格复审 PASS
+- 缺陷与复审：G17-SR-001 已由 G17-03 定点修正并由独立 Reviewer 复审为 CLOSED；修正提交 `63b73e8510c54d9ccee572a6b18a94361c804e74`；复审提交 `fd24e48d51d61898200b2f2c8797dd5f7a7e1787`；Findings 0/0/0/0
 - Change Request：N/A：未发现范围变更
-- 已知限制：当前为 DRAFT，不允许实施或进入 READY
+- 已知限制：当前为 READY，规格已放行、等待实施启动；当前单元 G17-04，下一单元 G17-05；允许进入 G17-05，但不得跳过 G17-05 直接实施或进入 READY_FOR_REVIEW；TASK-0009 仍为 BLOCKED
 
 ## 防过度开发检查
 
-- 当前只创建 TASK-0017 DRAFT；不实施治理修复。
+- 当前只完成 TASK-0017 `DRAFT → READY` 规格放行并释放三项规格锁；不实施治理修复。
 - AC 为 6 条；执行单元为 6 个；文件预算为 3。
 - 不创建 TASK-0018，不修改全局工作流、TASK-0008、TASK-0009、产品代码、测试或依赖。
 - 不执行分支同步，不创建或倒签授权/门禁，不自行审核。
@@ -191,4 +192,4 @@ git diff --cached --name-status
 
 ---
 
-> 当前为 DRAFT；下一步仅允许 Codex Reviewer 执行 G17-02 独立规格审核。不得实施 TASK-0017、继续 TASK-0009 或创建 TASK-0018。
+> 当前为 READY；规格已放行，等待 G17-05 实施启动门禁。Implementation Started 为 NO，实施锁为 0；不得跳过 G17-05、继续 TASK-0009 或创建 TASK-0018。

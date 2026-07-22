@@ -4,24 +4,45 @@
 
 ## 当前状态
 
-- Status：DRAFT
+- Status：READY
 - Owner：Codex Architect
 - Reviewer：Codex Reviewer
 - 任务：TASK-0017 — TASK-0008 合并治理与跨分支状态修复
 - 分支：chore/task-0017-governance-repair
 - 规格文件：tasks/TASK-0017-TASK-0008-MERGE-GOVERNANCE-REPAIR.md
-- 当前执行单元：G17-01
-- 当前阶段：治理修复规格编写
+- 当前执行单元：G17-04
+- 当前阶段：规格放行完成，等待实施启动
 - Blocker：无
-- AC：AC-01～AC-06（待独立规格审核）
-- 文件预算：新增 1、修改 2、总计 3
-- 微任务：G17-01～G17-06，共 6 个
+- Specification Review：PASS
+- G17-SR-001：CLOSED
+- AC：AC-01～AC-06，6/6 PASS
+- 文件预算：新增 1、修改 2、总计 3，3/3 PASS
+- 微任务：G17-01～G17-06，共 6 个，6/6 PASS
 - Implementation Started：NO
-- 规格锁：3（CLAIMED by Codex Architect）
+- 规格锁：3（RELEASED by Codex Architect）
 - 实施锁：0
-- Next Action：Codex Reviewer 执行独立规格审核
+- Next Action：执行 G17-05
 - Implementation Allowed：NO
 - TASK-0009：保持 BLOCKED，不属于当前实施范围
+
+## TASK-0017 G17-04 规格放行记录（2026-07-22）
+
+- 原状态：DRAFT
+- 新状态：READY
+- 执行角色、Owner：Codex Architect
+- Reviewer：Codex Reviewer
+- Blocker：无
+- 规格初审：NEEDS_CHANGES；唯一 Finding `G17-SR-001`
+- 规格修正提交：`63b73e8510c54d9ccee572a6b18a94361c804e74`
+- 规格复审：PASS；复审提交 `fd24e48d51d61898200b2f2c8797dd5f7a7e1787`
+- G17-SR-001：CLOSED；Findings：0 / 0 / 0 / 0
+- AC：6/6 PASS；文件预算：3/3 PASS；微任务：6/6 PASS
+- 规格锁：三项 `CLAIMED → RELEASED` by Codex Architect；释放依据为 Codex Reviewer 规格复审 PASS
+- 实施锁：0；Implementation Started：NO
+- 当前阶段：规格放行完成，等待实施启动；当前单元：G17-04
+- Next Action：执行 G17-05；允许进入 G17-05：是；不允许跳过 G17-05 或直接进入 READY_FOR_REVIEW
+- TASK-0008：保持 COMPLETED，已合并，post-merge technical validation PASS；TASK-0017 接管治理状态修复
+- TASK-0009：保持 BLOCKED，不属于当前实施范围，不允许继续
 
 ## TASK-0017 G17-01 规格登记记录（2026-07-22）
 
