@@ -8,6 +8,7 @@ import LoginView from '../views/LoginView.vue'
 const loginMock = vi.fn()
 const logoutMock = vi.fn()
 const restoreMock = vi.fn().mockResolvedValue(undefined)
+const requestMock = vi.fn()
 const pushMock = vi.fn()
 const userMock = ref<{ id: string; username: string; role: string } | null>(null)
 
@@ -17,6 +18,12 @@ vi.mock('../composables/useAuth', () => ({
     logout: (...args: unknown[]) => logoutMock(...args),
     restore: (...args: unknown[]) => restoreMock(...args),
     user: userMock,
+  }),
+}))
+
+vi.mock('../composables/useApi', () => ({
+  useApi: () => ({
+    request: (...args: unknown[]) => requestMock(...args),
   }),
 }))
 
@@ -42,6 +49,9 @@ type LoginViewSetupState = {
 type HomeViewSetupState = {
   errorMessage: string
   submitting: boolean
+  rooms: { name: string; status: string }[] | null
+  roomsError: string
+  loadRooms: () => Promise<void>
   onLogout: () => Promise<void>
 }
 
@@ -107,6 +117,7 @@ afterEach(() => {
   logoutMock.mockReset()
   restoreMock.mockReset()
   restoreMock.mockResolvedValue(undefined)
+  requestMock.mockReset()
   pushMock.mockReset()
   userMock.value = null
   vi.unstubAllGlobals()
@@ -180,6 +191,7 @@ describe('HomeView protected shell (U14-C)', () => {
     expect(html).toContain('admin')
     expect(html).toContain('Admin')
     expect(html).toMatch(/<button[^>]*type="button"[^>]*>登出<\/button>/)
+    expect(html).toContain('aria-label="机房列表"')
   })
 
   it('calls logout and navigates to /login after successful logout', async () => {
@@ -207,6 +219,95 @@ describe('HomeView protected shell (U14-C)', () => {
     expect(logoutMock).toHaveBeenCalledTimes(1)
     expect(state.errorMessage).toBe('服务不可用')
     expect(pushMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('HomeView readonly room list (G09-03)', () => {
+  const forbiddenControls = ['创建', '编辑', '删除', '详情', '搜索', '排序', '筛选', '分页']
+
+  it('shows room names and enabled/disabled status after a successful API response', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    requestMock.mockResolvedValue({
+      ok: true,
+      data: [
+        { name: '机房A', status: '启用' },
+        { name: '机房B', status: '停用' },
+      ],
+      headers: new Headers(),
+      status: 200,
+    })
+
+    const state = await mountHomeViewState()
+    await state.loadRooms()
+    const html = await renderHomeViewHtml()
+
+    expect(requestMock).toHaveBeenCalledWith('/api/rooms', { method: 'GET' })
+    expect(state.rooms).toEqual([
+      { name: '机房A', status: '启用' },
+      { name: '机房B', status: '停用' },
+    ])
+    expect(state.roomsError).toBe('')
+    expect(html).toContain('aria-label="机房列表"')
+  })
+
+  it('shows the empty state when the API returns an empty array', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    requestMock.mockResolvedValue({
+      ok: true,
+      data: [],
+      headers: new Headers(),
+      status: 200,
+    })
+
+    const state = await mountHomeViewState()
+    await state.loadRooms()
+    const html = await renderHomeViewHtml()
+
+    expect(state.rooms).toEqual([])
+    expect(state.roomsError).toBe('')
+    expect(html).toContain('aria-label="机房列表"')
+    // Empty-state copy is bound when rooms === [] (see HomeView template).
+    expect(state.rooms !== null && state.rooms.length === 0).toBe(true)
+  })
+
+  it('shows the error state on API failure and does not show the empty state', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    requestMock.mockResolvedValue({
+      ok: false,
+      error: '服务不可用',
+      status: 500,
+    })
+
+    const state = await mountHomeViewState()
+    await state.loadRooms()
+    const html = await renderHomeViewHtml()
+
+    expect(state.rooms).toBeNull()
+    expect(state.roomsError).toBe('服务不可用')
+    expect(html).toContain('aria-label="机房列表"')
+    expect(html).not.toContain('暂无机房')
+  })
+
+  it('keeps the room list region free of create/edit/delete and related controls', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    requestMock.mockResolvedValue({
+      ok: true,
+      data: [{ name: '机房A', status: '启用' }],
+      headers: new Headers(),
+      status: 200,
+    })
+
+    const state = await mountHomeViewState()
+    await state.loadRooms()
+    const html = await renderHomeViewHtml()
+    const listMatch = html.match(/<section[^>]*aria-label="机房列表"[^>]*>[\s\S]*?<\/section>/)
+    expect(listMatch).not.toBeNull()
+    const listHtml = listMatch?.[0] ?? ''
+
+    expect(state.rooms).toEqual([{ name: '机房A', status: '启用' }])
+    for (const label of forbiddenControls) {
+      expect(listHtml).not.toContain(label)
+    }
   })
 })
 

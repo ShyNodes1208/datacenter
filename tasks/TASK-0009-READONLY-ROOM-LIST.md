@@ -15,7 +15,7 @@
 - Product Baseline：`docs/product/MVP-PRODUCT-BASELINE.md`
 - Architecture Reference：`docs/architecture/AGENT-WORKFLOW.md`；TASK-0007 现有 ASP.NET Core/EF Core/SQLite 基线；TASK-0008 现有认证首页和 `useApi`
 - Dependency：TASK-0007、TASK-0008（均已 COMPLETED 并合入 main）
-- Module Lock：3 项规格文档锁 `RELEASED` by Codex Architect；7 项 Backend 实施锁 `CLAIMED` by Codex Backend
+- Module Lock：3 项规格文档锁 `RELEASED` by Codex Architect；7 项 Backend 实施锁 `CLAIMED` by Codex Backend；2 项 Frontend 实施锁 `CLAIMED` by Cursor Frontend
 - Implementation Started：YES
 
 ## 实施启动方案
@@ -311,6 +311,7 @@ git diff --name-status
 | 2026-07-22 15:17:25 +08:00 | Codex Architect | BLOCKED | READY | 后续实施启动门禁 | Unit 4 恢复条件全部 SATISFIED；最小规格有效性自查 PASS，完整规格复审 NOT_REQUIRED；三项规格锁 CLAIMED → RELEASED；实施锁 0；Implementation Started NO；产品实施未开始 |
 | 2026-07-22 17:16:10 +08:00 | Codex Backend | READY | IN_PROGRESS | Codex Backend | 七个 Backend 精确产品路径及三份必要治理路径冲突检查 PASS；Backend 产品锁 CLAIMED；未认领 Frontend 路径；Implementation Started YES；同一会话执行 G09-01/G09-02 |
 | 2026-07-22 | Codex Backend | IN_PROGRESS | IN_PROGRESS | Cursor Frontend | G09-01/G09-02 完成；`dotnet build` PASS（0 warnings / 0 errors）；`dotnet test` PASS（34/34）；七个 Backend 锁保持 CLAIMED；下一单元 G09-03 |
+| 2026-07-22 17:25:21 +08:00 | Cursor Frontend | IN_PROGRESS | IN_PROGRESS | Codex Reviewer | G09-03：认领两项 Frontend 精确路径并完成首页只读机房列表；`npm test` 48/48、`typecheck`/`build` PASS；Backend 七项锁保持 CLAIMED；Frontend 两项锁 CLAIMED；TASK 保持 IN_PROGRESS，未交审 |
 
 ## 审核与完成字段
 

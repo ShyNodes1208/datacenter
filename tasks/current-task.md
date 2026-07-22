@@ -6,13 +6,13 @@
 
 - Status：IN_PROGRESS
 - Owner：Codex Architect
-- Implementation Owner：按微任务分工；首个为 Codex Backend（G09-01）
+- Implementation Owner：按微任务分工；G09-01/G09-02 为 Codex Backend，G09-03 为 Cursor Frontend
 - Reviewer：Codex Reviewer
 - 任务：TASK-0009 — 首页只读机房列表
 - 分支：feature/task-0009-readonly-room-list
 - 规格文件：tasks/TASK-0009-READONLY-ROOM-LIST.md
-- 当前执行单元：G09-01/G09-02 — Backend 实施完成
-- 当前阶段：Backend 构建与测试通过，等待 Cursor Frontend 执行 G09-03
+- 当前执行单元：G09-03 — Frontend 首页只读机房列表（已完成实现，待最终交审）
+- 当前阶段：Frontend G09-03 完成；Backend 七项锁与 Frontend 两项锁均 CLAIMED；等待最终验证与交审
 - Blocker：无
 - Specification Review：PASS
 - Findings：0 / 0 / 0 / 0
@@ -22,19 +22,25 @@
 - 依赖预算：NuGet 0；npm 0；DI 服务 0；路由 0；抽象层 0
 - Implementation Started：YES
 - 规格锁：3（RELEASED by Codex Architect）
-- 实施锁：7（CLAIMED by Codex Backend）
+- 实施锁：Backend 7（CLAIMED by Codex Backend）；Frontend 2（CLAIMED by Cursor Frontend）
 - Implementation Plan：APPROVED_AND_WRITTEN
-- 首个微任务：G09-01 — Backend Room 数据模型与 Migration
-- 首个 Implementation Owner：Codex Backend
 - Migration Paths：`src/backend/Datacenter.Api/Migrations/20260722163613_AddRooms.cs`；`src/backend/Datacenter.Api/Migrations/20260722163613_AddRooms.Designer.cs`
 - TASK-0008：COMPLETED，已合入 main；PMV：PASS
 - TASK-0017：COMPLETED；Governance gap：已关闭；规格锁与实施锁均 RELEASED
 - 基线同步：PASS；main `01b9a046` 已合入当前 feature
-- 同步结果审核：PASS；提交 `0d2598e0e0753525a1a82f4a183a8b8891a5fa49`
-- 最小规格有效性自查：PASS；不是新的独立规格审核；业务规格和 AC 未修改
-- 恢复结果：PASS；六项恢复条件全部 SATISFIED；Architect 重新认领规格锁 SATISFIED
-- Next Action：Cursor Frontend 核验并认领两个 Frontend 精确路径后执行 G09-03
-- 实现许可：Backend 实现已完成；七个 Backend 锁保持 CLAIMED，等待 TASK-0009 最终交审
+- Next Action：按 TASK-0009 最终验证与交审流程；下一合法审核角色为 Codex Reviewer
+- 实现许可：Backend 与 Frontend 产品实现均已完成；九项产品锁保持 CLAIMED，等待 TASK-0009 最终交审
+
+## TASK-0009 Frontend G09-03 实施记录（2026-07-22）
+
+- 执行角色：Cursor Frontend
+- 认领时间：2026-07-22 17:25:21 +08:00
+- Frontend 锁：`src/frontend/src/views/HomeView.vue`、`src/frontend/src/__tests__/router-and-views.test.ts` 两项 CLAIMED
+- 未认领：Backend 七项路径（保持 Codex Backend CLAIMED）
+- 实现：首页只读机房列表；`GET /api/rooms` via 现有 `useApi`；成功/空态“暂无机房”/错误态；`aria-label="机房列表"`；无 CRUD/搜索/排序/筛选/分页
+- 验证：`npm test` 48/48 PASS；`npm run typecheck` PASS；`npm run build` PASS
+- TASK 状态：保持 IN_PROGRESS；Implementation Started：YES
+- 未执行：READY_FOR_REVIEW、Reviewer 审核、锁释放
 
 ## TASK-0009 Backend 实施启动记录（2026-07-22）
 
