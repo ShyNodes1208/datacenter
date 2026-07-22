@@ -6,7 +6,7 @@
 
 - Status：READY
 - Owner：Codex Architect
-- Implementation Owner：待规格审核 PASS 后由 Codex Architect 书面指定
+- Implementation Owner：按微任务分工；首个为 Codex Backend（G09-01）
 - Reviewer：Codex Reviewer
 - 任务：TASK-0009 — 首页只读机房列表
 - 分支：feature/task-0009-readonly-room-list
@@ -23,13 +23,17 @@
 - Implementation Started：NO
 - 规格锁：3（RELEASED by Codex Architect）
 - 实施锁：0（未提前认领）
+- Implementation Plan：APPROVED_AND_WRITTEN
+- 首个微任务：G09-01 — Backend Room 数据模型与 Migration
+- 首个 Implementation Owner：Codex Backend
+- Migration Paths：`src/backend/Datacenter.Api/Migrations/20260722163613_AddRooms.cs`；`src/backend/Datacenter.Api/Migrations/20260722163613_AddRooms.Designer.cs`
 - TASK-0008：COMPLETED，已合入 main；PMV：PASS
 - TASK-0017：COMPLETED；Governance gap：已关闭；规格锁与实施锁均 RELEASED
 - 基线同步：PASS；main `01b9a046` 已合入当前 feature
 - 同步结果审核：PASS；提交 `0d2598e0e0753525a1a82f4a183a8b8891a5fa49`
 - 最小规格有效性自查：PASS；不是新的独立规格审核；业务规格和 AC 未修改
 - 恢复结果：PASS；六项恢复条件全部 SATISFIED；Architect 重新认领规格锁 SATISFIED
-- Next Action：按 TASK-0009 已批准任务文件进入下一合法实施启动门禁
+- Next Action：Codex Backend 独立执行 G09-01 实施启动门禁
 - 实现许可：否；不得直接进入 IN_PROGRESS，不得认领实施锁，不得开始产品实施
 
 ## TASK-0009 阻断与规格锁释放记录（2026-07-22）

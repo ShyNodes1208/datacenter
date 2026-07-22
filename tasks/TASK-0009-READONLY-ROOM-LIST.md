@@ -8,7 +8,7 @@
 - Task Name：首页只读机房列表
 - Status：READY
 - Owner：Codex Architect
-- Implementation Owner：待规格审核 PASS 后由 Codex Architect 书面指定
+- Implementation Owner：按微任务分工；G09-01/G09-02 为 Codex Backend，G09-03 为 Cursor Frontend；不存在单一角色持有全部九项产品锁
 - Reviewer：Codex Reviewer
 - Branch：`feature/task-0009-readonly-room-list`
 - Requirement Source：项目负责人 2026-07-21 书面批准的 TASK-0009 范围；`docs/product/MVP-PRODUCT-BASELINE.md` FR-001、BR-027、NFR-007、AC-021、AC-037
@@ -17,6 +17,72 @@
 - Dependency：TASK-0007、TASK-0008（均已 COMPLETED 并合入 main）
 - Module Lock：3 项规格文档锁 `RELEASED` by Codex Architect；0 项实施锁
 - Implementation Started：NO
+
+## 实施启动方案
+
+### 角色
+
+- Task Owner：Codex Architect
+- G09-01 Owner：Codex Backend
+- G09-02 Owner：Codex Backend
+- G09-03 Owner：Cursor Frontend
+- Reviewer：Codex Reviewer
+- 产品实施锁：0；本方案写回不认领任何产品锁
+
+### G09-01：Backend Room 数据模型与 Migration
+
+- Owner：Codex Backend
+- 单一目标：实现 TASK-0009 已批准的 Room 持久化模型、AppDbContext 映射和 AddRooms Migration。
+- 新增文件：
+  1. `src/backend/Datacenter.Api/Models/Room.cs`
+  2. `src/backend/Datacenter.Api/Migrations/20260722163613_AddRooms.cs`
+  3. `src/backend/Datacenter.Api/Migrations/20260722163613_AddRooms.Designer.cs`
+- 修改文件：
+  1. `src/backend/Datacenter.Api/Data/AppDbContext.cs`
+  2. `src/backend/Datacenter.Api/Migrations/AppDbContextModelSnapshot.cs`
+- 精确实施锁：上述五个路径；仅由 Codex Backend 在独立实施启动门禁中自行认领。
+- 已批准约束：`Id` 为系统生成的 `Guid` 主键；`Name` 为必填且全局唯一的 `string` 并建立唯一索引；`Status` 为必填 `string`，以 CHECK 约束仅允许“启用”或“停用”；不增加 `CreatedAt`、`Location`、`Notes` 或其他字段。
+- 测试：`dotnet build`
+- 完成后：TASK-0009 保持 `IN_PROGRESS`；五项产品锁保持 `CLAIMED` by Codex Backend；不进入 `READY_FOR_REVIEW`；下一微任务为 G09-02。
+
+### G09-02：Backend 只读 Rooms API 与集成测试
+
+- Owner：Codex Backend
+- 单一目标：实现已批准的 `GET /api/rooms` 只读 API 和最小集成测试。
+- 新增文件：
+  1. `src/backend/Datacenter.Api/Controllers/RoomsController.cs`
+  2. `tests/backend/Datacenter.Api.Tests/IntegrationTests/RoomIntegrationTests.cs`
+- 精确实施锁：上述两个路径；由 Codex Backend 在 G09-02 启动前自行认领。
+- 已批准行为：使用现有 `[Authorize]` 默认策略；四类已登录角色均可访问；响应元素只含 `name`、`status`；空表返回 `[]`；未认证返回 `401`；不保证排序，不新增 DTO 文件、Service 或 Repository。
+- 测试：`dotnet test`
+- 完成后：TASK-0009 保持 `IN_PROGRESS`；Backend 共七项产品锁保持 `CLAIMED`；下一微任务为 G09-03。
+
+### G09-03：Frontend 首页只读机房列表与测试
+
+- Owner：Cursor Frontend
+- 单一目标：在现有首页实现只读机房列表及最小前端测试。
+- 修改文件：
+  1. `src/frontend/src/views/HomeView.vue`
+  2. `src/frontend/src/__tests__/router-and-views.test.ts`
+- 精确实施锁：上述两个路径；由 Cursor Frontend 在 G09-03 启动前自行认领，Codex Backend 不得代为认领。
+- 已批准行为：保留用户名、角色、登出按钮和现有认证行为；列表区域使用 `aria-label="机房列表"`；覆盖成功、空态和错误态；不得出现创建、编辑、删除、详情、搜索、排序、筛选或分页入口；不新增 composable。
+- 测试：`npm test`、`npm run typecheck`、`npm run build`
+- 完成后：TASK-0009 保持 `IN_PROGRESS`；Frontend 两项产品锁保持 `CLAIMED`；进入最终验证和交审准备。
+
+### 实施启动与微任务切换
+
+- 下一合法角色：Codex Backend。
+- 下一合法动作：Codex Backend 在独立会话核验最新 HEAD 和 G09-01 五个路径无活跃锁，自行认领五项精确产品锁及启动记录所需治理文件锁，执行 `READY → IN_PROGRESS`，设置 Implementation Started 为 `YES`，创建原子启动管理提交后停止；后续独立执行 G09-01 产品代码。
+- Codex Architect 不得代表 Codex Backend 认领产品锁或执行首次产品实施启动。
+- G09-01 五项锁在微任务切换时保持 `CLAIMED`；G09-02 前由 Codex Backend 自行认领新增两项后端锁；G09-03 前由 Cursor Frontend 自行认领两项前端锁；Backend 不得替 Frontend 认领锁；不默认并行执行。
+
+### 最终验证、交审与审核生命周期
+
+- 最终交审前重跑：`dotnet test`、`npm test`、`npm run typecheck`、`npm run build`、`pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1`、`git diff --check`。
+- 不增加 E2E 框架、性能测试、新测试依赖或 AC 无关测试。
+- 全部实现、AC 自检和批准测试通过，且工作区干净、暂存区为空后，TASK-0009 执行 `IN_PROGRESS → READY_FOR_REVIEW`；Backend 七项锁和 Frontend 两项锁分别由原 Owner 执行 `CLAIMED → HANDED_OFF`；接收角色为 Codex Reviewer。
+- Reviewer PASS：`READY_FOR_REVIEW → COMPLETED`，九项 `HANDED_OFF → RELEASED`。
+- Reviewer NEEDS_CHANGES：按 `AGENT-WORKFLOW.md` 现有修复生命周期执行；Reviewer 不得自行修复；仅由原 Owner 或明确指定的非 Reviewer 修复者重新认领其负责路径。
 
 ## Unit 4 恢复结果
 
@@ -148,8 +214,8 @@
 | 新增 | `src/backend/Datacenter.Api/Models/Room.cs` | 最小 Room 实体 |
 | 新增 | `src/backend/Datacenter.Api/Controllers/RoomsController.cs` | 只读 GET API |
 | 新增 | `tests/backend/Datacenter.Api.Tests/IntegrationTests/RoomIntegrationTests.cs` | 最小后端集成测试 |
-| 新增 | `src/backend/Datacenter.Api/Migrations/<timestamp>_AddRooms.cs` | EF Core Migration |
-| 新增 | `src/backend/Datacenter.Api/Migrations/<timestamp>_AddRooms.Designer.cs` | EF Core Migration Designer |
+| 新增 | `src/backend/Datacenter.Api/Migrations/20260722163613_AddRooms.cs` | EF Core Migration |
+| 新增 | `src/backend/Datacenter.Api/Migrations/20260722163613_AddRooms.Designer.cs` | EF Core Migration Designer |
 | 修改 | `src/backend/Datacenter.Api/Data/AppDbContext.cs` | Rooms DbSet 和约束 |
 | 修改 | `src/backend/Datacenter.Api/Migrations/AppDbContextModelSnapshot.cs` | Migration Snapshot |
 | 修改 | `src/frontend/src/views/HomeView.vue` | 首页只读列表 |
