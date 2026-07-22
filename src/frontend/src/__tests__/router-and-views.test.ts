@@ -121,68 +121,156 @@ async function mountHomeViewState(): Promise<HomeViewSetupState> {
   return setupState
 }
 
-/** Serialize one HomeView setupState (same instance; no second component mount). */
-function htmlFromHomeState(state: HomeViewSetupState): string {
-  const username = userMock.value?.username ?? ''
-  const role = userMock.value?.role ?? ''
-  const logoutDisabled = state.submitting ? ' disabled' : ''
-  const saveDisabled = state.createSubmitting ? ' disabled' : ''
-  const saveLabel = state.createSubmitting ? '保存中...' : '保存'
-
-  let createBlock = ''
-  if (state.isRoomAdmin) {
-    if (!state.createFormVisible) {
-      createBlock = '<button type="button">新增机房</button>'
-    } else {
-      createBlock = [
-        '<form>',
-        '<label>机房名称<input name="roomName" type="text" value="' + state.roomName + '"></label>',
-        '<label>状态<select name="roomStatus"><option value="启用">启用</option><option value="停用">停用</option></select></label>',
-        '<button type="submit"' + saveDisabled + '>' + saveLabel + '</button>',
-        '<button type="button"' + saveDisabled + '>取消</button>',
-        '<div role="alert" aria-live="polite">' + state.createError + '</div>',
-        '</form>',
-      ].join('')
-    }
-  }
-
-  let listBody = ''
-  if (state.roomsError) {
-    listBody = '<div role="alert" aria-live="polite">' + state.roomsError + '</div>'
-  } else if (state.rooms !== null && state.rooms.length === 0) {
-    listBody = '<p>暂无机房</p>'
-  } else if (state.rooms !== null) {
-    listBody =
-      '<ul>' +
-      state.rooms
-        .map((room) => '<li><span>' + room.name + '</span><span>' + room.status + '</span></li>')
-        .join('') +
-      '</ul>'
-  }
-
-  return [
-    '<div>',
-    '<p>' + username + '</p>',
-    '<p>' + role + '</p>',
-    '<button type="button"' + logoutDisabled + '>登出</button>',
-    '<div role="alert" aria-live="polite">' + state.errorMessage + '</div>',
-    createBlock,
-    '<section aria-label="机房列表">' + listBody + '</section>',
-    '</div>',
-  ].join('')
+async function flushUi(): Promise<void> {
+  await Promise.resolve()
+  await nextTick()
+  await Promise.resolve()
+  await nextTick()
 }
 
-/** One HomeView setupState for interactions and DOM assertions. */
-async function mountInteractiveHomeView(): Promise<{
-  state: HomeViewSetupState
-  html: () => string
-}> {
-  const state = await mountHomeViewState()
+type MountedHomeView = {
+  /** Real Vue SSR HTML from HomeView.vue template (same reactive bindings). */
+  html: () => Promise<string>
+  hasButton: (markup: string, text: string) => boolean
+  hasForm: (markup: string) => boolean
+  inputValue: (markup: string, name: string) => string | null
+  selectedStatus: (markup: string) => string | null
+  createErrorText: (markup: string) => string
+  saveButtonDisabled: (markup: string) => boolean
+  saveButtonLabel: (markup: string) => string | null
+  clickCreate: () => Promise<void>
+  clickSave: () => Promise<void>
+  clickCancel: () => Promise<void>
+  typeRoomName: (value: string) => Promise<void>
+  chooseStatus: (value: string) => Promise<void>
+  unmount: () => void
+}
+
+/**
+ * One shared HomeView reactive instance. html() always comes from Vue's
+ * renderToString / HomeView.vue ssrRender — never hand-assembled markup.
+ *
+ * Note: Vitest compiles SFCs with ssrRender only and no jsdom/happy-dom is
+ * installed, so client DOM event dispatch is unavailable. Interactions invoke
+ * the same handlers the template binds (@click / @submit.prevent / v-model).
+ */
+async function mountInteractiveHomeView(): Promise<MountedHomeView> {
+  type SetupFn = (...args: unknown[]) => Record<string, unknown>
+  const component = HomeView as { setup: SetupFn }
+  const originalSetup = component.setup
+  let bindings: Record<string, unknown> | null = null
+
+  component.setup = (props, ctx) => {
+    if (bindings) {
+      return bindings
+    }
+    bindings = originalSetup(props, ctx)
+    return bindings
+  }
+
+  const renderRealHtml = async (): Promise<string> => {
+    const app = createSSRApp(HomeView)
+    return renderToString(app)
+  }
+
+  await renderRealHtml()
+  if (bindings === null) {
+    component.setup = originalSetup
+    throw new Error('HomeView setup bindings were not captured')
+  }
+
+  const state = bindings as unknown as HomeViewSetupState
   await state.loadRooms()
-  await nextTick()
+  await flushUi()
+
+  const writeRef = <T,>(field: keyof HomeViewSetupState, value: T): void => {
+    const raw = bindings![field as string]
+    if (raw !== null && typeof raw === 'object' && 'value' in (raw as object)) {
+      ;(raw as { value: T }).value = value
+      return
+    }
+    ;(bindings as Record<string, unknown>)[field as string] = value
+  }
+
+  const hasButton = (markup: string, text: string): boolean =>
+    new RegExp(`<button[^>]*>\\s*${text}\\s*<\\/button>`).test(markup)
+
+  const hasForm = (markup: string): boolean => /<form[\s>]/.test(markup)
+
+  const inputValue = (markup: string, name: string): string | null => {
+    const match = markup.match(new RegExp(`<input[^>]*name="${name}"[^>]*>`))
+    if (!match) {
+      return null
+    }
+    const valueMatch = match[0].match(/\bvalue="([^"]*)"/)
+    return valueMatch ? valueMatch[1] : ''
+  }
+
+  const selectedStatus = (markup: string): string | null => {
+    const selectMatch = markup.match(
+      /<select[^>]*name="roomStatus"[^>]*>([\s\S]*?)<\/select>/,
+    )
+    if (!selectMatch) {
+      return null
+    }
+    const selected = selectMatch[1].match(/<option[^>]*value="([^"]*)"[^>]*selected/)
+    return selected ? selected[1] : null
+  }
+
+  const createErrorText = (markup: string): string => {
+    const formMatch = markup.match(/<form[\s\S]*?<\/form>/)
+    if (!formMatch) {
+      return ''
+    }
+    const alertMatch = formMatch[0].match(
+      /<div[^>]*role="alert"[^>]*>([\s\S]*?)<\/div>/,
+    )
+    return alertMatch ? alertMatch[1].trim() : ''
+  }
+
+  const saveButtonDisabled = (markup: string): boolean => {
+    const match = markup.match(/<button[^>]*type="submit"[^>]*>/)
+    return Boolean(match && /\bdisabled\b/.test(match[0]))
+  }
+
+  const saveButtonLabel = (markup: string): string | null => {
+    const match = markup.match(/<button[^>]*type="submit"[^>]*>([\s\S]*?)<\/button>/)
+    return match ? match[1].trim() : null
+  }
+
   return {
-    state,
-    html: () => htmlFromHomeState(state),
+    html: renderRealHtml,
+    hasButton,
+    hasForm,
+    inputValue,
+    selectedStatus,
+    createErrorText,
+    saveButtonDisabled,
+    saveButtonLabel,
+    clickCreate: async () => {
+      state.openCreateForm()
+      await flushUi()
+    },
+    clickSave: async () => {
+      await state.onCreateRoom()
+      await flushUi()
+    },
+    clickCancel: async () => {
+      state.cancelCreate()
+      await flushUi()
+    },
+    typeRoomName: async (value: string) => {
+      writeRef('roomName', value)
+      await flushUi()
+    },
+    chooseStatus: async (value: string) => {
+      writeRef('roomStatus', value)
+      await flushUi()
+    },
+    unmount: () => {
+      component.setup = originalSetup
+      bindings = null
+    },
   }
 }
 
@@ -399,7 +487,13 @@ describe('HomeView create room (TASK-0018)', () => {
     requestMock.mockResolvedValue(mockRoomsGet([]))
 
     const view = await mountInteractiveHomeView()
-    expect(view.html()).toContain('新增机房')
+    try {
+      const html = await view.html()
+      expect(view.hasButton(html, '新增机房')).toBe(true)
+      expect(view.hasForm(html)).toBe(false)
+    } finally {
+      view.unmount()
+    }
   })
 
   it.each(['运维人员', 'DBA/应用运维人员', '只读查看人员'])(
@@ -409,8 +503,14 @@ describe('HomeView create room (TASK-0018)', () => {
       requestMock.mockResolvedValue(mockRoomsGet([]))
 
       const view = await mountInteractiveHomeView()
-      expect(view.html()).not.toContain('新增机房')
-      expect(view.html()).not.toMatch(/name="roomName"/)
+      try {
+        const html = await view.html()
+        expect(view.hasButton(html, '新增机房')).toBe(false)
+        expect(view.hasForm(html)).toBe(false)
+        expect(html).not.toMatch(/name="roomName"/)
+      } finally {
+        view.unmount()
+      }
     },
   )
 
@@ -419,16 +519,20 @@ describe('HomeView create room (TASK-0018)', () => {
     requestMock.mockResolvedValue(mockRoomsGet([]))
 
     const view = await mountInteractiveHomeView()
-    view.state.openCreateForm()
-    await nextTick()
+    try {
+      await view.clickCreate()
+      const html = await view.html()
 
-    const html = view.html()
-    expect(html).toMatch(/name="roomName"/)
-    expect(html).toMatch(/name="roomStatus"/)
-    expect(html).toContain('保存')
-    expect(html).toContain('取消')
-    expect(view.state.roomStatus).toBe('启用')
-    expect(view.state.createFormVisible).toBe(true)
+      expect(view.hasForm(html)).toBe(true)
+      expect(view.inputValue(html, 'roomName')).toBe('')
+      expect(view.selectedStatus(html)).toBe('启用')
+      expect(view.hasButton(html, '保存')).toBe(true)
+      expect(view.hasButton(html, '取消')).toBe(true)
+      expect(html).toMatch(/name="roomName"/)
+      expect(html).toMatch(/name="roomStatus"/)
+    } finally {
+      view.unmount()
+    }
   })
 
   it('posts a new room, reloads the list on the same instance, and closes the form', async () => {
@@ -462,28 +566,31 @@ describe('HomeView create room (TASK-0018)', () => {
     })
 
     const view = await mountInteractiveHomeView()
-    view.state.openCreateForm()
-    await nextTick()
-    view.state.roomName = '主机房'
-    view.state.roomStatus = '启用'
-    await view.state.onCreateRoom()
-    await nextTick()
+    try {
+      await view.clickCreate()
+      await view.typeRoomName('主机房')
+      await view.chooseStatus('启用')
+      await view.clickSave()
 
-    expect(requestMock).toHaveBeenCalledWith('/api/rooms', {
-      method: 'POST',
-      body: { name: '主机房', status: '启用' },
-      csrfToken: 'csrf-token-1',
-    })
-    const getCalls = requestMock.mock.calls.filter(
-      (call) => call[0] === '/api/rooms' && (call[1]?.method === 'GET' || call[1]?.method === undefined),
-    )
-    expect(getCalls.length).toBeGreaterThanOrEqual(2)
+      expect(requestMock).toHaveBeenCalledWith('/api/rooms', {
+        method: 'POST',
+        body: { name: '主机房', status: '启用' },
+        csrfToken: 'csrf-token-1',
+      })
+      const getCalls = requestMock.mock.calls.filter(
+        (call) => call[0] === '/api/rooms' && (call[1]?.method === 'GET' || call[1]?.method === undefined),
+      )
+      expect(getCalls.length).toBeGreaterThanOrEqual(2)
 
-    const html = view.html()
-    expect(html).toContain('主机房')
-    expect(html).toContain('启用')
-    expect(view.state.createFormVisible).toBe(false)
-    expect(html).not.toMatch(/name="roomName"/)
+      const html = await view.html()
+      expect(html).toContain('主机房')
+      expect(html).toContain('启用')
+      expect(view.hasForm(html)).toBe(false)
+      expect(view.hasButton(html, '新增机房')).toBe(true)
+      expect(html).not.toMatch(/name="roomName"/)
+    } finally {
+      view.unmount()
+    }
   })
 
   it('keeps the form open with input retained when the name already exists', async () => {
@@ -504,17 +611,19 @@ describe('HomeView create room (TASK-0018)', () => {
     })
 
     const view = await mountInteractiveHomeView()
-    view.state.openCreateForm()
-    await nextTick()
-    view.state.roomName = '主机房'
-    await view.state.onCreateRoom()
-    await nextTick()
+    try {
+      await view.clickCreate()
+      await view.typeRoomName('主机房')
+      await view.clickSave()
 
-    expect(view.state.createError).toBe('机房名称已存在')
-    expect(view.state.createFormVisible).toBe(true)
-    expect(view.state.roomName).toBe('主机房')
-    expect(view.html()).toContain('机房名称已存在')
-    expect(view.html()).toMatch(/name="roomName"/)
+      const html = await view.html()
+      expect(view.createErrorText(html)).toBe('机房名称已存在')
+      expect(view.hasForm(html)).toBe(true)
+      expect(view.inputValue(html, 'roomName')).toBe('主机房')
+      expect(html).toContain('机房名称已存在')
+    } finally {
+      view.unmount()
+    }
   })
 
   it('shows 机房名称不能为空 from the backend and keeps the form open', async () => {
@@ -535,15 +644,18 @@ describe('HomeView create room (TASK-0018)', () => {
     })
 
     const view = await mountInteractiveHomeView()
-    view.state.openCreateForm()
-    await nextTick()
-    view.state.roomName = '   '
-    await view.state.onCreateRoom()
-    await nextTick()
+    try {
+      await view.clickCreate()
+      await view.typeRoomName('   ')
+      await view.clickSave()
 
-    expect(view.state.createError).toBe('机房名称不能为空')
-    expect(view.state.createFormVisible).toBe(true)
-    expect(view.html()).toContain('机房名称不能为空')
+      const html = await view.html()
+      expect(view.createErrorText(html)).toBe('机房名称不能为空')
+      expect(view.hasForm(html)).toBe(true)
+      expect(html).toContain('机房名称不能为空')
+    } finally {
+      view.unmount()
+    }
   })
 
   it('disables the save button while submitting to prevent duplicate posts', async () => {
@@ -575,27 +687,32 @@ describe('HomeView create room (TASK-0018)', () => {
     })
 
     const view = await mountInteractiveHomeView()
-    view.state.openCreateForm()
-    await nextTick()
-    view.state.roomName = '主机房'
+    try {
+      await view.clickCreate()
+      await view.typeRoomName('主机房')
 
-    const submitPromise = view.state.onCreateRoom()
-    await nextTick()
-    expect(view.state.createSubmitting).toBe(true)
-    expect(view.html()).toMatch(/disabled/)
-    expect(view.html()).toContain('保存中...')
+      const submitPromise = view.clickSave()
+      await flushUi()
 
-    const secondSubmit = view.state.onCreateRoom()
-    await Promise.resolve()
-    const postCalls = requestMock.mock.calls.filter(
-      (call) => call[0] === '/api/rooms' && call[1]?.method === 'POST',
-    )
-    expect(postCalls.length).toBe(1)
+      const html = await view.html()
+      expect(view.saveButtonDisabled(html)).toBe(true)
+      expect(view.saveButtonLabel(html)).toBe('保存中...')
+      expect(html).toMatch(/disabled/)
 
-    resolvePost(undefined)
-    await submitPromise
-    await secondSubmit
-    await nextTick()
+      // Second save while in-flight must not create another POST.
+      await view.clickSave()
+      await Promise.resolve()
+      const postCalls = requestMock.mock.calls.filter(
+        (call) => call[0] === '/api/rooms' && call[1]?.method === 'POST',
+      )
+      expect(postCalls.length).toBe(1)
+
+      resolvePost(undefined)
+      await submitPromise
+      await flushUi()
+    } finally {
+      view.unmount()
+    }
   })
 
   it('cancels the form, clears fields, and leaves the room list unchanged', async () => {
@@ -603,23 +720,27 @@ describe('HomeView create room (TASK-0018)', () => {
     requestMock.mockResolvedValue(mockRoomsGet([{ name: '机房A', status: '启用' }]))
 
     const view = await mountInteractiveHomeView()
-    await view.state.loadRooms()
-    await nextTick()
-    view.state.openCreateForm()
-    await nextTick()
-    view.state.roomName = '临时名'
-    view.state.roomStatus = '停用'
-    view.state.createError = '旧错误'
-    view.state.cancelCreate()
-    await nextTick()
+    try {
+      expect(await view.html()).toContain('机房A')
 
-    expect(view.state.createFormVisible).toBe(false)
-    expect(view.state.roomName).toBe('')
-    expect(view.state.roomStatus).toBe('启用')
-    expect(view.state.createError).toBe('')
-    expect(view.state.rooms).toEqual([{ name: '机房A', status: '启用' }])
-    expect(view.html()).toContain('机房A')
-    expect(view.html()).not.toMatch(/name="roomName"/)
+      await view.clickCreate()
+      await view.typeRoomName('临时名')
+      await view.chooseStatus('停用')
+      await view.clickCancel()
+
+      const afterCancel = await view.html()
+      expect(view.hasForm(afterCancel)).toBe(false)
+      expect(afterCancel).toContain('机房A')
+      expect(afterCancel).not.toMatch(/name="roomName"/)
+
+      await view.clickCreate()
+      const reopened = await view.html()
+      expect(view.inputValue(reopened, 'roomName')).toBe('')
+      expect(view.selectedStatus(reopened)).toBe('启用')
+      expect(view.createErrorText(reopened)).toBe('')
+    } finally {
+      view.unmount()
+    }
   })
 })
 
