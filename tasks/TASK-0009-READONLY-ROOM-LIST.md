@@ -6,7 +6,7 @@
 
 - Task ID：TASK-0009
 - Task Name：首页只读机房列表
-- Status：BLOCKED
+- Status：READY
 - Owner：Codex Architect
 - Implementation Owner：待规格审核 PASS 后由 Codex Architect 书面指定
 - Reviewer：Codex Reviewer
@@ -15,18 +15,28 @@
 - Product Baseline：`docs/product/MVP-PRODUCT-BASELINE.md`
 - Architecture Reference：`docs/architecture/AGENT-WORKFLOW.md`；TASK-0007 现有 ASP.NET Core/EF Core/SQLite 基线；TASK-0008 现有认证首页和 `useApi`
 - Dependency：TASK-0007、TASK-0008（均已 COMPLETED 并合入 main）
-- Module Lock：3 项规格文档锁 `CLAIMED` by Codex Architect；0 项实施锁
+- Module Lock：3 项规格文档锁 `RELEASED` by Codex Architect；0 项实施锁
 - Implementation Started：NO
 
-## 当前阻塞
+## Unit 4 恢复结果
 
-- 当前阶段：基线恢复完成，规格锁已重新认领
-- Blocker：等待本单元完成恢复条件确认和 READY 迁移
+- 原状态：BLOCKED
+- 新状态：READY
+- 恢复结果：PASS
+- 当前阶段：已恢复 READY，等待后续实施启动门禁
+- Blocker：无
 - 最小规格有效性自查：PASS；本自查不是新的独立规格审核，原规格审核继续有效
 - 规格与 AC：业务规格未修改，不新增 AC，AC-01～AC-06 数量和内容未变化
-- 基线同步审核：PASS；提交 `0d2598e0e0753525a1a82f4a183a8b8891a5fa49`
-- 规格锁：3 项 `CLAIMED`；实施锁：0；Implementation Started：NO
-- 下一动作：完成恢复条件确认并执行 `BLOCKED → READY`
+- 原规格审核：PASS；Findings：0 / 0 / 0 / 0
+- 基线同步：PASS；同步结果审核：PASS；提交 `0d2598e0e0753525a1a82f4a183a8b8891a5fa49`
+- 六项恢复条件：全部 `SATISFIED`（TASK-0017 与 Governance gap；最新 main；同步方式批准；同步结果审核；规格路径无冲突；最小规格有效性）
+- Architect 重新认领三项规格锁：`SATISFIED`
+- 规格锁：3 项 `CLAIMED → RELEASED`；实施锁：0；Implementation Started：NO
+- 产品代码变化：0；业务规格变化：0
+- 限制：本轮不得进入 IN_PROGRESS，不得认领实施锁，不得开始产品实施
+- 下一动作：按已批准任务文件进入下一合法实施启动门禁
+
+## 历史阻塞
 
 - 原状态：DRAFT
 - 新状态：BLOCKED
@@ -232,6 +242,7 @@ git diff --name-status
 | 2026-07-21 21:54:08 +08:00 | Codex Architect | IDLE | DRAFT | Codex Reviewer | 创建 TASK-0009 规格并登记 3 项规格文档锁；仅待独立规格审核，不授权实施 |
 | 2026-07-22 08:33:56 +08:00 | Codex Architect | DRAFT | BLOCKED | Codex Architect | TASK-0008 合并治理缺口尚未完成修复，且 TASK-0009 feature 基线落后于当前 main；释放 3 项规格锁，恢复目标为 DRAFT；恢复前重新核验基线、锁冲突并重新认领 |
 | 2026-07-22 15:14:54 +08:00 | Codex Architect | BLOCKED | BLOCKED | Codex Architect | Unit 4 第一阶段；最小规格有效性自查 PASS；基线同步审核提交 `0d2598e0e0753525a1a82f4a183a8b8891a5fa49` PASS；三项规格锁重新认领为 CLAIMED；实施锁 0；Implementation Started NO；等待恢复条件最终确认和 READY 迁移 |
+| 2026-07-22 15:17:25 +08:00 | Codex Architect | BLOCKED | READY | 后续实施启动门禁 | Unit 4 恢复条件全部 SATISFIED；最小规格有效性自查 PASS，完整规格复审 NOT_REQUIRED；三项规格锁 CLAIMED → RELEASED；实施锁 0；Implementation Started NO；产品实施未开始 |
 
 ## 审核与完成字段
 
@@ -271,4 +282,4 @@ git diff --name-status
 
 ---
 
-> 当前为 BLOCKED；规格审核仍为 PASS，但治理和基线前置条件未满足。恢复目标为 DRAFT；恢复前必须重新核验基线和锁冲突并重新认领三项规格锁，不得进入 READY、开始实施或修改 `src/`/`tests/`。
+> 当前为 READY；规格审核 PASS，基线同步与同步结果审核 PASS，Unit 4 恢复条件全部满足，三项规格锁均已 RELEASED；实施锁 0，Implementation Started NO。下一步只能执行独立的实施启动门禁，不得直接进入 IN_PROGRESS 或开始产品实施。
