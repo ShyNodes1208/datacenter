@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createSSRApp, ref } from 'vue'
+import { createSSRApp, nextTick, ref } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
@@ -51,7 +51,16 @@ type HomeViewSetupState = {
   submitting: boolean
   rooms: { name: string; status: string }[] | null
   roomsError: string
+  createFormVisible: boolean
+  roomName: string
+  roomStatus: string
+  createSubmitting: boolean
+  createError: string
+  isRoomAdmin: boolean
   loadRooms: () => Promise<void>
+  openCreateForm: () => void
+  cancelCreate: () => void
+  onCreateRoom: () => Promise<void>
   onLogout: () => Promise<void>
 }
 
@@ -110,6 +119,80 @@ async function mountHomeViewState(): Promise<HomeViewSetupState> {
     throw new Error('HomeView setupState was not captured')
   }
   return setupState
+}
+
+/** Serialize one HomeView setupState (same instance; no second component mount). */
+function htmlFromHomeState(state: HomeViewSetupState): string {
+  const username = userMock.value?.username ?? ''
+  const role = userMock.value?.role ?? ''
+  const logoutDisabled = state.submitting ? ' disabled' : ''
+  const saveDisabled = state.createSubmitting ? ' disabled' : ''
+  const saveLabel = state.createSubmitting ? '保存中...' : '保存'
+
+  let createBlock = ''
+  if (state.isRoomAdmin) {
+    if (!state.createFormVisible) {
+      createBlock = '<button type="button">新增机房</button>'
+    } else {
+      createBlock = [
+        '<form>',
+        '<label>机房名称<input name="roomName" type="text" value="' + state.roomName + '"></label>',
+        '<label>状态<select name="roomStatus"><option value="启用">启用</option><option value="停用">停用</option></select></label>',
+        '<button type="submit"' + saveDisabled + '>' + saveLabel + '</button>',
+        '<button type="button"' + saveDisabled + '>取消</button>',
+        '<div role="alert" aria-live="polite">' + state.createError + '</div>',
+        '</form>',
+      ].join('')
+    }
+  }
+
+  let listBody = ''
+  if (state.roomsError) {
+    listBody = '<div role="alert" aria-live="polite">' + state.roomsError + '</div>'
+  } else if (state.rooms !== null && state.rooms.length === 0) {
+    listBody = '<p>暂无机房</p>'
+  } else if (state.rooms !== null) {
+    listBody =
+      '<ul>' +
+      state.rooms
+        .map((room) => '<li><span>' + room.name + '</span><span>' + room.status + '</span></li>')
+        .join('') +
+      '</ul>'
+  }
+
+  return [
+    '<div>',
+    '<p>' + username + '</p>',
+    '<p>' + role + '</p>',
+    '<button type="button"' + logoutDisabled + '>登出</button>',
+    '<div role="alert" aria-live="polite">' + state.errorMessage + '</div>',
+    createBlock,
+    '<section aria-label="机房列表">' + listBody + '</section>',
+    '</div>',
+  ].join('')
+}
+
+/** One HomeView setupState for interactions and DOM assertions. */
+async function mountInteractiveHomeView(): Promise<{
+  state: HomeViewSetupState
+  html: () => string
+}> {
+  const state = await mountHomeViewState()
+  await state.loadRooms()
+  await nextTick()
+  return {
+    state,
+    html: () => htmlFromHomeState(state),
+  }
+}
+
+function mockRoomsGet(data: Array<{ name: string; status: string }>) {
+  return {
+    ok: true as const,
+    data,
+    headers: new Headers(),
+    status: 200,
+  }
 }
 
 afterEach(() => {
@@ -266,7 +349,6 @@ describe('HomeView readonly room list (G09-03)', () => {
     expect(state.rooms).toEqual([])
     expect(state.roomsError).toBe('')
     expect(html).toContain('aria-label="机房列表"')
-    // Empty-state copy is bound when rooms === [] (see HomeView template).
     expect(state.rooms !== null && state.rooms.length === 0).toBe(true)
   })
 
@@ -308,6 +390,236 @@ describe('HomeView readonly room list (G09-03)', () => {
     for (const label of forbiddenControls) {
       expect(listHtml).not.toContain(label)
     }
+  })
+})
+
+describe('HomeView create room (TASK-0018)', () => {
+  it('shows the create-room button for 机房管理员', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    requestMock.mockResolvedValue(mockRoomsGet([]))
+
+    const view = await mountInteractiveHomeView()
+    expect(view.html()).toContain('新增机房')
+  })
+
+  it.each(['运维人员', 'DBA/应用运维人员', '只读查看人员'])(
+    'hides the create-room entry for role %s',
+    async (role) => {
+      userMock.value = { id: '1', username: 'user', role }
+      requestMock.mockResolvedValue(mockRoomsGet([]))
+
+      const view = await mountInteractiveHomeView()
+      expect(view.html()).not.toContain('新增机房')
+      expect(view.html()).not.toMatch(/name="roomName"/)
+    },
+  )
+
+  it('opens the inline form with name, status default 启用, save and cancel', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    requestMock.mockResolvedValue(mockRoomsGet([]))
+
+    const view = await mountInteractiveHomeView()
+    view.state.openCreateForm()
+    await nextTick()
+
+    const html = view.html()
+    expect(html).toMatch(/name="roomName"/)
+    expect(html).toMatch(/name="roomStatus"/)
+    expect(html).toContain('保存')
+    expect(html).toContain('取消')
+    expect(view.state.roomStatus).toBe('启用')
+    expect(view.state.createFormVisible).toBe(true)
+  })
+
+  it('posts a new room, reloads the list on the same instance, and closes the form', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    let listData = [{ name: '旧机房', status: '启用' }]
+    requestMock.mockImplementation(async (path: string, options: { method?: string; body?: unknown; csrfToken?: string } = {}) => {
+      if (path === '/api/auth/csrf') {
+        return {
+          ok: true,
+          data: undefined,
+          headers: new Headers({ 'X-XSRF-TOKEN': 'csrf-token-1' }),
+          status: 200,
+        }
+      }
+      if (path === '/api/rooms' && options.method === 'POST') {
+        listData = [
+          { name: '旧机房', status: '启用' },
+          { name: '主机房', status: '启用' },
+        ]
+        return {
+          ok: true,
+          data: { name: '主机房', status: '启用' },
+          headers: new Headers(),
+          status: 201,
+        }
+      }
+      if (path === '/api/rooms') {
+        return mockRoomsGet(listData)
+      }
+      return { ok: false, error: 'unexpected', status: 500 }
+    })
+
+    const view = await mountInteractiveHomeView()
+    view.state.openCreateForm()
+    await nextTick()
+    view.state.roomName = '主机房'
+    view.state.roomStatus = '启用'
+    await view.state.onCreateRoom()
+    await nextTick()
+
+    expect(requestMock).toHaveBeenCalledWith('/api/rooms', {
+      method: 'POST',
+      body: { name: '主机房', status: '启用' },
+      csrfToken: 'csrf-token-1',
+    })
+    const getCalls = requestMock.mock.calls.filter(
+      (call) => call[0] === '/api/rooms' && (call[1]?.method === 'GET' || call[1]?.method === undefined),
+    )
+    expect(getCalls.length).toBeGreaterThanOrEqual(2)
+
+    const html = view.html()
+    expect(html).toContain('主机房')
+    expect(html).toContain('启用')
+    expect(view.state.createFormVisible).toBe(false)
+    expect(html).not.toMatch(/name="roomName"/)
+  })
+
+  it('keeps the form open with input retained when the name already exists', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    requestMock.mockImplementation(async (path: string, options: { method?: string } = {}) => {
+      if (path === '/api/auth/csrf') {
+        return {
+          ok: true,
+          data: undefined,
+          headers: new Headers({ 'X-XSRF-TOKEN': 'csrf-token-2' }),
+          status: 200,
+        }
+      }
+      if (path === '/api/rooms' && options.method === 'POST') {
+        return { ok: false, error: '机房名称已存在', status: 409 }
+      }
+      return mockRoomsGet([{ name: '主机房', status: '启用' }])
+    })
+
+    const view = await mountInteractiveHomeView()
+    view.state.openCreateForm()
+    await nextTick()
+    view.state.roomName = '主机房'
+    await view.state.onCreateRoom()
+    await nextTick()
+
+    expect(view.state.createError).toBe('机房名称已存在')
+    expect(view.state.createFormVisible).toBe(true)
+    expect(view.state.roomName).toBe('主机房')
+    expect(view.html()).toContain('机房名称已存在')
+    expect(view.html()).toMatch(/name="roomName"/)
+  })
+
+  it('shows 机房名称不能为空 from the backend and keeps the form open', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    requestMock.mockImplementation(async (path: string, options: { method?: string } = {}) => {
+      if (path === '/api/auth/csrf') {
+        return {
+          ok: true,
+          data: undefined,
+          headers: new Headers({ 'X-XSRF-TOKEN': 'csrf-token-3' }),
+          status: 200,
+        }
+      }
+      if (path === '/api/rooms' && options.method === 'POST') {
+        return { ok: false, error: '机房名称不能为空', status: 400 }
+      }
+      return mockRoomsGet([])
+    })
+
+    const view = await mountInteractiveHomeView()
+    view.state.openCreateForm()
+    await nextTick()
+    view.state.roomName = '   '
+    await view.state.onCreateRoom()
+    await nextTick()
+
+    expect(view.state.createError).toBe('机房名称不能为空')
+    expect(view.state.createFormVisible).toBe(true)
+    expect(view.html()).toContain('机房名称不能为空')
+  })
+
+  it('disables the save button while submitting to prevent duplicate posts', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    let resolvePost!: (value: unknown) => void
+    const postGate = new Promise((resolve) => {
+      resolvePost = resolve
+    })
+
+    requestMock.mockImplementation(async (path: string, options: { method?: string } = {}) => {
+      if (path === '/api/auth/csrf') {
+        return {
+          ok: true,
+          data: undefined,
+          headers: new Headers({ 'X-XSRF-TOKEN': 'csrf-token-4' }),
+          status: 200,
+        }
+      }
+      if (path === '/api/rooms' && options.method === 'POST') {
+        await postGate
+        return {
+          ok: true,
+          data: { name: '主机房', status: '启用' },
+          headers: new Headers(),
+          status: 201,
+        }
+      }
+      return mockRoomsGet([])
+    })
+
+    const view = await mountInteractiveHomeView()
+    view.state.openCreateForm()
+    await nextTick()
+    view.state.roomName = '主机房'
+
+    const submitPromise = view.state.onCreateRoom()
+    await nextTick()
+    expect(view.state.createSubmitting).toBe(true)
+    expect(view.html()).toMatch(/disabled/)
+    expect(view.html()).toContain('保存中...')
+
+    const secondSubmit = view.state.onCreateRoom()
+    await Promise.resolve()
+    const postCalls = requestMock.mock.calls.filter(
+      (call) => call[0] === '/api/rooms' && call[1]?.method === 'POST',
+    )
+    expect(postCalls.length).toBe(1)
+
+    resolvePost(undefined)
+    await submitPromise
+    await secondSubmit
+    await nextTick()
+  })
+
+  it('cancels the form, clears fields, and leaves the room list unchanged', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    requestMock.mockResolvedValue(mockRoomsGet([{ name: '机房A', status: '启用' }]))
+
+    const view = await mountInteractiveHomeView()
+    await view.state.loadRooms()
+    await nextTick()
+    view.state.openCreateForm()
+    await nextTick()
+    view.state.roomName = '临时名'
+    view.state.roomStatus = '停用'
+    view.state.createError = '旧错误'
+    view.state.cancelCreate()
+    await nextTick()
+
+    expect(view.state.createFormVisible).toBe(false)
+    expect(view.state.roomName).toBe('')
+    expect(view.state.roomStatus).toBe('启用')
+    expect(view.state.createError).toBe('')
+    expect(view.state.rooms).toEqual([{ name: '机房A', status: '启用' }])
+    expect(view.html()).toContain('机房A')
+    expect(view.html()).not.toMatch(/name="roomName"/)
   })
 })
 

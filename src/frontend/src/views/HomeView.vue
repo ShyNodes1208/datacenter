@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApi } from '../composables/useApi'
 import { useAuth } from '../composables/useAuth'
@@ -8,6 +8,8 @@ type RoomItem = {
   name: string
   status: string
 }
+
+const ROOM_ADMIN_ROLE = '机房管理员'
 
 const router = useRouter()
 const { user, logout } = useAuth()
@@ -19,6 +21,14 @@ const submitting = ref(false)
 /** null = not finished loading; empty array = loaded empty list */
 const rooms = ref<RoomItem[] | null>(null)
 const roomsError = ref('')
+
+const createFormVisible = ref(false)
+const roomName = ref('')
+const roomStatus = ref('启用')
+const createSubmitting = ref(false)
+const createError = ref('')
+
+const isRoomAdmin = computed(() => user.value?.role === ROOM_ADMIN_ROLE)
 
 async function loadRooms(): Promise<void> {
   roomsError.value = ''
@@ -55,6 +65,71 @@ async function loadRooms(): Promise<void> {
   rooms.value = parsed
 }
 
+function openCreateForm(): void {
+  if (createFormVisible.value) {
+    return
+  }
+  createFormVisible.value = true
+  createError.value = ''
+}
+
+function cancelCreate(): void {
+  createFormVisible.value = false
+  roomName.value = ''
+  roomStatus.value = '启用'
+  createError.value = ''
+}
+
+async function fetchCreateCsrfToken(): Promise<string | null> {
+  const result = await request('/api/auth/csrf', { method: 'GET' })
+  if (!result.ok) {
+    createError.value = result.error
+    return null
+  }
+
+  const token = result.headers.get('X-XSRF-TOKEN')
+  if (!token) {
+    createError.value = 'Request failed.'
+    return null
+  }
+
+  return token
+}
+
+async function onCreateRoom(): Promise<void> {
+  if (createSubmitting.value) {
+    return
+  }
+
+  createSubmitting.value = true
+  createError.value = ''
+
+  const token = await fetchCreateCsrfToken()
+  if (token === null) {
+    createSubmitting.value = false
+    return
+  }
+
+  const result = await request('/api/rooms', {
+    method: 'POST',
+    body: { name: roomName.value, status: roomStatus.value },
+    csrfToken: token,
+  })
+
+  if (!result.ok) {
+    createError.value = result.error
+    createSubmitting.value = false
+    return
+  }
+
+  createFormVisible.value = false
+  roomName.value = ''
+  roomStatus.value = '启用'
+  createError.value = ''
+  await loadRooms()
+  createSubmitting.value = false
+}
+
 onMounted(() => {
   void loadRooms()
 })
@@ -84,6 +159,36 @@ async function onLogout(): Promise<void> {
     <p>{{ user?.role }}</p>
     <button type="button" :disabled="submitting" @click="onLogout">登出</button>
     <div role="alert" aria-live="polite">{{ errorMessage }}</div>
+
+    <template v-if="isRoomAdmin">
+      <button
+        v-if="!createFormVisible"
+        type="button"
+        @click="openCreateForm"
+      >
+        新增机房
+      </button>
+      <form v-else @submit.prevent="onCreateRoom">
+        <label>
+          机房名称
+          <input v-model="roomName" name="roomName" type="text" />
+        </label>
+        <label>
+          状态
+          <select v-model="roomStatus" name="roomStatus">
+            <option value="启用">启用</option>
+            <option value="停用">停用</option>
+          </select>
+        </label>
+        <button type="submit" :disabled="createSubmitting">
+          {{ createSubmitting ? '保存中...' : '保存' }}
+        </button>
+        <button type="button" :disabled="createSubmitting" @click="cancelCreate">
+          取消
+        </button>
+        <div role="alert" aria-live="polite">{{ createError }}</div>
+      </form>
+    </template>
 
     <section aria-label="机房列表">
       <div v-if="roomsError" role="alert" aria-live="polite">{{ roomsError }}</div>
