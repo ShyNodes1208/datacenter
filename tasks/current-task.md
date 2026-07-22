@@ -11,9 +11,9 @@
 - 任务：TASK-0009 — 首页只读机房列表
 - 分支：feature/task-0009-readonly-room-list
 - 规格文件：tasks/TASK-0009-READONLY-ROOM-LIST.md
-- 当前执行单元：基线同步完成，等待 Unit 3 独立审核
-- 当前阶段：main `01b9a046` 已合入当前 feature；同步结果尚待 Unit 3 独立审核
-- Blocker：等待 TASK-0009 同步结果独立审核；同步审核通过后，等待 Codex Architect 重新认领三项规格锁；TASK-0009 当前仍不能进入 READY。
+- 当前执行单元：Unit 4 — TASK-0009 状态恢复门禁
+- 当前阶段：状态恢复门禁；基线恢复完成，规格锁已重新认领
+- Blocker：等待本单元完成恢复条件确认和 READY 迁移
 - Specification Review：PASS
 - Findings：0 / 0 / 0 / 0
 - 业务规格：未修改
@@ -21,12 +21,14 @@
 - 文件预算上限：9（新增上限 5、修改上限 4）
 - 依赖预算：NuGet 0；npm 0；DI 服务 0；路由 0；抽象层 0
 - Implementation Started：NO
-- 规格锁：3（RELEASED by Codex Architect）
+- 规格锁：3（CLAIMED by Codex Architect）
 - 实施锁：0（未提前认领）
 - TASK-0008：COMPLETED，已合入 main；PMV：PASS
 - TASK-0017：COMPLETED；Governance gap：已关闭；规格锁与实施锁均 RELEASED
-- 基线同步：main `01b9a046` 已合入当前 feature；同步结果尚待 Unit 3 独立审核，未声明审核 PASS
-- Next Action：Codex Reviewer 执行 Unit 3，同步结果独立审核
+- 基线同步：PASS；main `01b9a046` 已合入当前 feature
+- 同步结果审核：PASS；提交 `0d2598e0e0753525a1a82f4a183a8b8891a5fa49`
+- 最小规格有效性自查：PASS；不是新的独立规格审核；业务规格和 AC 未修改
+- Next Action：完成恢复条件确认并执行 `BLOCKED → READY`
 - 恢复目标：DRAFT；恢复前重新核验 feature 与最新 main 的基线关系和三项规格路径冲突，并重新认领精确规格锁
 - 实现许可：否；不得直接进入 READY，不得继续 TASK-0009，不得开始实施
 

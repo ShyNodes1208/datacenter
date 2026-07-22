@@ -15,10 +15,18 @@
 - Product Baseline：`docs/product/MVP-PRODUCT-BASELINE.md`
 - Architecture Reference：`docs/architecture/AGENT-WORKFLOW.md`；TASK-0007 现有 ASP.NET Core/EF Core/SQLite 基线；TASK-0008 现有认证首页和 `useApi`
 - Dependency：TASK-0007、TASK-0008（均已 COMPLETED 并合入 main）
-- Module Lock：3 项规格文档锁 `RELEASED` by Codex Architect；0 项实施锁
+- Module Lock：3 项规格文档锁 `CLAIMED` by Codex Architect；0 项实施锁
 - Implementation Started：NO
 
 ## 当前阻塞
+
+- 当前阶段：基线恢复完成，规格锁已重新认领
+- Blocker：等待本单元完成恢复条件确认和 READY 迁移
+- 最小规格有效性自查：PASS；本自查不是新的独立规格审核，原规格审核继续有效
+- 规格与 AC：业务规格未修改，不新增 AC，AC-01～AC-06 数量和内容未变化
+- 基线同步审核：PASS；提交 `0d2598e0e0753525a1a82f4a183a8b8891a5fa49`
+- 规格锁：3 项 `CLAIMED`；实施锁：0；Implementation Started：NO
+- 下一动作：完成恢复条件确认并执行 `BLOCKED → READY`
 
 - 原状态：DRAFT
 - 新状态：BLOCKED
@@ -223,6 +231,7 @@ git diff --name-status
 |---|---|---|---|---|---|
 | 2026-07-21 21:54:08 +08:00 | Codex Architect | IDLE | DRAFT | Codex Reviewer | 创建 TASK-0009 规格并登记 3 项规格文档锁；仅待独立规格审核，不授权实施 |
 | 2026-07-22 08:33:56 +08:00 | Codex Architect | DRAFT | BLOCKED | Codex Architect | TASK-0008 合并治理缺口尚未完成修复，且 TASK-0009 feature 基线落后于当前 main；释放 3 项规格锁，恢复目标为 DRAFT；恢复前重新核验基线、锁冲突并重新认领 |
+| 2026-07-22 15:14:54 +08:00 | Codex Architect | BLOCKED | BLOCKED | Codex Architect | Unit 4 第一阶段；最小规格有效性自查 PASS；基线同步审核提交 `0d2598e0e0753525a1a82f4a183a8b8891a5fa49` PASS；三项规格锁重新认领为 CLAIMED；实施锁 0；Implementation Started NO；等待恢复条件最终确认和 READY 迁移 |
 
 ## 审核与完成字段
 
