@@ -4,14 +4,14 @@
 
 ## 当前状态
 
-- Status：IN_PROGRESS
+- Status：READY_FOR_REVIEW
 - Owner：Codex Architect
 - Reviewer：Codex Reviewer
 - 任务：TASK-0017 — TASK-0008 合并治理与跨分支状态修复
 - 分支：chore/task-0017-governance-repair
 - 规格文件：tasks/TASK-0017-TASK-0008-MERGE-GOVERNANCE-REPAIR.md
 - 当前执行单元：G17-05
-- 当前阶段：治理实施
+- 当前阶段：等待独立治理实施审核
 - Blocker：无
 - Specification Review：PASS
 - G17-SR-001：CLOSED
@@ -20,10 +20,39 @@
 - 微任务：G17-01～G17-06，共 6 个，6/6 PASS
 - Implementation Started：YES
 - 规格锁：3（RELEASED by Codex Architect）
-- 实施锁：3（CLAIMED by Codex Architect）
-- Next Action：完成三文件治理修复并交审
-- Implementation Allowed：YES，仅限三个批准管理文件
+- 实施锁：3（HANDED_OFF；Owner 为 Codex Architect；接收角色为 Codex Reviewer）
+- Next Action：Codex Reviewer 执行 G17-06
+- Implementation Allowed：NO；Owner 已交审
 - TASK-0009：保持 BLOCKED，不属于当前实施范围
+
+## TASK-0017 G17-05 实施交审记录（2026-07-22）
+
+- 原状态：IN_PROGRESS
+- 新状态：READY_FOR_REVIEW
+- 交接角色与 Owner：Codex Architect
+- 接收角色与 Reviewer：Codex Reviewer（只读审核，不成为实施 Owner）
+- 当前阶段：治理实施完成，等待独立审核；当前单元：G17-05；下一单元：G17-06
+- AC：6/6 自检 PASS；文件预算：3/3 PASS；微任务仍为 6
+- Workflow：PASS=20，FAIL=0，TOTAL=20；`git diff --check`：PASS
+- 构建：N/A：仅管理文档，无产品代码变化
+- 产品测试：N/A：未修改产品代码或测试，按任务要求未运行 npm/dotnet 测试
+- 变更文件：仅 TASK-0017、current-task、MODULE-LOCKS 三个批准管理文件
+- 实施锁：三项 `CLAIMED → HANDED_OFF`；Owner 保持 Codex Architect；Reviewer PASS 后才允许 RELEASED
+- Implementation Started：YES；Blocker：无
+- Governance gap：待 G17-06 独立审核，未关闭
+- TASK-0009：保持 BLOCKED；未同步、未恢复、未实施
+- 防过度开发：PASS；未修改 AGENT-WORKFLOW、TASK-0008 文件、TASK-0009 feature、产品代码、测试、Migration 或依赖；未创建 TASK-0018、报告、规则、AC 或微任务
+- Next Action：Codex Reviewer 执行 G17-06；Owner 停止修改交审路径
+
+## TASK-0017 G17-05 治理实施记录（2026-07-22）
+
+- 当前活动任务：TASK-0017
+- TASK-0008：保持 COMPLETED；已由 `e3804299df48ecc9d8d4d5a51d4902504c550616` 合入 main；合并前缺少专用 authorization 和独立 merge gate
+- Post-merge technical validation：提交 `8e1a0785fa168c381265a3f1cd43b1ae7ec296fb`，技术结论 PASS；当前 main 可保留 TASK-0008，无需重新实现或回退；该验证不追溯替代事前门禁，不倒签
+- Governance gap：G17-05 已实施，仍待 G17-06 独立 Reviewer 审核，当前未关闭
+- TASK-0009：feature `feature/task-0009-readonly-room-list`；G01 `2690bdeb9e0ec15c20cb63b52b395cf28763ed0f`；BLOCKED；规格审核 PASS；业务规格未修改；三项规格锁 RELEASED；实施锁 0；Implementation Started NO；不得进入 READY 或实施
+- TASK-0009 恢复前条件：TASK-0017 经独立 Reviewer 审核并 COMPLETED；只读核验 feature 与最新 main 基线关系；后续独立门禁批准同步方式；三项规格路径无锁冲突；Codex Architect 重新认领精确规格锁；必要时复核规格但不默认重写业务规格
+- 本单元未执行 TASK-0009 同步、恢复或实施
 
 ## TASK-0017 G17-05 实施启动记录（2026-07-22）
 
@@ -85,7 +114,7 @@
 - 安全、认证、路由、页面、proxy、测试质量、防过度设计与防过度开发：全部 PASS
 - 实现修改：无；新增功能：无；新增测试：无
 - 锁状态：13 项 HANDED_OFF → RELEASED；历史 Owner 不变
-- 下一步：独立合并门禁/分支合并流程；不得自动合并 main
+- 合并状态：TASK-0008 已合入 main；post-merge technical validation PASS；原“等待独立合并门禁”描述已由 TASK-0017 治理修复替换
 
 ## TASK-0008 实现交审记录（2026-07-21）
 

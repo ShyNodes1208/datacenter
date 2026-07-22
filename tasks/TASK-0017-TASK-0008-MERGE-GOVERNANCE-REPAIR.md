@@ -6,13 +6,13 @@
 
 - Task ID：TASK-0017
 - Task Name：TASK-0008 合并治理与跨分支状态修复
-- Status：IN_PROGRESS
+- Status：READY_FOR_REVIEW
 - Owner：Codex Architect
 - Reviewer：Codex Reviewer
 - Branch：`chore/task-0017-governance-repair`
 - Requirement Source：项目负责人 2026-07-22 对 G02 的书面批准；`reviews/tasks/TASK-0008-POST-MERGE-VALIDATION.md`
 - Architecture Reference：`docs/architecture/AGENT-WORKFLOW.md`
-- Module Lock：3 项精确规格锁保持 `RELEASED`；3 项精确实施锁 `CLAIMED` by Codex Architect
+- Module Lock：3 项精确规格锁保持 `RELEASED`；3 项精确实施锁 `HANDED_OFF`，Owner 保持 Codex Architect，接收角色为 Codex Reviewer
 - Implementation Started：YES
 
 ## Reviewer 独立性
@@ -59,7 +59,7 @@
 
 ## TASK-0009 后续恢复的一次性决策条件
 
-TASK-0017 完成后，TASK-0009 只能在其自身独立前置单元中继续。该单元必须先只读核验 feature 与最新 main 的基线关系，由有权角色明确批准同步方式，检查三项规格路径无冲突并由 Codex Architect 重新认领精确规格锁；本任务不选择或执行具体同步命令。
+TASK-0009 仅可在以下条件全部满足后进入其自身独立前置单元：TASK-0017 经独立 Reviewer 审核并进入 COMPLETED；TASK-0009 feature 与最新 main 的基线关系完成只读核验；同步方式由后续独立门禁明确批准；三项规格路径没有锁冲突；Codex Architect 重新认领三项精确规格锁；必要时复核规格但不默认重写业务规格。本任务不选择或执行具体同步命令，不恢复 TASK-0009。
 
 ## 需求追踪矩阵
 
@@ -79,12 +79,12 @@ TASK-0017 完成后，TASK-0009 只能在其自身独立前置单元中继续。
 
 ## 验收标准
 
-- [ ] AC-01：TASK-0017 准确记录 TASK-0008 实际合并历史、缺失事前门禁和补偿性技术验证 PASS。
-- [ ] AC-02：TASK-0017 明确 TASK-0008 保持 COMPLETED，且不重做、不回退、不倒签。
-- [ ] AC-03：main 的 current-task 在实施阶段合法从过期 TASK-0008 指针切换到 TASK-0017。
-- [ ] AC-04：TASK-0017 准确记录 TASK-0009 的 BLOCKED 状态、G01 提交和三项规格锁释放证据。
-- [ ] AC-05：TASK-0017 只定义 TASK-0009 后续同步的决策条件，不在本任务中执行同步、恢复或业务实施。
-- [ ] AC-06：TASK-0017 不修改 AGENT-WORKFLOW、产品代码、测试、依赖、TASK-0008 已完成文件或 TASK-0009 业务规格。
+- [x] AC-01：TASK-0017 准确记录 TASK-0008 实际合并历史、缺失事前门禁和补偿性技术验证 PASS。
+- [x] AC-02：TASK-0017 明确 TASK-0008 保持 COMPLETED，且不重做、不回退、不倒签。
+- [x] AC-03：main 的 current-task 在实施阶段合法从过期 TASK-0008 指针切换到 TASK-0017。
+- [x] AC-04：TASK-0017 准确记录 TASK-0009 的 BLOCKED 状态、G01 提交和三项规格锁释放证据。
+- [x] AC-05：TASK-0017 只定义 TASK-0009 后续同步的决策条件，不在本任务中执行同步、恢复或业务实施。
+- [x] AC-06：TASK-0017 不修改 AGENT-WORKFLOW、产品代码、测试、依赖、TASK-0008 已完成文件或 TASK-0009 业务规格。
 
 ## 精确文件预算
 
@@ -145,6 +145,23 @@ Codex Reviewer 独立核验：AC 6/6、文件预算 3/3、真实历史和 curren
 
 审核不通过时不得标记 COMPLETED、不得释放实施锁；按权威工作流记录 Finding 或转 BLOCKED，Reviewer 不得修改治理实施内容。
 
+## G17-05 最小治理修复实施证据
+
+- TASK-0008：保持 COMPLETED；已由 `e3804299df48ecc9d8d4d5a51d4902504c550616` 合入 main；合并前缺少专用 authorization 和独立 merge gate；post-merge validation 已在 `8e1a0785fa168c381265a3f1cd43b1ae7ec296fb` 完成且技术验证 PASS；无需重新实现或回退，当前 main 可以保留；post-merge validation 不追溯替代事前门禁，不倒签。
+- TASK-0009：远端 feature `feature/task-0009-readonly-room-list` 的 G01 为 `2690bdeb9e0ec15c20cb63b52b395cf28763ed0f`；状态 BLOCKED；规格审核 PASS；业务规格未修改；三项规格锁 RELEASED；实施锁 0；Implementation Started NO；当前不得进入 READY 或实施。
+- AC 自检：6/6 PASS；文件预算：3/3 PASS；业务代码变化 0；测试代码变化 0；依赖变化 0。
+- TASK-0008 文件变化 0；TASK-0009 feature 变化 0；AGENT-WORKFLOW 变化 0；TASK-0018 未创建。
+- 防过度开发：PASS；仅实施六条 AC 可追踪的三文件状态治理修复，不增加文件、AC、微任务、报告或规则。
+
+| AC | 结果 | 证据 |
+|---|---|---|
+| AC-01 | PASS | 本文件“已核实事实 / TASK-0008”及“G17-05 最小治理修复实施证据” |
+| AC-02 | PASS | 本文件“已核实事实 / TASK-0008” |
+| AC-03 | PASS | `tasks/current-task.md`“当前状态”及“G17-05 治理实施记录” |
+| AC-04 | PASS | 本文件“已核实事实 / TASK-0009”及远端 G01 `2690bdeb...` |
+| AC-05 | PASS | 本文件“TASK-0009 后续恢复的一次性决策条件” |
+| AC-06 | PASS | Git 文件范围仅为三个批准管理文件；上述变化计数均为 0 |
+
 ## 验证命令
 
 ```powershell
@@ -159,7 +176,7 @@ git diff --cached --name-status
 
 - 构建：N/A：本任务仅管理文档，不修改产品代码。
 - 产品测试：N/A：本任务仅管理文档，不修改实现或测试。
-- 工作流校验：待本轮执行并以命令输出为准。
+- 工作流校验：G17-05 执行并以命令输出为准。
 
 ## 交接记录
 
@@ -168,17 +185,18 @@ git diff --cached --name-status
 | 2026-07-22 10:40:10 +08:00 | Codex Architect | IDLE | DRAFT | Codex Reviewer | TASK-0008 保持 COMPLETED；当前指针经 IDLE 建立 TASK-0017 DRAFT；登记三项规格锁，仅等待独立规格审核 |
 | 2026-07-22 11:51:49 +08:00 | Codex Architect | DRAFT | READY | Codex Architect | G17-04 规格放行；规格初审 NEEDS_CHANGES，唯一 Finding G17-SR-001；修正提交 `63b73e8510c54d9ccee572a6b18a94361c804e74`；规格复审 PASS，提交 `fd24e48d51d61898200b2f2c8797dd5f7a7e1787`；G17-SR-001 CLOSED；Findings 0/0/0/0；AC 6/6、文件预算 3/3、微任务 6/6 PASS；三项规格锁 RELEASED；实施锁 0；Implementation Started NO；等待 G17-05 启动门禁 |
 | 2026-07-22 13:23:57 +08:00 | Codex Architect | READY | IN_PROGRESS | Codex Architect | G17-05 实施启动；三个批准路径无活跃锁及父子路径冲突；认领三项精确实施锁 CLAIMED；Implementation Started YES；仅允许完成三文件最小治理修复并交审；TASK-0009 保持 BLOCKED |
+| 2026-07-22 13:27:11 +08:00 | Codex Architect | IN_PROGRESS | READY_FOR_REVIEW | Codex Reviewer | G17-05 最小治理修复完成并交审；AC 6/6 自检 PASS；文件预算 3/3 PASS；Workflow 20/20；git diff --check PASS；三项实施锁 CLAIMED → HANDED_OFF；governance gap 待 G17-06 审核，未关闭；TASK-0009 保持 BLOCKED |
 
 ## 审核与完成字段
 
 - 审核结论：规格初审 NEEDS_CHANGES；唯一 Finding `G17-SR-001`；规格复审 PASS
 - 缺陷与复审：G17-SR-001 已由 G17-03 定点修正并由独立 Reviewer 复审为 CLOSED；修正提交 `63b73e8510c54d9ccee572a6b18a94361c804e74`；复审提交 `fd24e48d51d61898200b2f2c8797dd5f7a7e1787`；Findings 0/0/0/0
 - Change Request：N/A：未发现范围变更
-- 已知限制：当前为 IN_PROGRESS，正在执行 G17-05 最小治理修复；下一动作仅为完成三个批准文件的治理修复、验证并交审；TASK-0009 仍为 BLOCKED
+- 已知限制：当前为 READY_FOR_REVIEW；治理实施完成，等待独立 Codex Reviewer 执行 G17-06；governance gap 尚未关闭；TASK-0009 仍为 BLOCKED
 
 ## 防过度开发检查
 
-- 当前只完成 TASK-0017 `DRAFT → READY` 规格放行并释放三项规格锁；不实施治理修复。
+- 当前仅完成六条 AC 对应的三文件最小治理修复与交审；不修改产品实现。
 - AC 为 6 条；执行单元为 6 个；文件预算为 3。
 - 不创建 TASK-0018，不修改全局工作流、TASK-0008、TASK-0009、产品代码、测试或依赖。
 - 不执行分支同步，不创建或倒签授权/门禁，不自行审核。
@@ -193,4 +211,4 @@ git diff --cached --name-status
 
 ---
 
-> 当前为 IN_PROGRESS；G17-05 实施启动门禁已完成。Implementation Started 为 YES，三项精确实施锁为 CLAIMED；治理修复尚未完成，不得声称 AC 已实施通过、关闭治理缺口、继续 TASK-0009 或创建 TASK-0018。
+> 当前为 READY_FOR_REVIEW；G17-05 已完成，下一单元仅允许独立 Codex Reviewer 执行 G17-06。Implementation Started 为 YES，三项实施锁为 HANDED_OFF；governance gap 待审核、未关闭；不得直接标记 COMPLETED、继续 TASK-0009 或创建 TASK-0018。
