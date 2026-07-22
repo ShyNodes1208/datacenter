@@ -4,26 +4,41 @@
 
 ## 当前状态
 
-- Status：READY
+- Status：IN_PROGRESS
 - Owner：Codex Architect
 - Reviewer：Codex Reviewer
 - 任务：TASK-0017 — TASK-0008 合并治理与跨分支状态修复
 - 分支：chore/task-0017-governance-repair
 - 规格文件：tasks/TASK-0017-TASK-0008-MERGE-GOVERNANCE-REPAIR.md
-- 当前执行单元：G17-04
-- 当前阶段：规格放行完成，等待实施启动
+- 当前执行单元：G17-05
+- 当前阶段：治理实施
 - Blocker：无
 - Specification Review：PASS
 - G17-SR-001：CLOSED
 - AC：AC-01～AC-06，6/6 PASS
 - 文件预算：新增 1、修改 2、总计 3，3/3 PASS
 - 微任务：G17-01～G17-06，共 6 个，6/6 PASS
-- Implementation Started：NO
+- Implementation Started：YES
 - 规格锁：3（RELEASED by Codex Architect）
-- 实施锁：0
-- Next Action：执行 G17-05
-- Implementation Allowed：NO
+- 实施锁：3（CLAIMED by Codex Architect）
+- Next Action：完成三文件治理修复并交审
+- Implementation Allowed：YES，仅限三个批准管理文件
 - TASK-0009：保持 BLOCKED，不属于当前实施范围
+
+## TASK-0017 G17-05 实施启动记录（2026-07-22）
+
+- 原状态：READY
+- 新状态：IN_PROGRESS
+- 执行角色、Owner：Codex Architect
+- Reviewer：Codex Reviewer
+- Blocker：无
+- 冲突检查：三个批准精确路径无其他活跃 `CLAIMED` 或 `HANDED_OFF` 锁，无父子路径冲突
+- 实施锁：3 项精确路径 `CLAIMED`；用途仅为 G17-05 最小 main 状态治理修复
+- 规格锁：3 项继续保持 RELEASED
+- Implementation Started：YES
+- 当前阶段：治理实施；当前单元：G17-05
+- Next Action：完成三个批准文件的最小治理修复、验证并交审
+- 限制：治理修复尚未完成，不声称 AC 已实施通过，不关闭 governance gap，不恢复 TASK-0009
 
 ## TASK-0017 G17-04 规格放行记录（2026-07-22）
 

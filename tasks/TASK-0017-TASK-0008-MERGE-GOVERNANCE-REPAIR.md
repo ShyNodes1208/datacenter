@@ -6,14 +6,14 @@
 
 - Task ID：TASK-0017
 - Task Name：TASK-0008 合并治理与跨分支状态修复
-- Status：READY
+- Status：IN_PROGRESS
 - Owner：Codex Architect
 - Reviewer：Codex Reviewer
 - Branch：`chore/task-0017-governance-repair`
 - Requirement Source：项目负责人 2026-07-22 对 G02 的书面批准；`reviews/tasks/TASK-0008-POST-MERGE-VALIDATION.md`
 - Architecture Reference：`docs/architecture/AGENT-WORKFLOW.md`
-- Module Lock：3 项精确规格锁已由 Codex Architect `CLAIMED → RELEASED`；实施锁 0；G17-05 开始前必须重新检查冲突并按权威工作流认领
-- Implementation Started：NO
+- Module Lock：3 项精确规格锁保持 `RELEASED`；3 项精确实施锁 `CLAIMED` by Codex Architect
+- Implementation Started：YES
 
 ## Reviewer 独立性
 
@@ -167,13 +167,14 @@ git diff --cached --name-status
 |---|---|---|---|---|---|
 | 2026-07-22 10:40:10 +08:00 | Codex Architect | IDLE | DRAFT | Codex Reviewer | TASK-0008 保持 COMPLETED；当前指针经 IDLE 建立 TASK-0017 DRAFT；登记三项规格锁，仅等待独立规格审核 |
 | 2026-07-22 11:51:49 +08:00 | Codex Architect | DRAFT | READY | Codex Architect | G17-04 规格放行；规格初审 NEEDS_CHANGES，唯一 Finding G17-SR-001；修正提交 `63b73e8510c54d9ccee572a6b18a94361c804e74`；规格复审 PASS，提交 `fd24e48d51d61898200b2f2c8797dd5f7a7e1787`；G17-SR-001 CLOSED；Findings 0/0/0/0；AC 6/6、文件预算 3/3、微任务 6/6 PASS；三项规格锁 RELEASED；实施锁 0；Implementation Started NO；等待 G17-05 启动门禁 |
+| 2026-07-22 13:23:57 +08:00 | Codex Architect | READY | IN_PROGRESS | Codex Architect | G17-05 实施启动；三个批准路径无活跃锁及父子路径冲突；认领三项精确实施锁 CLAIMED；Implementation Started YES；仅允许完成三文件最小治理修复并交审；TASK-0009 保持 BLOCKED |
 
 ## 审核与完成字段
 
 - 审核结论：规格初审 NEEDS_CHANGES；唯一 Finding `G17-SR-001`；规格复审 PASS
 - 缺陷与复审：G17-SR-001 已由 G17-03 定点修正并由独立 Reviewer 复审为 CLOSED；修正提交 `63b73e8510c54d9ccee572a6b18a94361c804e74`；复审提交 `fd24e48d51d61898200b2f2c8797dd5f7a7e1787`；Findings 0/0/0/0
 - Change Request：N/A：未发现范围变更
-- 已知限制：当前为 READY，规格已放行、等待实施启动；当前单元 G17-04，下一单元 G17-05；允许进入 G17-05，但不得跳过 G17-05 直接实施或进入 READY_FOR_REVIEW；TASK-0009 仍为 BLOCKED
+- 已知限制：当前为 IN_PROGRESS，正在执行 G17-05 最小治理修复；下一动作仅为完成三个批准文件的治理修复、验证并交审；TASK-0009 仍为 BLOCKED
 
 ## 防过度开发检查
 
@@ -192,4 +193,4 @@ git diff --cached --name-status
 
 ---
 
-> 当前为 READY；规格已放行，等待 G17-05 实施启动门禁。Implementation Started 为 NO，实施锁为 0；不得跳过 G17-05、继续 TASK-0009 或创建 TASK-0018。
+> 当前为 IN_PROGRESS；G17-05 实施启动门禁已完成。Implementation Started 为 YES，三项精确实施锁为 CLAIMED；治理修复尚未完成，不得声称 AC 已实施通过、关闭治理缺口、继续 TASK-0009 或创建 TASK-0018。
