@@ -12,7 +12,7 @@
 - Branch：`chore/task-0017-governance-repair`
 - Requirement Source：项目负责人 2026-07-22 对 G02 的书面批准；`reviews/tasks/TASK-0008-POST-MERGE-VALIDATION.md`
 - Architecture Reference：`docs/architecture/AGENT-WORKFLOW.md`
-- Module Lock：3 项精确规格锁 `CLAIMED` by Codex Architect；0 项实施锁
+- Module Lock：3 项精确规格锁 `CLAIMED` by Codex Architect；当前规格阶段实施锁 0；G17-05 按权威工作流认领并在 G17-06 PASS 后释放
 - Implementation Started：NO
 
 ## Reviewer 独立性
@@ -96,7 +96,7 @@ TASK-0017 完成后，TASK-0009 只能在其自身独立前置单元中继续。
 
 - 新增：1；修改：2；总计：3。
 - Reviewer 后续可在独立审核单元新增一份规格审核报告；该报告不属于本轮修改范围。
-- 预算外文件变化必须停止；实施锁数量为 0。
+- 预算外文件变化必须停止；当前规格阶段实施锁数量为 0，G17-05 仅对上述三个精确路径认领实施锁。
 
 ## 5～10 分钟执行单元
 
@@ -105,11 +105,45 @@ TASK-0017 完成后，TASK-0009 只能在其自身独立前置单元中继续。
 | G17-01 | 创建 DRAFT；仅本任务文件、current-task 和 MODULE-LOCKS。本轮执行。 |
 | G17-02 | 独立规格审核；Reviewer 只新增一份规格审核报告。 |
 | G17-03 | 仅在有 Finding 时修复规格；只修改 TASK-0017。 |
-| G17-04 | Reviewer PASS 后由 Codex Architect 执行 `DRAFT → READY` 并释放规格锁。 |
-| G17-05 | 实施最小 main 状态修复；只修改本任务批准的三个管理文件。 |
-| G17-06 | 独立实施审核并按权威工作流完成合法迁移。 |
+| G17-04 | 规格放行：Reviewer PASS 后由 Codex Architect 执行 `DRAFT → READY`，同步 current-task 为 READY，并将三项规格锁 `CLAIMED → RELEASED`；结束时实施锁 0、Implementation Started NO，未实施治理修复；下一步仅为 G17-05。 |
+| G17-05 | 实施最小 main 状态治理修复：完成 `READY → IN_PROGRESS → READY_FOR_REVIEW` 和三项实施锁 `RELEASED → CLAIMED → HANDED_OFF`；只修改本任务批准的三个管理文件并完成验证、提交、推送与书面交审。 |
+| G17-06 | 独立实施审核和合法完成迁移：Codex Reviewer 从 READY_FOR_REVIEW 只读审核；PASS 时执行 `READY_FOR_REVIEW → COMPLETED` 并将三项实施锁 `HANDED_OFF → RELEASED`。 |
 
 不得在任何 G17 单元中执行 TASK-0009 分支同步或业务实施。
+
+### G17-04 结束状态
+
+- TASK-0017 与 current-task 均为 `READY`；三项规格锁均为 `RELEASED`。
+- 实施锁为 0，Implementation Started 为 NO；未认领实施锁，未进入 IN_PROGRESS，未实施治理修复，未进入 READY_FOR_REVIEW。
+- 下一步仅允许 G17-05。
+
+### G17-05 实施最小 main 状态治理修复
+
+开始门禁：TASK-0017 与 current-task 均为 `READY`；三项规格锁均为 `RELEASED`；实施锁为 0；工作区干净、暂存区为空；以下三个批准路径无其他 `CLAIMED` 或 `HANDED_OFF` 活跃锁；TASK-0009 保持 `BLOCKED` 且不在本单元修改：
+
+1. `tasks/TASK-0017-TASK-0008-MERGE-GOVERNANCE-REPAIR.md`
+2. `tasks/current-task.md`
+3. `tasks/MODULE-LOCKS.md`
+
+实施启动：TASK-0017 Owner Codex Architect 重新检查精确路径及父子路径冲突，仅将上述三个路径认领为实施锁 `CLAIMED`，Reviewer 保持 Codex Reviewer；同步 TASK-0017/current-task 执行 `READY → IN_PROGRESS`。不得锁定目录或增加第四个路径。
+
+最小实施只允许在上述三个文件中登记 TASK-0017 实施证据、修复 main 的 current-task 过期指针、准确记录 TASK-0008 已合并且 PMV PASS 及本次治理状态、准确记录 TASK-0009 保持 BLOCKED/规格锁已释放/不得实施，并保留 TASK-0009 恢复前的最小决策条件。不得同步或修改 TASK-0009，不得修改 TASK-0008 或 AGENT-WORKFLOW。
+
+验证必须覆盖：AC-01～AC-06 自检 6/6；文件预算 3/3；防过度开发检查；workflow `PASS=20/FAIL=0/TOTAL=20`；`git diff --check`；差异仅为三个批准文件；无产品代码、测试、依赖或其他任务变化。
+
+验证通过后，Codex Architect 登记完整书面交接证据，将三项实施锁 `CLAIMED → HANDED_OFF`，同步 TASK-0017/current-task 执行 `IN_PROGRESS → READY_FOR_REVIEW`，接收角色为 Codex Reviewer。结束时 TASK-0017 与 current-task 均为 READY_FOR_REVIEW，三项实施锁均为 HANDED_OFF，实施提交已推送，工作区干净、暂存区为空；Owner 不得自行完成任务，Reviewer 方可开始 G17-06。
+
+提交边界采用满足工作流的最少两个原子管理提交：第一个只登记 `READY → IN_PROGRESS` 和三项实施锁 `RELEASED → CLAIMED`；第二个包含批准的最小实施、验证与交审记录，并登记 `IN_PROGRESS → READY_FOR_REVIEW` 和三项实施锁 `CLAIMED → HANDED_OFF`。两个提交均只涉及三个批准文件并分别推送；不得增加第三个或更多非必要提交，也不增加微任务或文件。
+
+### G17-06 独立实施审核和合法完成迁移
+
+开始前必须满足：TASK-0017 与 current-task 均为 `READY_FOR_REVIEW`；三项实施锁均为 `HANDED_OFF`；接收角色为 Codex Reviewer；实施提交已推送；工作区干净、暂存区为空。
+
+Codex Reviewer 独立核验：AC 6/6、文件预算 3/3、真实历史和 current-task 修复准确、TASK-0009 BLOCKED 记录准确、没有倒签或 TASK-0018、没有修改全局工作流、产品代码、测试或依赖，并重跑 workflow 20/20 与 `git diff --check`。
+
+审核 PASS 时，仅由 Codex Reviewer 执行 TASK-0017/current-task `READY_FOR_REVIEW → COMPLETED`，将三项实施锁 `HANDED_OFF → RELEASED`，记录 Findings 0。最终治理事实与状态不一致关闭；TASK-0008 保持 COMPLETED；TASK-0009 保持 BLOCKED，不自动恢复、不执行分支同步、不创建 TASK-0018。
+
+审核不通过时不得标记 COMPLETED、不得释放实施锁；按权威工作流记录 Finding 或转 BLOCKED，Reviewer 不得修改治理实施内容。
 
 ## 验证命令
 
@@ -135,8 +169,8 @@ git diff --cached --name-status
 
 ## 审核与完成字段
 
-- 审核结论：N/A：等待独立 Codex Reviewer 规格审核
-- 缺陷与复审：N/A：尚未审核
+- 审核结论：NEEDS_CHANGES；`G17-SR-001`（MAJOR）要求补齐 G17-05/G17-06 的合法状态链与锁链
+- 缺陷与复审：G17-SR-001 已由本次 G17-03 定点修正；等待独立规格复审，不自行关闭 Finding
 - Change Request：N/A：未发现范围变更
 - 已知限制：当前为 DRAFT，不允许实施或进入 READY
 
@@ -149,11 +183,11 @@ git diff --cached --name-status
 
 ## 最终完成条件
 
-- 独立 Reviewer 完成规格审核与实施审核，所有 Finding 关闭。
+- 独立 Reviewer 完成规格复审与实施审核，所有 Finding 关闭。
 - AC-01～AC-06 全部通过；工作流校验和 `git diff --check` 通过。
-- 仅三个批准管理文件发生变化；无实施锁；规格锁按合法状态迁移释放。
+- 仅三个批准管理文件发生变化；规格锁在 G17-04 释放；实施锁在 G17-05 按 `RELEASED → CLAIMED → HANDED_OFF` 管理，并在 G17-06 PASS 后 `HANDED_OFF → RELEASED`。
 - 提交已推送，工作区与暂存区干净，本地与远端 hash 一致。
-- 仅由独立 Reviewer 在权威工作流条件全部满足后转为 COMPLETED。
+- 仅由独立 Reviewer 在 READY_FOR_REVIEW 和权威工作流条件全部满足后执行 `READY_FOR_REVIEW → COMPLETED`。
 
 ---
 
