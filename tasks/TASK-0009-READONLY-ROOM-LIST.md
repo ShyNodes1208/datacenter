@@ -6,7 +6,7 @@
 
 - Task ID：TASK-0009
 - Task Name：首页只读机房列表
-- Status：DRAFT
+- Status：BLOCKED
 - Owner：Codex Architect
 - Implementation Owner：待规格审核 PASS 后由 Codex Architect 书面指定
 - Reviewer：Codex Reviewer
@@ -15,8 +15,20 @@
 - Product Baseline：`docs/product/MVP-PRODUCT-BASELINE.md`
 - Architecture Reference：`docs/architecture/AGENT-WORKFLOW.md`；TASK-0007 现有 ASP.NET Core/EF Core/SQLite 基线；TASK-0008 现有认证首页和 `useApi`
 - Dependency：TASK-0007、TASK-0008（均已 COMPLETED 并合入 main）
-- Module Lock：3 项规格文档锁 `CLAIMED` by Codex Architect；0 项实施锁
+- Module Lock：3 项规格文档锁 `RELEASED` by Codex Architect；0 项实施锁
 - Implementation Started：NO
+
+## 当前阻塞
+
+- 原状态：DRAFT
+- 新状态：BLOCKED
+- 执行角色：Codex Architect
+- Blocker：TASK-0008 合并治理缺口尚未完成修复，且 TASK-0009 feature 基线落后于当前 main；在治理状态、分支同步方式和锁状态统一前，不允许继续规格放行或实施。
+- 责任人：Codex Architect
+- 恢复目标：DRAFT
+- 恢复前置条件：当前治理修复任务完成；TASK-0009 分支同步方式获得明确批准；feature 与最新 main 的基线关系经过只读核验；三项规格路径不存在冲突；Codex Architect 重新认领精确规格锁；必要时重新核对规格，但不默认要求重写规格。
+- 限制：当前不允许进入 READY，不允许开始实施，不允许执行 Room 代码。
+- 规格审核：PASS；业务规格未改变；AC 数量和内容未改变。
 
 ## Reviewer 独立性检查
 
@@ -33,7 +45,7 @@
 - [x] TASK-0008 登录壳、受保护首页和 `useApi` 已 COMPLETED
 - [x] Owner/Reviewer 独立性已检查
 - [x] 规格文档锁无父子路径冲突
-- [ ] 独立 Codex Reviewer 规格审核 PASS
+- [x] 独立 Codex Reviewer 规格审核 PASS
 - [ ] Codex Architect 在审核 PASS 后合法执行 `DRAFT → READY`
 - [ ] 实施 Owner 逐项认领实施文件锁
 
@@ -210,18 +222,19 @@ git diff --name-status
 | 时间 | 发起者 | 原状态 | 新状态 | 接收者 | 证据/说明 |
 |---|---|---|---|---|---|
 | 2026-07-21 21:54:08 +08:00 | Codex Architect | IDLE | DRAFT | Codex Reviewer | 创建 TASK-0009 规格并登记 3 项规格文档锁；仅待独立规格审核，不授权实施 |
+| 2026-07-22 08:33:56 +08:00 | Codex Architect | DRAFT | BLOCKED | Codex Architect | TASK-0008 合并治理缺口尚未完成修复，且 TASK-0009 feature 基线落后于当前 main；释放 3 项规格锁，恢复目标为 DRAFT；恢复前重新核验基线、锁冲突并重新认领 |
 
 ## 审核与完成字段
 
-- 审核结论：N/A：待独立 Codex Reviewer 规格审核
-- 缺陷清单：N/A：未开始规格审核
+- 审核结论：PASS；报告 `reviews/tasks/TASK-0009-READONLY-ROOM-LIST-SPEC-REVIEW.md`；Findings 0/0/0/0
+- 缺陷清单：N/A：规格审核 PASS，Findings 0/0/0/0
 - 缺陷修复记录：N/A：无 Finding
 - 复审结果：N/A：未进入复审
 - Change Request：N/A：本任务范围已书面批准，未发现范围变更
 - 提交说明：`docs: define task-0009 readonly room list`
 - 提交哈希：N/A：提交后回填不属于本轮必要修改，以 Git 记录为准
 - 推送结果：N/A：待本轮推送
-- 已知限制：规格未经独立 Reviewer PASS，不得实施、认领实施锁或进入 READY
+- 已知限制：任务当前为 BLOCKED；治理和基线前置条件统一前不得进入 READY、继续 TASK-0009 或开始实施
 
 ## 防过度开发检查
 
@@ -231,7 +244,7 @@ git diff --name-status
 - 是否存在无实际需求的抽象：否；抽象预算为 0
 - 是否存在无关重构：否
 - 是否采用最简单可行方案：是
-- Reviewer 结论：N/A：待独立规格审核
+- Reviewer 结论：PASS；防过度设计与防过度开发专项检查通过
 
 ## 最终完成条件
 
@@ -249,4 +262,4 @@ git diff --name-status
 
 ---
 
-> 当前为 DRAFT；下一步仅允许独立 Codex Reviewer 审核规格。审核 PASS 前不得进入 READY、认领实施锁或修改 `src/`/`tests/`。
+> 当前为 BLOCKED；规格审核仍为 PASS，但治理和基线前置条件未满足。恢复目标为 DRAFT；恢复前必须重新核验基线和锁冲突并重新认领三项规格锁，不得进入 READY、开始实施或修改 `src/`/`tests/`。

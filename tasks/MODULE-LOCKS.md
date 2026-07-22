@@ -4,9 +4,9 @@
 
 | Task ID | Module or Path | Owner | Claimed At | Status | Release Condition | Released At |
 |---|---|---|---|---|---|---|
-| TASK-0009 | tasks/TASK-0009-READONLY-ROOM-LIST.md | Codex Architect | 2026-07-21 21:54:08 +08:00 | CLAIMED | 独立规格审核及必要规格修正完成，Reviewer PASS 后由 Codex Architect 合法执行 DRAFT → READY 时释放；取消则按工作流释放 | |
-| TASK-0009 | tasks/current-task.md | Codex Architect | 2026-07-21 21:54:08 +08:00 | CLAIMED | 仅同步 TASK-0009 规格状态；Reviewer PASS 后由 Codex Architect 合法执行 DRAFT → READY 时释放；取消则按工作流释放 | |
-| TASK-0009 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-21 21:54:08 +08:00 | CLAIMED | 仅维护 TASK-0009 规格锁；Reviewer PASS 后由 Codex Architect 合法执行 DRAFT → READY 时释放；取消则按工作流释放 | |
+| TASK-0009 | tasks/TASK-0009-READONLY-ROOM-LIST.md | Codex Architect | 2026-07-21 21:54:08 +08:00 | RELEASED | 独立规格审核及必要规格修正完成，Reviewer PASS 后由 Codex Architect 合法执行 DRAFT → READY 时释放；取消则按工作流释放 | 2026-07-22 08:33:56 +08:00（Codex Architect 释放；TASK-0009 进入 BLOCKED，治理和基线前置条件未满足；恢复时必须重新检查冲突并重新认领） |
+| TASK-0009 | tasks/current-task.md | Codex Architect | 2026-07-21 21:54:08 +08:00 | RELEASED | 仅同步 TASK-0009 规格状态；Reviewer PASS 后由 Codex Architect 合法执行 DRAFT → READY 时释放；取消则按工作流释放 | 2026-07-22 08:33:56 +08:00（Codex Architect 释放；TASK-0009 进入 BLOCKED，治理和基线前置条件未满足；恢复时必须重新检查冲突并重新认领） |
+| TASK-0009 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-21 21:54:08 +08:00 | RELEASED | 仅维护 TASK-0009 规格锁；Reviewer PASS 后由 Codex Architect 合法执行 DRAFT → READY 时释放；取消则按工作流释放 | 2026-07-22 08:33:56 +08:00（Codex Architect 释放；TASK-0009 进入 BLOCKED，治理和基线前置条件未满足；恢复时必须重新检查冲突并重新认领） |
 | TASK-0008 | tasks/TASK-0008-FRONTEND-LOGIN-SHELL.md | Codex Architect | 2026-07-20 +08:00 | RELEASED | U02 独立规格审核及必要 U03 修正完成，Reviewer PASS 后由有权 Architect 执行 DRAFT → READY 时释放；取消则按工作流释放 | 2026-07-20 22:42:38 +08:00（Codex Architect 释放；规格复审 PASS，提交 e28d4f5bfa5a6d36f0673db79342ffd6a4fab085；DRAFT → READY 规格放行完成） |
 | TASK-0008 | tasks/current-task.md | Codex Architect | 2026-07-20 +08:00 | RELEASED | U02 独立规格审核及必要 U03 修正完成，Reviewer PASS 后由有权 Architect 执行 DRAFT → READY 时释放；取消则按工作流释放 | 2026-07-20 22:42:38 +08:00（Codex Architect 释放；规格复审 PASS，提交 e28d4f5bfa5a6d36f0673db79342ffd6a4fab085；DRAFT → READY 规格放行完成） |
 | TASK-0008 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-20 +08:00 | RELEASED | 仅维护 TASK-0008 规格锁；Reviewer PASS 后由有权 Architect 执行 DRAFT → READY 时释放；取消则按工作流释放 | 2026-07-20 22:42:38 +08:00（Codex Architect 释放；规格复审 PASS，提交 e28d4f5bfa5a6d36f0673db79342ffd6a4fab085；DRAFT → READY 规格放行完成） |

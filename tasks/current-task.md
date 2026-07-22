@@ -4,25 +4,40 @@
 
 ## 当前状态
 
-- Status：DRAFT
+- Status：BLOCKED
 - Owner：Codex Architect
 - Implementation Owner：待规格审核 PASS 后由 Codex Architect 书面指定
 - Reviewer：Codex Reviewer
 - 任务：TASK-0009 — 首页只读机房列表
 - 分支：feature/task-0009-readonly-room-list
 - 规格文件：tasks/TASK-0009-READONLY-ROOM-LIST.md
-- 当前执行单元：规格初稿登记
-- 当前阶段：等待独立 Codex Reviewer 规格审核
-- Blocker：无
-- 规格审核：未开始
-- AC：AC-01～AC-06（待规格审核）
+- 当前执行单元：G01 — TASK-0009 阻断与规格锁释放
+- 当前阶段：规格已审核，但治理和基线前置条件未满足
+- Blocker：TASK-0008 合并治理缺口尚未完成修复，且 TASK-0009 feature 基线落后于当前 main；在治理状态、分支同步方式和锁状态统一前，不允许继续规格放行或实施。
+- 规格审核：PASS
+- AC：AC-01～AC-06（内容未改变）
 - 文件预算上限：9（新增上限 5、修改上限 4）
 - 依赖预算：NuGet 0；npm 0；DI 服务 0；路由 0；抽象层 0
 - Implementation Started：NO
-- 规格锁：3（CLAIMED by Codex Architect）
+- 规格锁：3（RELEASED by Codex Architect）
 - 实施锁：0（未提前认领）
-- Next Action：独立 Codex Reviewer 审核 TASK-0009 规格
-- 实现许可：否；规格审核 PASS 且合法进入 READY 前禁止实施
+- Next Action：等待独立治理任务完成后，由 Codex Architect 重新核验 TASK-0009
+- 恢复目标：DRAFT；恢复前重新核验 feature 与最新 main 的基线关系和三项规格路径冲突，并重新认领精确规格锁
+- 实现许可：否；不得直接进入 READY，不得继续 TASK-0009，不得开始实施
+
+## TASK-0009 阻断与规格锁释放记录（2026-07-22）
+
+- 原状态：DRAFT
+- 新状态：BLOCKED
+- 执行角色、Owner 与锁释放角色：Codex Architect
+- Reviewer：Codex Reviewer
+- 规格审核：PASS；业务规格未改变；AC-01～AC-06 数量和内容未改变
+- Blocker：TASK-0008 合并治理缺口尚未完成修复，且 TASK-0009 feature 基线落后于当前 main；在治理状态、分支同步方式和锁状态统一前，不允许继续规格放行或实施。
+- 规格锁：3 项 `CLAIMED → RELEASED`；原 Owner、原认领时间和原 Release Condition 保留
+- 实施锁：0；Implementation Started：NO
+- 恢复目标：DRAFT
+- 恢复前置：当前治理修复任务完成；分支同步方式获明确批准；只读核验 feature 与最新 main 的基线关系；确认三项规格路径无冲突；Codex Architect 重新认领精确规格锁；必要时重新核对规格但不默认重写
+- 限制：不得直接进入 READY，不得继续 TASK-0009，不得开始 Room 实施
 
 ## TASK-0009 规格登记记录（2026-07-21）
 
