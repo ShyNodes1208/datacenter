@@ -6,6 +6,8 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 
 | Task ID | Module or Path | Owner | Claimed At | Status | Release Condition | Released At |
 |---|---|---|---|---|---|---|
+| TASK-0018 | src/backend/Datacenter.Api/Controllers/RoomsController.cs | Codex Backend | 2026-07-22 22:24:12 +08:00 | CLAIMED | Reviewer：Codex Reviewer；TASK-0018 进入 COMPLETED 或 CANCELLED 时释放 | — |
+| TASK-0018 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RoomIntegrationTests.cs | Codex Backend | 2026-07-22 22:24:12 +08:00 | CLAIMED | Reviewer：Codex Reviewer；TASK-0018 进入 COMPLETED 或 CANCELLED 时释放 | — |
 | TASK-0009 | src/backend/Datacenter.Api/Models/Room.cs | Codex Backend | 2026-07-22 17:16:10 +08:00 | RELEASED | Reviewer：Codex Reviewer；TASK-0009 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-22（CLAIMED → HANDED_OFF → RELEASED；Final Code Review PASS） |
 | TASK-0009 | src/backend/Datacenter.Api/Data/AppDbContext.cs | Codex Backend | 2026-07-22 17:16:10 +08:00 | RELEASED | Reviewer：Codex Reviewer；TASK-0009 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-22（CLAIMED → HANDED_OFF → RELEASED；Final Code Review PASS） |
 | TASK-0009 | src/backend/Datacenter.Api/Migrations/20260722163613_AddRooms.cs | Codex Backend | 2026-07-22 17:16:10 +08:00 | RELEASED | Reviewer：Codex Reviewer；TASK-0009 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-22（CLAIMED → HANDED_OFF → RELEASED；Final Code Review PASS） |
