@@ -4,14 +4,14 @@
 
 ## 当前状态
 
-- Status：READY_FOR_REVIEW
+- Status：COMPLETED
 - Owner：Codex Architect
 - Reviewer：Codex Reviewer
 - 任务：TASK-0017 — TASK-0008 合并治理与跨分支状态修复
 - 分支：chore/task-0017-governance-repair
 - 规格文件：tasks/TASK-0017-TASK-0008-MERGE-GOVERNANCE-REPAIR.md
-- 当前执行单元：G17-05
-- 当前阶段：等待独立治理实施审核
+- 当前执行单元：G17-06（完成）
+- 当前阶段：治理修复审核通过并完成
 - Blocker：无
 - Specification Review：PASS
 - G17-SR-001：CLOSED
@@ -20,10 +20,32 @@
 - 微任务：G17-01～G17-06，共 6 个，6/6 PASS
 - Implementation Started：YES
 - 规格锁：3（RELEASED by Codex Architect）
-- 实施锁：3（HANDED_OFF；Owner 为 Codex Architect；接收角色为 Codex Reviewer）
-- Next Action：Codex Reviewer 执行 G17-06
+- 实施锁：3（RELEASED by Codex Reviewer；历史 Owner 保持 Codex Architect）
+- Reviewer Result：PASS
+- Findings：0 / 0 / 0 / 0
+- Governance gap：本次 TASK-0008 合并事实与状态不一致已通过补偿性验证和治理记录关闭
+- TASK-0008：COMPLETED，已合并，PMV PASS
+- Next Action：独立只读核验 TASK-0009 的最新基线和恢复条件
 - Implementation Allowed：NO；Owner 已交审
-- TASK-0009：保持 BLOCKED，不属于当前实施范围
+- TASK-0009：BLOCKED；不得直接实施
+
+## TASK-0017 G17-06 完成记录（2026-07-22）
+
+- 原状态：READY_FOR_REVIEW
+- 新状态：COMPLETED
+- 状态执行角色与 Reviewer：Codex Reviewer
+- Owner：Codex Architect（保持不变）
+- 审核报告：`reviews/tasks/TASK-0017-TASK-0008-MERGE-GOVERNANCE-REPAIR-IMPLEMENTATION-REVIEW.md`
+- Reviewer Result：PASS；Findings：0 / 0 / 0 / 0
+- AC：6/6 PASS；文件预算：3/3 PASS；防过度开发：PASS
+- Workflow：PASS=20，FAIL=0，TOTAL=20；`git diff --check`：PASS
+- 状态迁移：`READY_FOR_REVIEW → COMPLETED`
+- 实施锁：三项 `HANDED_OFF → RELEASED`；原认领时间、Owner、用途和交接历史保留
+- Governance gap：本次 TASK-0008 合并事实与状态不一致已通过补偿性验证和治理记录关闭
+- TASK-0008：保持 COMPLETED，已合并，PMV PASS
+- TASK-0009：保持 BLOCKED；未同步、未恢复、未实施、未重新认领锁
+- Next Action：独立只读核验 TASK-0009 的最新基线和恢复条件；不得直接实施 TASK-0009
+- TASK-0018：未创建且不允许创建
 
 ## TASK-0017 G17-05 实施交审记录（2026-07-22）
 

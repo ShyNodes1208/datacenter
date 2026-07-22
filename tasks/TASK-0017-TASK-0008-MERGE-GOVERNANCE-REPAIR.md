@@ -6,13 +6,13 @@
 
 - Task ID：TASK-0017
 - Task Name：TASK-0008 合并治理与跨分支状态修复
-- Status：READY_FOR_REVIEW
+- Status：COMPLETED
 - Owner：Codex Architect
 - Reviewer：Codex Reviewer
 - Branch：`chore/task-0017-governance-repair`
 - Requirement Source：项目负责人 2026-07-22 对 G02 的书面批准；`reviews/tasks/TASK-0008-POST-MERGE-VALIDATION.md`
 - Architecture Reference：`docs/architecture/AGENT-WORKFLOW.md`
-- Module Lock：3 项精确规格锁保持 `RELEASED`；3 项精确实施锁 `HANDED_OFF`，Owner 保持 Codex Architect，接收角色为 Codex Reviewer
+- Module Lock：3 项精确规格锁保持 `RELEASED`；3 项精确实施锁已由 Codex Reviewer `HANDED_OFF → RELEASED`，历史 Owner 保持 Codex Architect
 - Implementation Started：YES
 
 ## Reviewer 独立性
@@ -186,13 +186,19 @@ git diff --cached --name-status
 | 2026-07-22 11:51:49 +08:00 | Codex Architect | DRAFT | READY | Codex Architect | G17-04 规格放行；规格初审 NEEDS_CHANGES，唯一 Finding G17-SR-001；修正提交 `63b73e8510c54d9ccee572a6b18a94361c804e74`；规格复审 PASS，提交 `fd24e48d51d61898200b2f2c8797dd5f7a7e1787`；G17-SR-001 CLOSED；Findings 0/0/0/0；AC 6/6、文件预算 3/3、微任务 6/6 PASS；三项规格锁 RELEASED；实施锁 0；Implementation Started NO；等待 G17-05 启动门禁 |
 | 2026-07-22 13:23:57 +08:00 | Codex Architect | READY | IN_PROGRESS | Codex Architect | G17-05 实施启动；三个批准路径无活跃锁及父子路径冲突；认领三项精确实施锁 CLAIMED；Implementation Started YES；仅允许完成三文件最小治理修复并交审；TASK-0009 保持 BLOCKED |
 | 2026-07-22 13:27:11 +08:00 | Codex Architect | IN_PROGRESS | READY_FOR_REVIEW | Codex Reviewer | G17-05 最小治理修复完成并交审；AC 6/6 自检 PASS；文件预算 3/3 PASS；Workflow 20/20；git diff --check PASS；三项实施锁 CLAIMED → HANDED_OFF；governance gap 待 G17-06 审核，未关闭；TASK-0009 保持 BLOCKED |
+| 2026-07-22 13:36:55 +08:00 | Codex Reviewer | READY_FOR_REVIEW | COMPLETED | Codex Architect | G17-06 独立实施审核 PASS；Findings 0/0/0/0；AC 6/6、文件预算 3/3、Workflow 20/20、git diff --check PASS；三项实施锁 HANDED_OFF → RELEASED；本次 TASK-0008 合并事实与状态不一致已通过补偿性验证和治理记录关闭；TASK-0009 保持 BLOCKED |
 
 ## 审核与完成字段
 
-- 审核结论：规格初审 NEEDS_CHANGES；唯一 Finding `G17-SR-001`；规格复审 PASS
+- 审核结论：G17-06 实施审核 PASS；Reviewer Result：PASS；Findings：0 / 0 / 0 / 0；AC：6/6 PASS；文件预算：3/3 PASS
 - 缺陷与复审：G17-SR-001 已由 G17-03 定点修正并由独立 Reviewer 复审为 CLOSED；修正提交 `63b73e8510c54d9ccee572a6b18a94361c804e74`；复审提交 `fd24e48d51d61898200b2f2c8797dd5f7a7e1787`；Findings 0/0/0/0
 - Change Request：N/A：未发现范围变更
-- 已知限制：当前为 READY_FOR_REVIEW；治理实施完成，等待独立 Codex Reviewer 执行 G17-06；governance gap 尚未关闭；TASK-0009 仍为 BLOCKED
+- 已知限制：TASK-0009 仍为 BLOCKED，不得自动恢复；不得创建 TASK-0018
+- 当前阶段：治理修复完成；G17-06：完成
+- Governance gap：本次 TASK-0008 合并事实与状态不一致已通过补偿性验证和治理记录关闭
+- TASK-0008：保持 COMPLETED
+- TASK-0009：保持 BLOCKED
+- 下一动作：单独执行 TASK-0009 基线与恢复条件的只读核验；不得自动恢复 TASK-0009，不得创建 TASK-0018
 
 ## 防过度开发检查
 
@@ -211,4 +217,4 @@ git diff --cached --name-status
 
 ---
 
-> 当前为 READY_FOR_REVIEW；G17-05 已完成，下一单元仅允许独立 Codex Reviewer 执行 G17-06。Implementation Started 为 YES，三项实施锁为 HANDED_OFF；governance gap 待审核、未关闭；不得直接标记 COMPLETED、继续 TASK-0009 或创建 TASK-0018。
+> 当前为 COMPLETED；G17-06 独立实施审核 PASS，三项实施锁均已 RELEASED，本次事实与状态不一致已关闭。TASK-0008 保持 COMPLETED；TASK-0009 保持 BLOCKED；不得自动恢复 TASK-0009 或创建 TASK-0018。
