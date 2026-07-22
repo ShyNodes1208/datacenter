@@ -6,6 +6,13 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 
 | Task ID | Module or Path | Owner | Claimed At | Status | Release Condition | Released At |
 |---|---|---|---|---|---|---|
+| TASK-0009 | src/backend/Datacenter.Api/Models/Room.cs | Codex Backend | 2026-07-22 17:16:10 +08:00 | CLAIMED | Reviewer：Codex Reviewer；TASK-0009 进入 COMPLETED 或 CANCELLED 时释放 |  |
+| TASK-0009 | src/backend/Datacenter.Api/Data/AppDbContext.cs | Codex Backend | 2026-07-22 17:16:10 +08:00 | CLAIMED | Reviewer：Codex Reviewer；TASK-0009 进入 COMPLETED 或 CANCELLED 时释放 |  |
+| TASK-0009 | src/backend/Datacenter.Api/Migrations/20260722163613_AddRooms.cs | Codex Backend | 2026-07-22 17:16:10 +08:00 | CLAIMED | Reviewer：Codex Reviewer；TASK-0009 进入 COMPLETED 或 CANCELLED 时释放 |  |
+| TASK-0009 | src/backend/Datacenter.Api/Migrations/20260722163613_AddRooms.Designer.cs | Codex Backend | 2026-07-22 17:16:10 +08:00 | CLAIMED | Reviewer：Codex Reviewer；TASK-0009 进入 COMPLETED 或 CANCELLED 时释放 |  |
+| TASK-0009 | src/backend/Datacenter.Api/Migrations/AppDbContextModelSnapshot.cs | Codex Backend | 2026-07-22 17:16:10 +08:00 | CLAIMED | Reviewer：Codex Reviewer；TASK-0009 进入 COMPLETED 或 CANCELLED 时释放 |  |
+| TASK-0009 | src/backend/Datacenter.Api/Controllers/RoomsController.cs | Codex Backend | 2026-07-22 17:16:10 +08:00 | CLAIMED | Reviewer：Codex Reviewer；TASK-0009 进入 COMPLETED 或 CANCELLED 时释放 |  |
+| TASK-0009 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RoomIntegrationTests.cs | Codex Backend | 2026-07-22 17:16:10 +08:00 | CLAIMED | Reviewer：Codex Reviewer；TASK-0009 进入 COMPLETED 或 CANCELLED 时释放 |  |
 | TASK-0009 | tasks/TASK-0009-READONLY-ROOM-LIST.md | Codex Architect | 2026-07-22 16:36:13 +08:00 | RELEASED | Reviewer：Codex Reviewer；Purpose：写回已批准实施方案和精确 Migration 路径；方案写回验证和提交完成后 RELEASED | 2026-07-22 16:37:48 +08:00（Codex Architect 释放；批准方案写回验证完成；由本次原子管理提交记录；产品实施锁 0；未执行 READY → IN_PROGRESS） |
 | TASK-0009 | tasks/current-task.md | Codex Architect | 2026-07-22 16:36:13 +08:00 | RELEASED | Reviewer：Codex Reviewer；Purpose：写回已批准实施方案和精确 Migration 路径；方案写回验证和提交完成后 RELEASED | 2026-07-22 16:37:48 +08:00（Codex Architect 释放；批准方案写回验证完成；由本次原子管理提交记录；产品实施锁 0；未执行 READY → IN_PROGRESS） |
 | TASK-0009 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-22 16:36:13 +08:00 | RELEASED | Reviewer：Codex Reviewer；Purpose：写回已批准实施方案和精确 Migration 路径；方案写回验证和提交完成后 RELEASED | 2026-07-22 16:37:48 +08:00（Codex Architect 释放；批准方案写回验证完成；由本次原子管理提交记录；产品实施锁 0；未执行 READY → IN_PROGRESS） |

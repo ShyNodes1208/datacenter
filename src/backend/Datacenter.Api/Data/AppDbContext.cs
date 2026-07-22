@@ -7,6 +7,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 {
     public DbSet<User> Users => Set<User>();
 
+    public DbSet<Room> Rooms => Set<Room>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var user = modelBuilder.Entity<User>();
@@ -19,5 +21,14 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         user.Property(item => item.PasswordHash).IsRequired();
         user.Property(item => item.Role).IsRequired();
         user.Property(item => item.CreatedAt).IsRequired();
+
+        var room = modelBuilder.Entity<Room>();
+        room.ToTable("Rooms", table => table.HasCheckConstraint(
+            "CK_Rooms_Status",
+            "Status IN ('启用', '停用')"));
+        room.HasKey(item => item.Id);
+        room.HasIndex(item => item.Name).IsUnique();
+        room.Property(item => item.Name).IsRequired();
+        room.Property(item => item.Status).IsRequired();
     }
 }

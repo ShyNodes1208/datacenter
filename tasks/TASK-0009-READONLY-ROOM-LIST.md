@@ -6,7 +6,7 @@
 
 - Task ID：TASK-0009
 - Task Name：首页只读机房列表
-- Status：READY
+- Status：IN_PROGRESS
 - Owner：Codex Architect
 - Implementation Owner：按微任务分工；G09-01/G09-02 为 Codex Backend，G09-03 为 Cursor Frontend；不存在单一角色持有全部九项产品锁
 - Reviewer：Codex Reviewer
@@ -15,8 +15,8 @@
 - Product Baseline：`docs/product/MVP-PRODUCT-BASELINE.md`
 - Architecture Reference：`docs/architecture/AGENT-WORKFLOW.md`；TASK-0007 现有 ASP.NET Core/EF Core/SQLite 基线；TASK-0008 现有认证首页和 `useApi`
 - Dependency：TASK-0007、TASK-0008（均已 COMPLETED 并合入 main）
-- Module Lock：3 项规格文档锁 `RELEASED` by Codex Architect；0 项实施锁
-- Implementation Started：NO
+- Module Lock：3 项规格文档锁 `RELEASED` by Codex Architect；7 项 Backend 实施锁 `CLAIMED` by Codex Backend
+- Implementation Started：YES
 
 ## 实施启动方案
 
@@ -297,9 +297,9 @@ git diff --name-status
 
 ## 构建与测试结果
 
-- 命令：N/A：当前仅创建 DRAFT 规格，未实施代码
-- 退出码：N/A：待实施与审核阶段记录
-- 摘要/证据：N/A：本轮只运行工作流与文档差异检查
+- 命令：`dotnet build`；`dotnet test`
+- 退出码：均为 0
+- 摘要/证据：Build 0 warnings / 0 errors；Test 34/34 PASS；现有认证测试继续通过
 
 ## 交接记录
 
@@ -309,6 +309,8 @@ git diff --name-status
 | 2026-07-22 08:33:56 +08:00 | Codex Architect | DRAFT | BLOCKED | Codex Architect | TASK-0008 合并治理缺口尚未完成修复，且 TASK-0009 feature 基线落后于当前 main；释放 3 项规格锁，恢复目标为 DRAFT；恢复前重新核验基线、锁冲突并重新认领 |
 | 2026-07-22 15:14:54 +08:00 | Codex Architect | BLOCKED | BLOCKED | Codex Architect | Unit 4 第一阶段；最小规格有效性自查 PASS；基线同步审核提交 `0d2598e0e0753525a1a82f4a183a8b8891a5fa49` PASS；三项规格锁重新认领为 CLAIMED；实施锁 0；Implementation Started NO；等待恢复条件最终确认和 READY 迁移 |
 | 2026-07-22 15:17:25 +08:00 | Codex Architect | BLOCKED | READY | 后续实施启动门禁 | Unit 4 恢复条件全部 SATISFIED；最小规格有效性自查 PASS，完整规格复审 NOT_REQUIRED；三项规格锁 CLAIMED → RELEASED；实施锁 0；Implementation Started NO；产品实施未开始 |
+| 2026-07-22 17:16:10 +08:00 | Codex Backend | READY | IN_PROGRESS | Codex Backend | 七个 Backend 精确产品路径及三份必要治理路径冲突检查 PASS；Backend 产品锁 CLAIMED；未认领 Frontend 路径；Implementation Started YES；同一会话执行 G09-01/G09-02 |
+| 2026-07-22 | Codex Backend | IN_PROGRESS | IN_PROGRESS | Cursor Frontend | G09-01/G09-02 完成；`dotnet build` PASS（0 warnings / 0 errors）；`dotnet test` PASS（34/34）；七个 Backend 锁保持 CLAIMED；下一单元 G09-03 |
 
 ## 审核与完成字段
 
@@ -317,10 +319,10 @@ git diff --name-status
 - 缺陷修复记录：N/A：无 Finding
 - 复审结果：N/A：未进入复审
 - Change Request：N/A：本任务范围已书面批准，未发现范围变更
-- 提交说明：`docs: define task-0009 readonly room list`
+- 提交说明：`feat: implement readonly rooms backend for task-0009`
 - 提交哈希：N/A：提交后回填不属于本轮必要修改，以 Git 记录为准
 - 推送结果：N/A：待本轮推送
-- 已知限制：任务当前为 BLOCKED；治理和基线前置条件统一前不得进入 READY、继续 TASK-0009 或开始实施
+- 已知限制：Backend 范围已完成；Frontend G09-03 与最终独立 Reviewer 审核尚未执行
 
 ## 防过度开发检查
 

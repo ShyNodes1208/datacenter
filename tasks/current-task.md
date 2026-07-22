@@ -4,15 +4,15 @@
 
 ## 当前状态
 
-- Status：READY
+- Status：IN_PROGRESS
 - Owner：Codex Architect
 - Implementation Owner：按微任务分工；首个为 Codex Backend（G09-01）
 - Reviewer：Codex Reviewer
 - 任务：TASK-0009 — 首页只读机房列表
 - 分支：feature/task-0009-readonly-room-list
 - 规格文件：tasks/TASK-0009-READONLY-ROOM-LIST.md
-- 当前执行单元：Unit 4 — TASK-0009 状态恢复完成
-- 当前阶段：已恢复 READY，等待后续实施启动门禁
+- 当前执行单元：G09-01/G09-02 — Backend 实施完成
+- 当前阶段：Backend 构建与测试通过，等待 Cursor Frontend 执行 G09-03
 - Blocker：无
 - Specification Review：PASS
 - Findings：0 / 0 / 0 / 0
@@ -20,9 +20,9 @@
 - AC：AC-01～AC-06（内容未改变）
 - 文件预算上限：9（新增上限 5、修改上限 4）
 - 依赖预算：NuGet 0；npm 0；DI 服务 0；路由 0；抽象层 0
-- Implementation Started：NO
+- Implementation Started：YES
 - 规格锁：3（RELEASED by Codex Architect）
-- 实施锁：0（未提前认领）
+- 实施锁：7（CLAIMED by Codex Backend）
 - Implementation Plan：APPROVED_AND_WRITTEN
 - 首个微任务：G09-01 — Backend Room 数据模型与 Migration
 - 首个 Implementation Owner：Codex Backend
@@ -33,8 +33,29 @@
 - 同步结果审核：PASS；提交 `0d2598e0e0753525a1a82f4a183a8b8891a5fa49`
 - 最小规格有效性自查：PASS；不是新的独立规格审核；业务规格和 AC 未修改
 - 恢复结果：PASS；六项恢复条件全部 SATISFIED；Architect 重新认领规格锁 SATISFIED
-- Next Action：Codex Backend 独立执行 G09-01 实施启动门禁
-- 实现许可：否；不得直接进入 IN_PROGRESS，不得认领实施锁，不得开始产品实施
+- Next Action：Cursor Frontend 核验并认领两个 Frontend 精确路径后执行 G09-03
+- 实现许可：Backend 实现已完成；七个 Backend 锁保持 CLAIMED，等待 TASK-0009 最终交审
+
+## TASK-0009 Backend 实施启动记录（2026-07-22）
+
+- 原状态：READY
+- 新状态：IN_PROGRESS
+- 执行角色与 Implementation Owner：Codex Backend
+- Reviewer：Codex Reviewer
+- 冲突检查：七个 Backend 精确产品路径及三份必要治理路径无活跃父子路径冲突
+- 实施锁：七个 Backend 精确产品路径 CLAIMED；未认领 Frontend 路径
+- Implementation Started：YES
+- Blocker：无
+
+## TASK-0009 Backend 实施完成记录（2026-07-22）
+
+- G09-01/G09-02：完成
+- Backend 修改范围：七个批准产品路径，无范围外产品修改
+- Migration：`20260722163613_AddRooms`
+- Build：`dotnet build` PASS；0 warnings，0 errors
+- Test：`dotnet test` PASS；34/34
+- Backend 锁：七项继续 CLAIMED by Codex Backend
+- 下一合法角色：Cursor Frontend
 
 ## TASK-0009 阻断与规格锁释放记录（2026-07-22）
 
