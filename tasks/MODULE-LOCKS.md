@@ -2,8 +2,13 @@
 
 本表必须按 [Agent 工作流规范](../docs/architecture/AGENT-WORKFLOW.md) 维护。路径使用仓库相对路径；Windows 比较不区分大小写。`CLAIMED` 和 `HANDED_OFF` 都是活跃占用，完全相同或父子路径重叠即冲突。
 
+TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15c20cb63b52b395cf28763ed0f` 将三项规格锁释放为 `RELEASED`；该 feature 提交是释放证据，main 本记录不替代该提交。TASK-0017 因而可在无活跃父子路径冲突的前提下认领下列三个精确规格路径；未创建实施锁。
+
 | Task ID | Module or Path | Owner | Claimed At | Status | Release Condition | Released At |
 |---|---|---|---|---|---|---|
+| TASK-0017 | tasks/TASK-0017-TASK-0008-MERGE-GOVERNANCE-REPAIR.md | Codex Architect | 2026-07-22 10:40:10 +08:00 | CLAIMED | Reviewer：Codex Reviewer；用于 TASK-0017 DRAFT 规格编写和审核；Reviewer 规格 PASS 后由 Codex Architect 执行 DRAFT → READY 时释放 | |
+| TASK-0017 | tasks/current-task.md | Codex Architect | 2026-07-22 10:40:10 +08:00 | CLAIMED | Reviewer：Codex Reviewer；仅同步 TASK-0017 当前状态；Reviewer 规格 PASS 后由 Codex Architect 执行 DRAFT → READY 时释放 | |
+| TASK-0017 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-22 10:40:10 +08:00 | CLAIMED | Reviewer：Codex Reviewer；仅维护 TASK-0017 精确规格锁；Reviewer 规格 PASS 后由 Codex Architect 执行 DRAFT → READY 时释放 | |
 | TASK-0008 | tasks/TASK-0008-FRONTEND-LOGIN-SHELL.md | Codex Architect | 2026-07-20 +08:00 | RELEASED | U02 独立规格审核及必要 U03 修正完成，Reviewer PASS 后由有权 Architect 执行 DRAFT → READY 时释放；取消则按工作流释放 | 2026-07-20 22:42:38 +08:00（Codex Architect 释放；规格复审 PASS，提交 e28d4f5bfa5a6d36f0673db79342ffd6a4fab085；DRAFT → READY 规格放行完成） |
 | TASK-0008 | tasks/current-task.md | Codex Architect | 2026-07-20 +08:00 | RELEASED | U02 独立规格审核及必要 U03 修正完成，Reviewer PASS 后由有权 Architect 执行 DRAFT → READY 时释放；取消则按工作流释放 | 2026-07-20 22:42:38 +08:00（Codex Architect 释放；规格复审 PASS，提交 e28d4f5bfa5a6d36f0673db79342ffd6a4fab085；DRAFT → READY 规格放行完成） |
 | TASK-0008 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-20 +08:00 | RELEASED | 仅维护 TASK-0008 规格锁；Reviewer PASS 后由有权 Architect 执行 DRAFT → READY 时释放；取消则按工作流释放 | 2026-07-20 22:42:38 +08:00（Codex Architect 释放；规格复审 PASS，提交 e28d4f5bfa5a6d36f0673db79342ffd6a4fab085；DRAFT → READY 规格放行完成） |

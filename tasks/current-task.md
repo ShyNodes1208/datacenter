@@ -4,25 +4,36 @@
 
 ## 当前状态
 
-- Status：COMPLETED
-- Owner：Cursor Frontend
+- Status：DRAFT
+- Owner：Codex Architect
 - Reviewer：Codex Reviewer
-- 任务：TASK-0008 — 前端基础与登录壳
-- 分支：feature/task-0008-frontend-login-shell
-- 规格文件：tasks/TASK-0008-FRONTEND-LOGIN-SHELL.md
-- 当前执行单元：Reviewer 实现审核完成
-- 当前阶段：TASK-0008 已完成，等待独立合并门禁
+- 任务：TASK-0017 — TASK-0008 合并治理与跨分支状态修复
+- 分支：chore/task-0017-governance-repair
+- 规格文件：tasks/TASK-0017-TASK-0008-MERGE-GOVERNANCE-REPAIR.md
+- 当前执行单元：G17-01
+- 当前阶段：治理修复规格编写
 - Blocker：无
-- 规格复审：PASS；Findings：BLOCKER 0 / MAJOR 0 / MINOR 0 / NOTE 0
-- AC：AC-01～AC-20 证据齐备（交审登记）
-- 文件预算：13/13（新增 8、修改 5）
-- 依赖预算：唯一新增直接生产依赖 `vue-router` `4.6.3`
-- 微任务时间盒：30/30 PASS
+- AC：AC-01～AC-06（待独立规格审核）
+- 文件预算：新增 1、修改 2、总计 3
+- 微任务：G17-01～G17-06，共 6 个
 - Implementation Started：NO
-- 实施锁：13（全部 RELEASED；历史 Owner 为 Cursor Frontend）
-- 实现提交：`c3b798b851fefe64a4b043f951721b1489db28ca`
-- Next Action：独立合并门禁/分支合并流程；不得自动合并 main
-- 实现许可：否；交审后 Owner 不得继续修改实施路径
+- 规格锁：3（CLAIMED by Codex Architect）
+- 实施锁：0
+- Next Action：Codex Reviewer 执行独立规格审核
+- Implementation Allowed：NO
+- TASK-0009：保持 BLOCKED，不属于当前实施范围
+
+## TASK-0017 G17-01 规格登记记录（2026-07-22）
+
+- 指针迁移：TASK-0008 `COMPLETED → IDLE`；TASK-0008 任务文件自身继续保持 `COMPLETED`
+- 新任务迁移：TASK-0017 `IDLE → DRAFT`
+- 执行角色与 Owner：Codex Architect
+- Reviewer：Codex Reviewer
+- 当前 main：TASK-0008 已合并；post-merge technical validation PASS；governance gap OPEN，由 TASK-0017 接管最小治理修复
+- TASK-0009：远端 G01 提交 `2690bdeb9e0ec15c20cb63b52b395cf28763ed0f`；状态 BLOCKED；规格审核 PASS；三项规格锁 RELEASED；实施锁 0；Implementation Started NO
+- 规格锁：三项精确文件路径 CLAIMED by Codex Architect；实施锁 0
+- 限制：不修改 TASK-0008 或 TASK-0009，不执行同步，不实施，不进入 READY
+- Next Action：Codex Reviewer 独立审核 TASK-0017 规格
 
 ## TASK-0008 实现审核完成记录（2026-07-21）
 
