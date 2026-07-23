@@ -39,15 +39,23 @@ public sealed class DevicePositionsController(AppDbContext dbContext, IAntiforge
 
         var allPositions = new List<object>(rack.HeightU);
         var occupiedU = 0;
+        var skipU = 0;
 
         for (var u = rack.HeightU; u >= 1; u--)
         {
+            if (skipU > 0)
+            {
+                skipU--;
+                continue;
+            }
+
             if (positionDict.TryGetValue(u, out var existing))
             {
                 allPositions.Add(new { uNumber = u, label = existing.Label, uHeight = existing.UHeight });
                 if (existing.Label is not null)
                 {
                     occupiedU += existing.UHeight;
+                    skipU = existing.UHeight - 1;
                 }
             }
             else
