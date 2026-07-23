@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../composables/useApi'
+import { useAuth } from '../composables/useAuth'
 
 type RackInfo = {
   id: string
@@ -40,11 +41,34 @@ type ImportResult = {
   errors?: string[]
 }
 
+type AvailableServer = {
+  id: string
+  name: string
+  deviceHeight: number
+  deviceType: string
+}
+
+type RackResult = {
+  serverPositionId: string
+  serverName: string
+  rackCode: string
+  startU: number
+  endU: number
+}
+
+const EDIT_ROLES = ['机房管理员', '运维人员']
+
 const route = useRoute()
 const router = useRouter()
 const { request } = useApi()
+const { user } = useAuth()
 
 const rackId = computed(() => route.params.id as string)
+
+const canEdit = computed(() => {
+  const role = user.value?.role
+  return role !== undefined && EDIT_ROLES.includes(role)
+})
 
 const data = ref<DevicePositionsData | null>(null)
 const error = ref('')
@@ -52,6 +76,14 @@ const importVisible = ref(false)
 const importError = ref('')
 const importResult = ref<ImportResult | null>(null)
 const importSubmitting = ref(false)
+
+const rackVisible = ref(false)
+const rackError = ref('')
+const rackSubmitting = ref(false)
+const availableServers = ref<AvailableServer[]>([])
+const selectedServerId = ref('')
+const rackStartU = ref<number | null>(null)
+const loadingServers = ref(false)
 
 async function loadData(): Promise<void> {
   error.value = ''
@@ -138,9 +170,163 @@ function closeResult(): void {
   importResult.value = null
 }
 
+async function loadAvailableServers(): Promise<void> {
+  loadingServers.value = true
+  availableServers.value = []
+
+  const params = new URLSearchParams()
+  params.set('positionStatus', '未上架')
+  params.append('positionStatus', '已下架')
+
+  const result = await request<unknown>(`/api/servers?${params.toString()}`, { method: 'GET' })
+  loadingServers.value = false
+
+  if (!result.ok) {
+    rackError.value = result.error
+    return
+  }
+
+  if (!Array.isArray(result.data)) {
+    rackError.value = 'Request failed.'
+    return
+  }
+
+  const parsed: AvailableServer[] = []
+  for (const item of result.data) {
+    if (item === null || typeof item !== 'object') continue
+    const record = item as Record<string, unknown>
+    if (
+      typeof record.id === 'string' &&
+      typeof record.name === 'string' &&
+      typeof record.deviceHeight === 'number' &&
+      typeof record.deviceType === 'string'
+    ) {
+      parsed.push({
+        id: record.id,
+        name: record.name,
+        deviceHeight: record.deviceHeight,
+        deviceType: record.deviceType,
+      })
+    }
+  }
+  availableServers.value = parsed
+}
+
+async function openRack(): Promise<void> {
+  rackVisible.value = true
+  rackError.value = ''
+  selectedServerId.value = ''
+  rackStartU.value = null
+  await loadAvailableServers()
+}
+
+function cancelRack(): void {
+  rackVisible.value = false
+  rackError.value = ''
+  selectedServerId.value = ''
+  rackStartU.value = null
+  availableServers.value = []
+}
+
+async function confirmRack(): Promise<void> {
+  const server = selectedServer.value
+  const start = rackStartU.value
+  if (!server || start === null || start < 1 || !data.value) return
+
+  const validation = rackValidation.value
+  if (validation) {
+    rackError.value = validation
+    return
+  }
+
+  const csrfResult = await request('/api/auth/csrf', { method: 'GET' })
+  if (!csrfResult.ok) {
+    rackError.value = csrfResult.error
+    return
+  }
+  const token = csrfResult.headers.get('X-XSRF-TOKEN')
+  if (!token) {
+    rackError.value = 'Request failed.'
+    return
+  }
+
+  rackSubmitting.value = true
+  rackError.value = ''
+
+  const result = await request<RackResult>(`/api/servers/${server.id}/rack`, {
+    method: 'POST',
+    body: { rackId: data.value.rack.id, startU: start },
+    csrfToken: token,
+  })
+
+  rackSubmitting.value = false
+
+  if (!result.ok) {
+    rackError.value = result.error
+    return
+  }
+
+  rackVisible.value = false
+  selectedServerId.value = ''
+  rackStartU.value = null
+  availableServers.value = []
+  await loadData()
+}
+
 const usagePercent = computed(() => {
   if (!data.value || data.value.stats.total === 0) return 0
   return Math.round((data.value.stats.occupied / data.value.stats.total) * 100)
+})
+
+const occupiedUNumbers = computed(() => {
+  if (!data.value) return new Set<number>()
+  const occupied = new Set<number>()
+  for (const pos of data.value.positions) {
+    if (pos.label !== null) {
+      if (pos.uHeight > 1) {
+        const bottom = pos.uNumber - pos.uHeight + 1
+        for (let u = bottom; u <= pos.uNumber; u++) {
+          occupied.add(u)
+        }
+      } else {
+        occupied.add(pos.uNumber)
+      }
+    }
+  }
+  return occupied
+})
+
+const selectedServer = computed(() => {
+  if (!selectedServerId.value || !availableServers.value.length) return null
+  return availableServers.value.find((s) => s.id === selectedServerId.value) ?? null
+})
+
+const computedEndU = computed(() => {
+  const server = selectedServer.value
+  const start = rackStartU.value
+  if (!server || start === null || start < 1) return null
+  return start - server.deviceHeight + 1
+})
+
+const rackValidation = computed(() => {
+  const server = selectedServer.value
+  const start = rackStartU.value
+  if (!server || start === null || start < 1 || !data.value) return null
+
+  const height = server.deviceHeight
+  const rackHeight = data.value.rack.heightU
+  const endU = start - height + 1
+
+  if (start > rackHeight) return `起始 U 位超出机柜范围（最大 U${rackHeight}）`
+  if (endU < 1) return `服务器高度 ${height}U 超出机柜范围（U${start}-U${endU} 低于 U1）`
+
+  for (let u = endU; u <= start; u++) {
+    if (occupiedUNumbers.value.has(u)) {
+      return `U${u} 已被占用`
+    }
+  }
+
+  return null
 })
 
 /**
@@ -219,6 +405,7 @@ const mergedPositions = computed(() => {
       </p>
 
       <button type="button" @click="openImport">导入设备</button>
+      <button v-if="canEdit" type="button" @click="openRack" style="margin-left: 0.5em">上架服务器</button>
 
       <div v-if="importVisible" style="margin-top: 1em; padding: 1em; border: 1px solid #ccc">
         <template v-if="!importResult">
@@ -233,6 +420,67 @@ const mergedPositions = computed(() => {
             <p v-for="(err, i) in importResult.errors" :key="i" style="color: red">{{ err }}</p>
           </div>
           <button type="button" @click="closeResult">关闭</button>
+        </template>
+      </div>
+
+      <div v-if="rackVisible" style="margin-top: 1em; padding: 1em; border: 1px solid #ccc">
+        <h4 style="margin: 0 0 0.5em">上架服务器</h4>
+
+        <div v-if="loadingServers">加载服务器列表...</div>
+
+        <template v-else>
+          <div style="margin-bottom: 0.5em">
+            <label>
+              选择服务器：
+              <select v-model="selectedServerId">
+                <option value="" disabled>请选择服务器</option>
+                <option v-for="s in availableServers" :key="s.id" :value="s.id">
+                  {{ s.name }} ({{ s.deviceType }} {{ s.deviceHeight }}U)
+                </option>
+              </select>
+            </label>
+            <span v-if="availableServers.length === 0 && !loadingServers" style="color: #999; margin-left: 0.5em">
+              暂无可上架服务器
+            </span>
+          </div>
+
+          <div v-if="selectedServer" style="margin-bottom: 0.5em">
+            <p style="margin: 0.25em 0">设备类型：{{ selectedServer.deviceType }}</p>
+            <p style="margin: 0.25em 0">设备高度：{{ selectedServer.deviceHeight }}U</p>
+          </div>
+
+          <div style="margin-bottom: 0.5em">
+            <label>
+              起始 U 位：
+              <input v-model.number="rackStartU" type="number" min="1" :max="data.rack.heightU" style="width: 80px" />
+            </label>
+          </div>
+
+          <div v-if="selectedServer && rackStartU !== null && rackStartU >= 1 && computedEndU !== null" style="margin-bottom: 0.5em">
+            <p style="margin: 0.25em 0">
+              占用范围：U{{ rackStartU }}-U{{ computedEndU }}（{{ selectedServer.deviceHeight }}U）
+            </p>
+          </div>
+
+          <div v-if="rackValidation" style="color: red; margin-bottom: 0.5em" role="alert" aria-live="polite">
+            {{ rackValidation }}
+          </div>
+          <div v-if="rackError" style="color: red; margin-bottom: 0.5em" role="alert" aria-live="polite">
+            {{ rackError }}
+          </div>
+
+          <div>
+            <button
+              type="button"
+              :disabled="rackSubmitting || !selectedServer || rackStartU === null || rackStartU < 1 || rackValidation !== null"
+              @click="confirmRack"
+            >
+              {{ rackSubmitting ? '上架中...' : '确认上架' }}
+            </button>
+            <button type="button" :disabled="rackSubmitting" @click="cancelRack" style="margin-left: 0.5em">
+              取消
+            </button>
+          </div>
         </template>
       </div>
 
