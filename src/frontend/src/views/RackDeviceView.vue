@@ -143,27 +143,60 @@ const usagePercent = computed(() => {
   return Math.round((data.value.stats.occupied / data.value.stats.total) * 100)
 })
 
-/** Build visual groups using uHeight. Each position's range is [uNumber-uHeight+1, uNumber]. */
+/**
+ * Build visual groups.
+ *
+ * - Positions arrive in descending U order (U42 → U1).
+ * - startU is the higher U number (top of block), endU is the lower (bottom).
+ * - A multi-U device (uHeight > 1) at uNumber N occupies [N-uHeight+1, N].
+ *   Positions within that range (label=null) are skipped.
+ * - Consecutive single-U positions with the same label merge into one block.
+ * - Empty slots (label=null, not covered by any device) each appear as one row.
+ */
 const mergedPositions = computed(() => {
   if (!data.value) return []
   const positions = data.value.positions
   if (positions.length === 0) return []
 
   const merged: Array<{ startU: number; endU: number; label: string | null }> = []
-  const firstStartU = positions[0].uNumber - (positions[0].uHeight - 1)
-  let current = { startU: firstStartU, endU: positions[0].uNumber, label: positions[0].label }
+  let i = 0
 
-  for (let i = 1; i < positions.length; i++) {
+  while (i < positions.length) {
     const pos = positions[i]
-    const posStartU = pos.uNumber - (pos.uHeight - 1)
-    if (pos.label === current.label && pos.uNumber === current.startU - 1) {
-      current.startU = posStartU
+
+    if (pos.uHeight > 1) {
+      // Multi-U device spans [topU, bottomU]
+      const topU = pos.uNumber
+      const bottomU = pos.uNumber - pos.uHeight + 1
+      merged.push({ startU: topU, endU: bottomU, label: pos.label })
+      // Skip positions covered by this device (they have label=null)
+      while (i + 1 < positions.length && positions[i + 1].uNumber >= bottomU) {
+        i++
+      }
+      i++
+    } else if (pos.label !== null) {
+      // Single-U device: merge consecutive same-label positions
+      let topU = pos.uNumber
+      let bottomU = pos.uNumber
+      const label = pos.label
+      i++
+      while (
+        i < positions.length &&
+        positions[i].label === label &&
+        positions[i].uHeight === 1 &&
+        positions[i].uNumber === bottomU - 1
+      ) {
+        bottomU = positions[i].uNumber
+        i++
+      }
+      merged.push({ startU: topU, endU: bottomU, label })
     } else {
-      merged.push(current)
-      current = { startU: posStartU, endU: pos.uNumber, label: pos.label }
+      // Empty U slot (not covered by any multi-U device)
+      merged.push({ startU: pos.uNumber, endU: pos.uNumber, label: null })
+      i++
     }
   }
-  merged.push(current)
+
   return merged
 })
 </script>
