@@ -1,3 +1,4 @@
+using System.Linq;
 using Datacenter.Api.Data;
 using Datacenter.Api.Models;
 using Datacenter.Api.Services;
@@ -169,7 +170,7 @@ public sealed class DevicePositionsController(AppDbContext dbContext, IAntiforge
         var uNumberCol = targetStartColumn.Value;
         var labelCol = uNumberCol + 1;
 
-        var importData = new Dictionary<int, string?>();
+        var importData = new Dictionary<int, (string? Label, int UHeight)>();
         var errors = new List<string>();
         var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 1;
 
@@ -194,8 +195,28 @@ public sealed class DevicePositionsController(AppDbContext dbContext, IAntiforge
                 continue;
             }
 
-            var label = worksheet.Cell(row, labelCol).GetString().Trim();
-            importData[uNumber] = string.IsNullOrWhiteSpace(label) ? null : label;
+            var labelCell = worksheet.Cell(row, labelCol);
+            string? label;
+            int uHeight;
+
+            if (labelCell.IsMerged())
+            {
+                var mergedRange = worksheet.MergedRanges.First(r => r.Contains(labelCell.Address.ToString()));
+                if (labelCell.Address.ToString() != mergedRange.FirstCell().Address.ToString())
+                {
+                    continue;
+                }
+
+                label = mergedRange.FirstCell().GetString().Trim();
+                uHeight = mergedRange.RowCount();
+            }
+            else
+            {
+                label = labelCell.GetString().Trim();
+                uHeight = 1;
+            }
+
+            importData[uNumber] = (string.IsNullOrWhiteSpace(label) ? null : label, uHeight);
         }
 
         var existingPositions = await dbContext.DevicePositions
@@ -205,7 +226,7 @@ public sealed class DevicePositionsController(AppDbContext dbContext, IAntiforge
         dbContext.DevicePositions.RemoveRange(existingPositions);
 
         var occupied = 0;
-        foreach (var (uNumber, label) in importData)
+        foreach (var (uNumber, (label, uHeight)) in importData)
         {
             if (label is not null)
             {
@@ -213,10 +234,10 @@ public sealed class DevicePositionsController(AppDbContext dbContext, IAntiforge
                 {
                     RackId = rackId,
                     UNumber = uNumber,
-                    UHeight = 1,
+                    UHeight = uHeight,
                     Label = label
                 });
-                occupied++;
+                occupied += uHeight;
             }
         }
 
