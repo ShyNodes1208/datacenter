@@ -43,6 +43,36 @@ public sealed class RacksController(AppDbContext dbContext, IAntiforgery antifor
     private static readonly string[] RequiredHeaders =
         ["code", "roomName", "heightU", "brand", "power", "notes", "x", "y", "z"];
 
+    [HttpGet]
+    public async Task<IActionResult> Get([FromQuery] Guid? roomId, CancellationToken cancellationToken)
+    {
+        IQueryable<Rack> query = dbContext.Racks.AsNoTracking();
+
+        if (roomId.HasValue)
+        {
+            query = query.Where(rack => rack.RoomId == roomId.Value);
+        }
+
+        var racks = await query
+            .Select(rack => new
+            {
+                rack.Id,
+                rack.Code,
+                rack.RoomId,
+                RoomName = rack.Room.Name,
+                rack.HeightU,
+                rack.Brand,
+                rack.Power,
+                rack.Notes,
+                rack.X,
+                rack.Y,
+                rack.Z
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(racks);
+    }
+
     [HttpPost("import-preview")]
     [RequestSizeLimit(10_000_000)]
     public async Task<IActionResult> ImportPreview(IFormFile file, CancellationToken cancellationToken)
