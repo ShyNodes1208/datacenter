@@ -5,7 +5,7 @@
 - Task：TASK-0019
 - Title：机房管理员编辑机房名称和状态
 - Status：READY_FOR_REVIEW
-- Owner：Codex Reviewer
+- Owner：Cursor Frontend
 - Backend Owner：Codex Backend
 - Frontend Owner：Cursor Frontend
 - Reviewer：Codex Reviewer

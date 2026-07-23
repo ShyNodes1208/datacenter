@@ -238,7 +238,7 @@ async function onLogout(): Promise<void> {
       >
         新增机房
       </button>
-      <form v-else @submit.prevent="onCreateRoom">
+      <form v-if="createFormVisible" @submit.prevent="onCreateRoom">
         <label>
           机房名称
           <input v-model="roomName" name="roomName" type="text" />

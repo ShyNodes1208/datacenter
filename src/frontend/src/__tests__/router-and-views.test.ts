@@ -1092,11 +1092,12 @@ describe('HomeView edit room', () => {
       expect(html).toContain('新增机房')
       expect(html).toContain('编辑')
 
-      // 进入编辑：新增按钮消失
+      // 进入编辑：新增按钮和新增表单均消失，编辑表单出现
       view.state.startEdit({ id: 'room-1', name: '机房A', status: '启用' })
       await flushUi()
       html = await view.html()
       expect(html).not.toContain('新增机房')
+      expect(html).not.toMatch(/name="roomName"/)
       expect(html).toMatch(/name="editName"/)
 
       // 取消编辑：新增按钮恢复
@@ -1105,11 +1106,12 @@ describe('HomeView edit room', () => {
       html = await view.html()
       expect(html).toContain('新增机房')
 
-      // 打开新增表单：编辑按钮消失
+      // 打开新增表单：编辑按钮和编辑表单均消失，新增表单出现
       view.state.openCreateForm()
       await flushUi()
       html = await view.html()
       expect(html).not.toContain('编辑')
+      expect(html).not.toMatch(/name="editName"/)
       expect(html).toMatch(/name="roomName"/)
 
       // 取消新增：编辑按钮恢复

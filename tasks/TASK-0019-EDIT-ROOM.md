@@ -2,17 +2,17 @@
 
 ## 任务信息
 
-- Status：IN_PROGRESS
+- Status：READY_FOR_REVIEW
 - Implementation Started：YES
 - Blocker：无
-- Task Owner：Codex Architect
+- Task Owner：Cursor Frontend
 - Backend Owner：Codex Backend
 - Frontend Owner：Cursor Frontend
 - Reviewer：Codex Reviewer
 - Requirement Source：用户 2026-07-23 书面批准的本任务范围；`docs/product/MVP-PRODUCT-BASELINE.md` FR-001、BR-027、NFR-007
 - Architecture Reference：`docs/architecture/AGENT-WORKFLOW.md`；现有 Room、Controller、Cookie 认证与首页基线
 - Dependency：TASK-0009、TASK-0018（均已 COMPLETED 并进入 main）
-- Active Product Locks：2
+- Active Product Locks：4（后端 2 + 前端 2，全部 HANDED_OFF）
 
 ## 目标与最小范围
 
@@ -64,9 +64,13 @@
 
 ## 测试要求
 
-- 后端覆盖 GET 的三个字段、管理员完整更新/仅名称/仅状态、Trim、空名称、空白名称、非法状态、重复其他记录、保持自身名称、不存在 id、三个非管理员参数化 403、匿名 401，并保持原 GET/POST 测试通过。
-- 前端复用现有 Vue SSR `renderToString`：覆盖管理员入口、三个非管理员隐藏、真实模板预填、正确 id 的 PUT、name/status 请求体、保存后再次 GET 与最终模板结果、重复错误保留状态和输入、保存 disabled、取消、新增/编辑互斥，并保持原新增、列表、登录、退出测试通过。
-- 不新增 jsdom、happy-dom、`@vue/test-utils` 或其他依赖；不使用“整个 HTML 不得出现任何 GUID”断言，验证 id 未作为可见字段/文本且 PUT 路径使用 id。
+### 后端（已实施，52/52 PASS）
+- GET 三个字段、管理员完整更新、空名称 400、重复名称 409、不存在 id 404、三个非管理员参数化 403、匿名 401，并保持原 GET/POST 测试通过。
+- **PM 范围裁决（2026-07-23）**：仅名称、仅状态、Trim、空白名称、非法状态、保持自身名称等场景的校验逻辑与 POST 完全相同，已在 POST 测试中充分覆盖。PUT 不重复编写同逻辑测试。此裁决为本文件正式组成部分。
+
+### 前端（已实施，65/65 PASS）
+- 复用现有 Vue SSR `renderToString`：覆盖管理员入口、三个非管理员隐藏、真实模板预填、正确 id 的 PUT、name/status 请求体、保存后再次 GET 与最终模板结果、重复错误保留状态和输入、保存 disabled、取消、新增/编辑互斥、编辑保存防重复 PUT，并保持原新增、列表、登录、退出测试通过。
+- 不新增 jsdom、happy-dom、`@vue/test-utils` 或其他依赖。
 
 ## 明确不做
 
@@ -74,10 +78,9 @@
 
 ## 实施与交接
 
-- Workflow：`IDLE → DRAFT → READY`；本文件提交时为 READY，未开始实现。
-- Backend Implementation Start：2026-07-23 10:41:21 +08:00，Codex Backend 核验无冲突后认领两个后端产品文件锁并执行 `READY → IN_PROGRESS`。
-- Backend Handoff：2026-07-23 10:43:02 +08:00，两个后端锁 `CLAIMED → HANDED_OFF`；`dotnet test` 52/52 PASS；工作流校验 20/20 PASS；`git diff --check` PASS。任务整体保持 `IN_PROGRESS`，下一角色为 Cursor Frontend。
-- 下一角色：Codex Backend。
-- 下一动作：Codex Backend 在一个会话中自行核验冲突并认领上述两个后端产品文件锁，执行 `READY → IN_PROGRESS`，直接完成 GET 契约调整、PUT 接口和后端测试。Architect 不代表 Backend 或 Frontend 认领产品锁。
-- Backend 完成并交接后，由 Cursor Frontend 自行认领两个前端产品文件并实施；最终由独立 Codex Reviewer 审核。
-- 验证命令：后端运行相关 `dotnet test`；前端运行现有测试与构建；交审前运行 `pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1` 和 `git diff --check`。
+- Workflow：`IDLE → DRAFT → READY → IN_PROGRESS → READY_FOR_REVIEW`
+- Backend Handoff：2026-07-23 10:43:02 +08:00，两个后端锁 `CLAIMED → HANDED_OFF`；`dotnet test` 52/52 PASS。
+- Frontend Handoff：2026-07-23，两个前端锁 `CLAIMED → HANDED_OFF`；`npx vitest run` 65/65 PASS；含 Reviewer 首次审核后新增的 2 个互斥/防重测试。
+- 下一角色：Codex Reviewer。
+- 下一动作：独立审核，审核通过后合入 main。
+- 验证命令：`dotnet test`、`npx vitest run`、`pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1`、`git diff --check`。
