@@ -141,8 +141,9 @@ onMounted(() => {
         位置状态
         <select v-model="searchPositionStatus">
           <option value="">全部</option>
-          <option value="已上架">已上架</option>
+          <option value="在架">在架</option>
           <option value="未上架">未上架</option>
+          <option value="已下架">已下架</option>
         </select>
       </label>
       <label>

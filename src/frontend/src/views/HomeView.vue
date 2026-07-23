@@ -533,6 +533,7 @@ async function onLogout(): Promise<void> {
 
     <button type="button" @click="openImport">Excel 导入机柜</button>
     <button type="button" @click="openBatchImport" style="margin-left: 0.5em">批量导入设备</button>
+    <button type="button" @click="router.push('/servers')" style="margin-left: 0.5em">服务器管理</button>
 
     <div v-if="batchImportVisible" style="margin-top: 1em; padding: 1em; border: 1px solid #ccc">
       <div v-if="!batchImportResult">
