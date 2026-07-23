@@ -16,6 +16,7 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 | TASK-0020 | src/backend/Datacenter.Api/Migrations/AppDbContextModelSnapshot.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | HANDED_OFF | TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
 | TASK-0020 | src/backend/Datacenter.Api/Controllers/RacksController.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | HANDED_OFF | TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
 | TASK-0020 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RackIntegrationTests.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | HANDED_OFF | TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0020 | tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj | Codex Backend | 2026-07-23 13:27:33 +08:00 | HANDED_OFF | TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
 | TASK-0020 | tasks/TASK-0020-IMPORT-RACKS.md | Codex Architect | 2026-07-23 +08:00 | RELEASED | 完成已批准架构规格并执行 DRAFT → READY 后释放；不转交或代领实施锁 | 2026-07-23 +08:00（Codex Architect 完成规格并释放；未认领 Backend/Frontend 实施锁） |
 | TASK-0020 | tasks/current-task.md | Codex Architect | 2026-07-23 +08:00 | RELEASED | 仅登记 TASK-0020 为下一 READY 任务；保留 TASK-0019 当前审核事实；规格完成后释放 | 2026-07-23 +08:00（Codex Architect 完成同步并释放；未认领 Backend/Frontend 实施锁） |
 | TASK-0020 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-23 +08:00 | RELEASED | 仅登记并释放三项 Architect 规格锁；不得修改 TASK-0019 产品锁 | 2026-07-23 +08:00（Codex Architect 完成登记并释放；TASK-0019 四项 HANDED_OFF 锁保持不变） |

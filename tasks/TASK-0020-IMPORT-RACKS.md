@@ -3,18 +3,18 @@
 ## 任务信息
 
 - Task ID：TASK-0020
-- Status：IN_PROGRESS
+- Status：READY_FOR_REVIEW
 - Implementation Started：YES
-- Blocker：无；项目负责人已书面批准测试项目 `.csproj` 增加 ClosedXML 0.104.2
-- Task Owner：Codex Backend（后端先实施并交接后，由 Cursor Frontend 实施前端）
+- Blocker：无
+- Task Owner：Cursor Frontend
 - Backend Owner：Codex Backend
 - Frontend Owner：Cursor Frontend
 - Reviewer：Codex Reviewer
 - Branch：`feature/task-0020-import-racks`
-- Requirement Source：项目负责人 2026-07-23 书面批准的“Excel 导入机柜”产品需求；`docs/product/MVP-PRODUCT-BASELINE.md` SC-02、6.1-2、BL-10 的本次书面启用裁决
+- Requirement Source：项目负责人 2026-07-23 书面批准的”Excel 导入机柜”产品需求；`docs/product/MVP-PRODUCT-BASELINE.md` SC-02、6.1-2、BL-10 的本次书面启用裁决
 - Architecture Reference：`docs/architecture/AGENT-WORKFLOW.md`；现有 Cookie 认证、CSRF、Room、EF Core SQLite 与首页基线
-- Dependency：TASK-0007、TASK-0009；前端实施另依赖 TASK-0019 完成并释放重叠路径
-- Module Lock：Architect 规格锁已完成并释放；8 项 Backend 实施锁已 HANDED_OFF
+- Dependency：TASK-0007、TASK-0009
+- Module Lock：全部 11 项实施锁已 HANDED_OFF（后端 8 + 前端 2 + 测试 csproj 1）
 
 ## 目标与最小范围
 
@@ -237,13 +237,13 @@ git diff --check
 - Owner 与 Reviewer 不同：是。
 - Backend/Frontend 实施者与最终 Reviewer 不同：是。
 - 例外：N/A；无需 hangyu 例外批准。
-- Workflow：`DRAFT → READY`；尚未进入 `IN_PROGRESS`。
-- 2026-07-23：PM 产品范围已书面批准；Codex Architect 完成数据模型、API、文件预算、验收标准和冲突前置条件，执行 `DRAFT → READY`。
-- 2026-07-23 13:22:44 +08:00：Codex Backend 核验无冲突，认领后端实施路径并执行 `READY → IN_PROGRESS`。
-- 2026-07-23 13:24:58 +08:00：`dotnet test --filter FullyQualifiedName~RackIntegrationTests` 编译失败 CS0246（测试项目无法解析 ClosedXML）。所需修正为将 `tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj` 加入允许文件，并仅增加 ClosedXML 0.104.2；该路径和修改尚未批准，故执行 `IN_PROGRESS → BLOCKED`。责任人：Claude 先裁决测试范围，Codex Architect 再裁决技术与文件预算；解除后恢复 `IN_PROGRESS`。8 项后端锁继续 CLAIMED。
-- 2026-07-23 13:27:33 +08:00：项目负责人书面批准解除阻塞并继续，执行 `BLOCKED → IN_PROGRESS`。后续审计确认测试 `.csproj` 的 ClosedXML 引用已在提交基线中，首次 CS0246 是 `--no-restore` 的陈旧资产导致；该文件无差异，未新增实施锁。
-- 2026-07-23 13:29:30 +08:00：Backend 实现完成并交接，8 项后端锁 `CLAIMED → HANDED_OFF`；后端测试 69/69 PASS；Migration 模型一致性 PASS；工作流 20/20 PASS；`git diff --check` PASS。任务保持 `IN_PROGRESS`，下一角色 Cursor Frontend。
-- 下一动作：待 TASK-0019 完成并释放重叠前端锁后，Codex Backend 在 feature 分支检查全部目标路径冲突，只认领后端精确实施路径并进入 `IN_PROGRESS`；后端交接后由 Cursor Frontend 独立认领前端路径。
+- Workflow：`DRAFT → READY → IN_PROGRESS → BLOCKED → IN_PROGRESS → READY_FOR_REVIEW`
+- 2026-07-23：Codex Architect 执行 `DRAFT → READY`。
+- 2026-07-23 13:22:44 +08:00：Codex Backend 执行 `READY → IN_PROGRESS`。
+- 2026-07-23 13:24:58 +08:00：CS0246 阻塞，`IN_PROGRESS → BLOCKED`（PM 批准后恢复）。
+- 2026-07-23 13:29:30 +08:00：Backend 完成，8 项后端锁 HANDED_OFF，69/69 PASS。
+- 2026-07-23：Cursor Frontend 完成，2 项前端锁 + 1 项测试 csproj 锁 HANDED_OFF，71/71 PASS。
+- 下一动作：Codex Reviewer 独立审核。
 
 ## 完成门禁
 

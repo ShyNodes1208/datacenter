@@ -302,7 +302,7 @@ async function uploadPreview(file: File): Promise<void> {
   }
   data.rows = data.rows.map((row) => ({
     ...row,
-    action: row.duplicate && row.errors.length === 0 ? 'skip' as const : 'create' as const,
+    action: row.duplicate && row.errors.length === 0 ? '' as const : 'create' as const,
   }))
   importPreview.value = data
 }
@@ -434,6 +434,7 @@ async function onLogout(): Promise<void> {
               </td>
               <td>
                 <select v-if="row.duplicate && row.errors.length === 0" v-model="row.action">
+                  <option value="" disabled>请选择</option>
                   <option value="skip">跳过</option>
                   <option value="overwrite">覆盖</option>
                 </select>
@@ -445,7 +446,7 @@ async function onLogout(): Promise<void> {
         <p>
           共 {{ importPreview.totalRows }} 行，{{ importPreview.validRows }} 有效，{{ importPreview.errorRows }} 错误，{{ importPreview.duplicateRows }} 重复
         </p>
-        <button type="button" :disabled="importSubmitting" @click="submitImport">
+        <button type="button" :disabled="importSubmitting || importPreview.rows.some(r => r.action === '')" @click="submitImport">
           {{ importSubmitting ? '导入中...' : '确认导入' }}
         </button>
         <button type="button" :disabled="importSubmitting" @click="cancelImport">取消</button>
