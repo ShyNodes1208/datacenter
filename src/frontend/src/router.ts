@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from './composables/useAuth'
 import HomeView from './views/HomeView.vue'
 import LoginView from './views/LoginView.vue'
+import RackDeviceView from './views/RackDeviceView.vue'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -14,6 +15,7 @@ export const router = createRouter({
   routes: [
     { path: '/login', component: LoginView },
     { path: '/', component: HomeView, meta: { requiresAuth: true } },
+    { path: '/racks/:id', component: RackDeviceView, meta: { requiresAuth: true } },
   ],
 })
 
