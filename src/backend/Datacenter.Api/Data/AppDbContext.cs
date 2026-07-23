@@ -11,6 +11,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<Rack> Racks => Set<Rack>();
 
+    public DbSet<DevicePosition> DevicePositions => Set<DevicePosition>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var user = modelBuilder.Entity<User>();
@@ -45,6 +47,16 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         rack.HasOne(item => item.Room)
             .WithMany()
             .HasForeignKey(item => item.RoomId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        var devicePosition = modelBuilder.Entity<DevicePosition>();
+        devicePosition.ToTable("DevicePositions");
+        devicePosition.HasKey(item => item.Id);
+        devicePosition.HasIndex(item => new { item.RackId, item.UNumber }).IsUnique();
+        devicePosition.Property(item => item.UNumber).IsRequired();
+        devicePosition.HasOne(item => item.Rack)
+            .WithMany()
+            .HasForeignKey(item => item.RackId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }
