@@ -10,6 +10,20 @@ type RoomItem = {
   status: string
 }
 
+type RackItem = {
+  id: string
+  code: string
+  roomId: string
+  roomName: string
+  heightU: number
+  brand: string | null
+  power: number | null
+  notes: string | null
+  x: number
+  y: number
+  z: number
+}
+
 type ImportRowResult = {
   row: number
   code: string | null
@@ -48,6 +62,10 @@ const submitting = ref(false)
 /** null = not finished loading; empty array = loaded empty list */
 const rooms = ref<RoomItem[] | null>(null)
 const roomsError = ref('')
+
+const expandedRoomId = ref<string | null>(null)
+const roomRacks = ref<Map<string, RackItem[]>>(new Map())
+const racksLoading = ref<Set<string>>(new Set())
 
 const createFormVisible = ref(false)
 const roomName = ref('')
@@ -236,6 +254,32 @@ async function onCreateRoom(): Promise<void> {
   createError.value = ''
   await loadRooms()
   createSubmitting.value = false
+}
+
+async function toggleRoom(roomId: string): Promise<void> {
+  if (expandedRoomId.value === roomId) {
+    expandedRoomId.value = null
+    return
+  }
+  expandedRoomId.value = roomId
+
+  // Load racks if not already cached
+  if (!roomRacks.value.has(roomId)) {
+    racksLoading.value.add(roomId)
+
+    const result = await request<RackItem[]>(`/api/racks?roomId=${roomId}`, { method: 'GET' })
+    if (result.ok && Array.isArray(result.data)) {
+      const racks = new Map(roomRacks.value)
+      racks.set(roomId, result.data)
+      roomRacks.value = racks
+    }
+
+    racksLoading.value.delete(roomId)
+  }
+}
+
+function goToRack(rackId: string): void {
+  router.push(`/racks/${rackId}`)
 }
 
 onMounted(() => {
@@ -497,9 +541,30 @@ async function onLogout(): Promise<void> {
     <section aria-label="机房列表">
       <div v-if="roomsError" role="alert" aria-live="polite">{{ roomsError }}</div>
       <p v-else-if="rooms !== null && rooms.length === 0">暂无机房</p>
-      <ul v-else-if="rooms !== null">
-        <li v-for="room in rooms" :key="room.id">
-          <template v-if="editingRoomId === room.id">
+      <div v-else-if="rooms !== null">
+        <div v-for="room in rooms" :key="room.id" style="margin-bottom: 1em; border: 1px solid #ccc; padding: 0.5em">
+          <div
+            @click="toggleRoom(room.id)"
+            style="cursor: pointer; display: flex; align-items: center; gap: 0.5em"
+          >
+            <span style="font-weight: bold; font-size: 1.1em">{{ room.name }}</span>
+            <span :style="{ color: room.status === '启用' ? 'green' : 'red' }">{{ room.status }}</span>
+            <span style="color: #888; font-size: 0.85em">[{{ expandedRoomId === room.id ? '收起' : '展开' }}]</span>
+            <template v-if="isRoomAdmin && !createFormVisible">
+              <button
+                v-if="editingRoomId !== room.id"
+                type="button"
+                @click.stop="startEdit(room)"
+                style="margin-left: auto"
+              >
+                编辑
+              </button>
+            </template>
+            <span v-if="racksLoading.has(room.id)" style="margin-left: auto; color: #888">加载中...</span>
+          </div>
+
+          <!-- Inline edit form -->
+          <div v-if="editingRoomId === room.id" style="margin-top: 0.5em; padding: 0.5em; background: #f5f5f5">
             <input v-model="editName" name="editName" type="text" />
             <select v-model="editStatus" name="editStatus">
               <option value="启用">启用</option>
@@ -510,14 +575,34 @@ async function onLogout(): Promise<void> {
             </button>
             <button type="button" :disabled="editSubmitting" @click="cancelEdit">取消</button>
             <div v-if="editError" role="alert" aria-live="polite">{{ editError }}</div>
-          </template>
-          <template v-else>
-            <span>{{ room.name }}</span>
-            <span>{{ room.status }}</span>
-            <button v-if="isRoomAdmin && !createFormVisible" type="button" @click="startEdit(room)">编辑</button>
-          </template>
-        </li>
-      </ul>
+          </div>
+
+          <!-- Rack cards (expanded) -->
+          <div v-if="expandedRoomId === room.id && roomRacks.has(room.id)" style="margin-top: 0.5em">
+            <div v-if="roomRacks.get(room.id)!.length === 0" style="color: #888; font-size: 0.9em">
+              暂无导入的机柜
+            </div>
+            <div v-else style="display: flex; flex-wrap: wrap; gap: 0.5em">
+              <div
+                v-for="rack in roomRacks.get(room.id)!"
+                :key="rack.id"
+                @click="goToRack(rack.id)"
+                style="
+                  border: 1px solid #999; padding: 0.5em; cursor: pointer;
+                  min-width: 120px; background: #f9f9f9;
+                "
+              >
+                <div style="font-weight: bold">{{ rack.code }}</div>
+                <div style="font-size: 0.85em; color: #666">{{ rack.heightU }}U</div>
+                <div
+                  v-if="rack.brand"
+                  style="font-size: 0.85em; color: #666"
+                >{{ rack.brand }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
   </div>
 </template>
