@@ -105,7 +105,7 @@ public sealed class DevicePositionsController(AppDbContext dbContext, IAntiforge
             await using var stream = file.OpenReadStream();
             workbook = new XLWorkbook(stream);
         }
-        catch (Exception) when (true)
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
             return BadRequest(new { error = "无法读取 Excel 文件" });
         }
