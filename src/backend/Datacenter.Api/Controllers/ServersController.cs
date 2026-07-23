@@ -321,6 +321,98 @@ public sealed class ServersController(AppDbContext dbContext, IAntiforgery antif
         });
     }
 
+    [HttpPost("{id:guid}/rack")]
+    public async Task<IActionResult> Rack(Guid id, RackServerRequest request, CancellationToken cancellationToken)
+    {
+        if (!User.IsInRole(Roles.RoomAdministrator) && !User.IsInRole(Roles.Operations))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden);
+        }
+
+        try
+        {
+            await antiforgery.ValidateRequestAsync(HttpContext);
+        }
+        catch (AntiforgeryValidationException)
+        {
+            return BadRequest(new { error = "防伪令牌缺失或无效" });
+        }
+
+        if (request.StartU < 1)
+        {
+            return BadRequest(new { error = "起始U位必须大于等于1" });
+        }
+
+        var server = await dbContext.Servers.FindAsync(new object[] { id }, cancellationToken);
+        if (server is null)
+        {
+            return NotFound(new { error = "服务器不存在" });
+        }
+
+        if (server.PositionStatus is not ("未上架" or "已下架"))
+        {
+            return BadRequest(new { error = "服务器已在架，不能重复上架" });
+        }
+
+        var rack = await dbContext.Racks
+            .Include(item => item.Room)
+            .FirstOrDefaultAsync(item => item.Id == request.RackId, cancellationToken);
+
+        if (rack is null)
+        {
+            return NotFound(new { error = "机柜不存在" });
+        }
+
+        if (rack.Room.Status != "启用")
+        {
+            return BadRequest(new { error = "目标机柜所在机房未启用" });
+        }
+
+        var endU = request.StartU + server.DeviceHeight - 1;
+
+        if (endU > rack.HeightU)
+        {
+            return BadRequest(new { error = "U位超出机柜范围" });
+        }
+
+        var overlapping = await dbContext.ServerPositions
+            .AnyAsync(position =>
+                position.RackId == request.RackId
+                && position.Status == "在架"
+                && position.StartU <= endU
+                && position.EndU >= request.StartU,
+                cancellationToken);
+
+        if (overlapping)
+        {
+            return Conflict(new { error = "目标U位范围与已有在架设备冲突" });
+        }
+
+        var serverPosition = new ServerPosition
+        {
+            ServerId = id,
+            RackId = request.RackId,
+            StartU = request.StartU,
+            EndU = endU,
+            Status = "在架",
+            InstalledAt = DateTime.UtcNow
+        };
+
+        server.PositionStatus = "在架";
+
+        dbContext.ServerPositions.Add(serverPosition);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return StatusCode(StatusCodes.Status201Created, new
+        {
+            serverPositionId = serverPosition.Id,
+            serverName = server.Name,
+            rackCode = rack.Code,
+            startU = serverPosition.StartU,
+            endU = serverPosition.EndU
+        });
+    }
+
     private static bool IsServerUniqueConstraintViolation(DbUpdateException exception) =>
         exception.InnerException is SqliteException
         {
@@ -355,3 +447,7 @@ public sealed record UpdateServerRequest(
     string? System,
     string? Owner,
     string? Notes);
+
+public sealed record RackServerRequest(
+    Guid RackId,
+    int StartU);

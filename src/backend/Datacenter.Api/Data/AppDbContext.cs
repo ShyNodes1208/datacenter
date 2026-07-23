@@ -15,6 +15,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<Server> Servers => Set<Server>();
 
+    public DbSet<ServerPosition> ServerPositions => Set<ServerPosition>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var user = modelBuilder.Entity<User>();
@@ -83,5 +85,29 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         server.Property(item => item.DeviceHeight).IsRequired();
         server.Property(item => item.OperationalStatus).IsRequired();
         server.Property(item => item.PositionStatus).IsRequired();
+
+        var serverPosition = modelBuilder.Entity<ServerPosition>();
+        serverPosition.ToTable("ServerPositions", table =>
+        {
+            table.HasCheckConstraint(
+                "CK_ServerPositions_StartU",
+                "StartU >= 1");
+            table.HasCheckConstraint(
+                "CK_ServerPositions_Status",
+                "Status IN ('在架', '已下架')");
+        });
+        serverPosition.HasKey(item => item.Id);
+        serverPosition.Property(item => item.StartU).IsRequired();
+        serverPosition.Property(item => item.EndU).IsRequired();
+        serverPosition.Property(item => item.Status).IsRequired();
+        serverPosition.Property(item => item.InstalledAt).IsRequired();
+        serverPosition.HasOne(item => item.Server)
+            .WithMany()
+            .HasForeignKey(item => item.ServerId)
+            .OnDelete(DeleteBehavior.Restrict);
+        serverPosition.HasOne(item => item.Rack)
+            .WithMany()
+            .HasForeignKey(item => item.RackId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

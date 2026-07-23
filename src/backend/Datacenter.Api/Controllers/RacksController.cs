@@ -73,6 +73,79 @@ public sealed class RacksController(AppDbContext dbContext, IAntiforgery antifor
         return Ok(racks);
     }
 
+    [HttpGet("{id:guid}/availability")]
+    public async Task<IActionResult> GetAvailability(Guid id, CancellationToken cancellationToken)
+    {
+        var rack = await dbContext.Racks
+            .AsNoTracking()
+            .Select(item => new
+            {
+                item.Id,
+                item.Code,
+                item.HeightU
+            })
+            .FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
+
+        if (rack is null)
+        {
+            return NotFound(new { error = "机柜不存在" });
+        }
+
+        var occupiedPositions = await dbContext.ServerPositions
+            .AsNoTracking()
+            .Where(position => position.RackId == id && position.Status == "在架")
+            .Select(position => new
+            {
+                position.StartU,
+                position.EndU,
+                position.ServerId,
+                ServerName = position.Server.Name
+            })
+            .ToListAsync(cancellationToken);
+
+        var occupiedByU = new Dictionary<int, (string ServerName, Guid ServerId)>();
+
+        foreach (var occupied in occupiedPositions)
+        {
+            for (var u = occupied.StartU; u <= occupied.EndU; u++)
+            {
+                occupiedByU[u] = (occupied.ServerName, occupied.ServerId);
+            }
+        }
+
+        var positions = new List<object>();
+
+        for (var u = rack.HeightU; u >= 1; u--)
+        {
+            if (occupiedByU.TryGetValue(u, out var occupancy))
+            {
+                positions.Add(new
+                {
+                    uNumber = u,
+                    occupied = true,
+                    serverName = occupancy.ServerName,
+                    serverId = occupancy.ServerId
+                });
+            }
+            else
+            {
+                positions.Add(new
+                {
+                    uNumber = u,
+                    occupied = false
+                });
+            }
+        }
+
+        return Ok(new
+        {
+            rackId = rack.Id,
+            rackCode = rack.Code,
+            heightU = rack.HeightU,
+            positions
+        });
+    }
+
     [HttpPost("import-preview")]
     [RequestSizeLimit(10_000_000)]
     public async Task<IActionResult> ImportPreview(IFormFile file, CancellationToken cancellationToken)
