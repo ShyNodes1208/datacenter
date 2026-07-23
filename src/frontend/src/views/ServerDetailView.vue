@@ -116,43 +116,43 @@ onMounted(() => {
       <table style="border-collapse: collapse; margin-bottom: 1em">
         <tbody>
           <tr>
-            <td style="font-weight: bold; padding: 0.3em 0.5em">名称</td>
+            <td style="font-weight: bold; padding: 0.3em 0.5em; min-width: 80px; white-space: nowrap">名称</td>
             <td style="padding: 0.3em 0.5em">{{ server.name }}</td>
           </tr>
           <tr>
-            <td style="font-weight: bold; padding: 0.3em 0.5em">管理 IP</td>
+            <td style="font-weight: bold; padding: 0.3em 0.5em; min-width: 80px; white-space: nowrap">管理 IP</td>
             <td style="padding: 0.3em 0.5em">{{ server.managementIP }}</td>
           </tr>
           <tr>
-            <td style="font-weight: bold; padding: 0.3em 0.5em">资产编号</td>
+            <td style="font-weight: bold; padding: 0.3em 0.5em; min-width: 80px; white-space: nowrap">资产编号</td>
             <td style="padding: 0.3em 0.5em">{{ server.assetNumber ?? '-' }}</td>
           </tr>
           <tr>
-            <td style="font-weight: bold; padding: 0.3em 0.5em">设备类型</td>
+            <td style="font-weight: bold; padding: 0.3em 0.5em; min-width: 80px; white-space: nowrap">设备类型</td>
             <td style="padding: 0.3em 0.5em">{{ server.deviceType }}</td>
           </tr>
           <tr>
-            <td style="font-weight: bold; padding: 0.3em 0.5em">设备高度</td>
+            <td style="font-weight: bold; padding: 0.3em 0.5em; min-width: 80px; white-space: nowrap">设备高度</td>
             <td style="padding: 0.3em 0.5em">{{ server.deviceHeight }}U</td>
           </tr>
           <tr>
-            <td style="font-weight: bold; padding: 0.3em 0.5em">运行状态</td>
+            <td style="font-weight: bold; padding: 0.3em 0.5em; min-width: 80px; white-space: nowrap">运行状态</td>
             <td style="padding: 0.3em 0.5em">{{ server.operationalStatus }}（人工维护）</td>
           </tr>
           <tr>
-            <td style="font-weight: bold; padding: 0.3em 0.5em">位置状态</td>
+            <td style="font-weight: bold; padding: 0.3em 0.5em; min-width: 80px; white-space: nowrap">位置状态</td>
             <td style="padding: 0.3em 0.5em">{{ server.positionStatus }}</td>
           </tr>
           <tr v-if="server.system">
-            <td style="font-weight: bold; padding: 0.3em 0.5em">所属系统</td>
+            <td style="font-weight: bold; padding: 0.3em 0.5em; min-width: 80px; white-space: nowrap">所属系统</td>
             <td style="padding: 0.3em 0.5em">{{ server.system }}</td>
           </tr>
           <tr v-if="server.owner">
-            <td style="font-weight: bold; padding: 0.3em 0.5em">负责人</td>
+            <td style="font-weight: bold; padding: 0.3em 0.5em; min-width: 80px; white-space: nowrap">负责人</td>
             <td style="padding: 0.3em 0.5em">{{ server.owner }}</td>
           </tr>
           <tr v-if="server.notes">
-            <td style="font-weight: bold; padding: 0.3em 0.5em">备注</td>
+            <td style="font-weight: bold; padding: 0.3em 0.5em; min-width: 80px; white-space: nowrap">备注</td>
             <td style="padding: 0.3em 0.5em">{{ server.notes }}</td>
           </tr>
         </tbody>

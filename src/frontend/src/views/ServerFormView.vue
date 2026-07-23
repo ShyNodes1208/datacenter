@@ -194,43 +194,35 @@ onMounted(() => {
       <p v-for="(err, i) in validationErrors" :key="i" style="margin: 0">{{ err }}</p>
     </div>
 
-    <form v-if="!loading" @submit.prevent="onSubmit" style="display: flex; flex-direction: column; gap: 0.5em; max-width: 400px">
-      <label>
-        名称
+    <form v-if="!loading" @submit.prevent="onSubmit" style="max-width: 500px">
+      <div style="display: grid; grid-template-columns: 100px 1fr; gap: 0.5em; align-items: center">
+        <label style="text-align: right">名称</label>
         <input v-model="name" type="text" />
-      </label>
-      <label>
-        管理 IP
+
+        <label style="text-align: right">管理 IP</label>
         <input v-model="managementIP" type="text" />
-      </label>
-      <label>
-        资产编号
+
+        <label style="text-align: right">资产编号</label>
         <input v-model="assetNumber" type="text" placeholder="选填" />
-      </label>
-      <label>
-        设备类型
+
+        <label style="text-align: right">设备类型</label>
         <input v-model="deviceType" type="text" />
-      </label>
-      <label>
-        设备高度
+
+        <label style="text-align: right">设备高度</label>
         <input v-model.number="deviceHeight" type="number" min="1" />
-      </label>
-      <label>
-        所属系统
+
+        <label style="text-align: right">所属系统</label>
         <input v-model="system" type="text" placeholder="选填" />
-      </label>
-      <label>
-        负责人
+
+        <label style="text-align: right">负责人</label>
         <input v-model="owner" type="text" placeholder="选填" />
-      </label>
-      <label v-if="isEdit">
-        位置状态
-        <input :value="positionStatus" type="text" readonly disabled />
-      </label>
-      <label>
-        备注
+
+        <label v-if="isEdit" style="text-align: right">位置状态</label>
+        <input v-if="isEdit" :value="positionStatus" type="text" readonly disabled />
+
+        <label style="text-align: right">备注</label>
         <textarea v-model="notes" rows="3" placeholder="选填"></textarea>
-      </label>
+      </div>
 
       <div style="display: flex; gap: 0.5em; margin-top: 0.5em">
         <button type="submit" :disabled="submitting">
