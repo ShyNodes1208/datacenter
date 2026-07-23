@@ -3,9 +3,9 @@
 ## 任务信息
 
 - Task ID：TASK-0020
-- Status：READY
-- Implementation Started：NO
-- Blocker：无；但实施认领前必须等待 TASK-0019 释放重叠的两个前端路径
+- Status：BLOCKED
+- Implementation Started：YES
+- Blocker：BLOCKED_CHANGE_REQUEST_REQUIRED：测试规格要求直接使用 ClosedXML，但测试项目 `.csproj` 未纳入允许修改范围，API 项目的包引用不能供测试项目编译
 - Task Owner：Codex Backend（后端先实施并交接后，由 Cursor Frontend 实施前端）
 - Backend Owner：Codex Backend
 - Frontend Owner：Cursor Frontend
@@ -14,7 +14,7 @@
 - Requirement Source：项目负责人 2026-07-23 书面批准的“Excel 导入机柜”产品需求；`docs/product/MVP-PRODUCT-BASELINE.md` SC-02、6.1-2、BL-10 的本次书面启用裁决
 - Architecture Reference：`docs/architecture/AGENT-WORKFLOW.md`；现有 Cookie 认证、CSRF、Room、EF Core SQLite 与首页基线
 - Dependency：TASK-0007、TASK-0009；前端实施另依赖 TASK-0019 完成并释放重叠路径
-- Module Lock：Architect 规格锁已完成并释放；未认领任何 Backend 或 Frontend 实施锁
+- Module Lock：Architect 规格锁已完成并释放；Codex Backend 已认领后端实施路径
 
 ## 目标与最小范围
 
@@ -200,6 +200,7 @@ public sealed class Rack
 9. `src/frontend/src/views/HomeView.vue`
 10. `src/frontend/src/__tests__/router-and-views.test.ts`（按仓库真实路径校正）
 11. `tests/backend/Datacenter.Api.Tests/IntegrationTests/AuthTestFixture.cs`（可选，仅当测试 seed 必需）
+12. `tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj`（仅加 ClosedXML 0.104.2，供测试项目编译通过）
 
 任何额外产品文件、依赖或抽象均需先走 Change Request。实施者必须逐个精确路径检查并认领；不得认领 Backend/Frontend 目录父路径。TASK-0019 当前对第 9、10 项持有 `HANDED_OFF` 锁，释放前不得认领或修改这两个文件。
 
@@ -238,6 +239,8 @@ git diff --check
 - 例外：N/A；无需 hangyu 例外批准。
 - Workflow：`DRAFT → READY`；尚未进入 `IN_PROGRESS`。
 - 2026-07-23：PM 产品范围已书面批准；Codex Architect 完成数据模型、API、文件预算、验收标准和冲突前置条件，执行 `DRAFT → READY`。
+- 2026-07-23 13:22:44 +08:00：Codex Backend 核验无冲突，认领后端实施路径并执行 `READY → IN_PROGRESS`。
+- 2026-07-23 13:24:58 +08:00：`dotnet test --filter FullyQualifiedName~RackIntegrationTests` 编译失败 CS0246（测试项目无法解析 ClosedXML）。所需修正为将 `tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj` 加入允许文件，并仅增加 ClosedXML 0.104.2；该路径和修改尚未批准，故执行 `IN_PROGRESS → BLOCKED`。责任人：Claude 先裁决测试范围，Codex Architect 再裁决技术与文件预算；解除后恢复 `IN_PROGRESS`。8 项后端锁继续 CLAIMED。
 - 下一动作：待 TASK-0019 完成并释放重叠前端锁后，Codex Backend 在 feature 分支检查全部目标路径冲突，只认领后端精确实施路径并进入 `IN_PROGRESS`；后端交接后由 Cursor Frontend 独立认领前端路径。
 
 ## 完成门禁
