@@ -46,21 +46,35 @@ type LoginViewSetupState = {
   onSubmit: () => Promise<void>
 }
 
+type RoomFixture = {
+  id: string
+  name: string
+  status: string
+}
+
 type HomeViewSetupState = {
   errorMessage: string
   submitting: boolean
-  rooms: { name: string; status: string }[] | null
+  rooms: RoomFixture[] | null
   roomsError: string
   createFormVisible: boolean
   roomName: string
   roomStatus: string
   createSubmitting: boolean
   createError: string
+  editingRoomId: string | null
+  editName: string
+  editStatus: string
+  editSubmitting: boolean
+  editError: string
   isRoomAdmin: boolean
   loadRooms: () => Promise<void>
   openCreateForm: () => void
   cancelCreate: () => void
   onCreateRoom: () => Promise<void>
+  startEdit: (room: RoomFixture) => void
+  cancelEdit: () => void
+  saveEdit: (room: RoomFixture) => Promise<void>
   onLogout: () => Promise<void>
 }
 
@@ -119,6 +133,14 @@ async function mountHomeViewState(): Promise<HomeViewSetupState> {
     throw new Error('HomeView setupState was not captured')
   }
   return setupState
+}
+
+function readSetupField<T>(state: HomeViewSetupState, field: keyof HomeViewSetupState): T {
+  const raw = state[field]
+  if (raw !== null && typeof raw === 'object' && 'value' in (raw as object)) {
+    return (raw as { value: T }).value
+  }
+  return raw as T
 }
 
 async function flushUi(): Promise<void> {
@@ -274,12 +296,77 @@ async function mountInteractiveHomeView(): Promise<MountedHomeView> {
   }
 }
 
-function mockRoomsGet(data: Array<{ name: string; status: string }>) {
+let roomIdCounter = 0
+
+function nextRoomId(): string {
+  roomIdCounter += 1
+  return `room-id-${roomIdCounter}`
+}
+
+function mockRoomsGet(data: RoomFixture[]) {
   return {
     ok: true as const,
     data,
     headers: new Headers(),
     status: 200,
+  }
+}
+
+/**
+ * Shared HomeView setup bindings + real renderToString HTML for the same instance.
+ * Needed so edit/create interactions are visible in subsequent html() calls.
+ */
+async function mountSharedHomeView(): Promise<{
+  state: HomeViewSetupState
+  html: () => Promise<string>
+  writeField: <T>(field: keyof HomeViewSetupState, value: T) => void
+  unmount: () => void
+}> {
+  type SetupFn = (...args: unknown[]) => Record<string, unknown>
+  const component = HomeView as { setup: SetupFn }
+  const originalSetup = component.setup
+  let bindings: Record<string, unknown> | null = null
+
+  component.setup = (props, ctx) => {
+    if (bindings) {
+      return bindings
+    }
+    bindings = originalSetup(props, ctx)
+    return bindings
+  }
+
+  const renderRealHtml = async (): Promise<string> => {
+    const app = createSSRApp(HomeView)
+    return renderToString(app)
+  }
+
+  await renderRealHtml()
+  if (bindings === null) {
+    component.setup = originalSetup
+    throw new Error('HomeView setup bindings were not captured')
+  }
+
+  const state = bindings as unknown as HomeViewSetupState
+  await state.loadRooms()
+  await flushUi()
+
+  const writeField = <T,>(field: keyof HomeViewSetupState, value: T): void => {
+    const raw = bindings![field as string]
+    if (raw !== null && typeof raw === 'object' && 'value' in (raw as object)) {
+      ;(raw as { value: T }).value = value
+      return
+    }
+    ;(bindings as Record<string, unknown>)[field as string] = value
+  }
+
+  return {
+    state,
+    html: renderRealHtml,
+    writeField,
+    unmount: () => {
+      component.setup = originalSetup
+      bindings = null
+    },
   }
 }
 
@@ -291,6 +378,7 @@ afterEach(() => {
   requestMock.mockReset()
   pushMock.mockReset()
   userMock.value = null
+  roomIdCounter = 0
   vi.unstubAllGlobals()
 })
 
@@ -394,15 +482,15 @@ describe('HomeView protected shell (U14-C)', () => {
 })
 
 describe('HomeView readonly room list (G09-03)', () => {
-  const forbiddenControls = ['创建', '编辑', '删除', '详情', '搜索', '排序', '筛选', '分页']
+  const forbiddenControls = ['创建', '删除', '详情', '搜索', '排序', '筛选', '分页']
 
   it('shows room names and enabled/disabled status after a successful API response', async () => {
     userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
     requestMock.mockResolvedValue({
       ok: true,
       data: [
-        { name: '机房A', status: '启用' },
-        { name: '机房B', status: '停用' },
+        { id: 'room-1', name: '机房A', status: '启用' },
+        { id: 'room-2', name: '机房B', status: '停用' },
       ],
       headers: new Headers(),
       status: 200,
@@ -414,8 +502,8 @@ describe('HomeView readonly room list (G09-03)', () => {
 
     expect(requestMock).toHaveBeenCalledWith('/api/rooms', { method: 'GET' })
     expect(state.rooms).toEqual([
-      { name: '机房A', status: '启用' },
-      { name: '机房B', status: '停用' },
+      { id: 'room-1', name: '机房A', status: '启用' },
+      { id: 'room-2', name: '机房B', status: '停用' },
     ])
     expect(state.roomsError).toBe('')
     expect(html).toContain('aria-label="机房列表"')
@@ -458,25 +546,31 @@ describe('HomeView readonly room list (G09-03)', () => {
     expect(html).not.toContain('暂无机房')
   })
 
-  it('keeps the room list region free of create/edit/delete and related controls', async () => {
-    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+  it('keeps the room list region free of create/edit/delete and related controls for non-admin', async () => {
+    userMock.value = { id: '1', username: 'viewer', role: '只读查看人员' }
     requestMock.mockResolvedValue({
       ok: true,
-      data: [{ name: '机房A', status: '启用' }],
+      data: [{ id: 'room-1', name: '机房A', status: '启用' }],
       headers: new Headers(),
       status: 200,
     })
 
-    const state = await mountHomeViewState()
-    await state.loadRooms()
-    const html = await renderHomeViewHtml()
-    const listMatch = html.match(/<section[^>]*aria-label="机房列表"[^>]*>[\s\S]*?<\/section>/)
-    expect(listMatch).not.toBeNull()
-    const listHtml = listMatch?.[0] ?? ''
+    const view = await mountSharedHomeView()
+    try {
+      const html = await view.html()
+      const listMatch = html.match(/<section[^>]*aria-label="机房列表"[^>]*>[\s\S]*?<\/section>/)
+      expect(listMatch).not.toBeNull()
+      const listHtml = listMatch?.[0] ?? ''
 
-    expect(state.rooms).toEqual([{ name: '机房A', status: '启用' }])
-    for (const label of forbiddenControls) {
-      expect(listHtml).not.toContain(label)
+      expect(readSetupField<RoomFixture[] | null>(view.state, 'rooms')).toEqual([
+        { id: 'room-1', name: '机房A', status: '启用' },
+      ])
+      expect(listHtml).not.toContain('编辑')
+      for (const label of forbiddenControls) {
+        expect(listHtml).not.toContain(label)
+      }
+    } finally {
+      view.unmount()
     }
   })
 })
@@ -537,7 +631,7 @@ describe('HomeView create room (TASK-0018)', () => {
 
   it('posts a new room, reloads the list on the same instance, and closes the form', async () => {
     userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
-    let listData = [{ name: '旧机房', status: '启用' }]
+    let listData: RoomFixture[] = [{ id: 'room-1', name: '旧机房', status: '启用' }]
     requestMock.mockImplementation(async (path: string, options: { method?: string; body?: unknown; csrfToken?: string } = {}) => {
       if (path === '/api/auth/csrf') {
         return {
@@ -549,12 +643,12 @@ describe('HomeView create room (TASK-0018)', () => {
       }
       if (path === '/api/rooms' && options.method === 'POST') {
         listData = [
-          { name: '旧机房', status: '启用' },
-          { name: '主机房', status: '启用' },
+          { id: 'room-1', name: '旧机房', status: '启用' },
+          { id: 'room-2', name: '主机房', status: '启用' },
         ]
         return {
           ok: true,
-          data: { name: '主机房', status: '启用' },
+          data: { id: 'room-2', name: '主机房', status: '启用' },
           headers: new Headers(),
           status: 201,
         }
@@ -607,7 +701,7 @@ describe('HomeView create room (TASK-0018)', () => {
       if (path === '/api/rooms' && options.method === 'POST') {
         return { ok: false, error: '机房名称已存在', status: 409 }
       }
-      return mockRoomsGet([{ name: '主机房', status: '启用' }])
+      return mockRoomsGet([{ id: 'room-1', name: '主机房', status: '启用' }])
     })
 
     const view = await mountInteractiveHomeView()
@@ -678,7 +772,7 @@ describe('HomeView create room (TASK-0018)', () => {
         await postGate
         return {
           ok: true,
-          data: { name: '主机房', status: '启用' },
+          data: { id: 'room-2', name: '主机房', status: '启用' },
           headers: new Headers(),
           status: 201,
         }
@@ -717,7 +811,7 @@ describe('HomeView create room (TASK-0018)', () => {
 
   it('cancels the form, clears fields, and leaves the room list unchanged', async () => {
     userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
-    requestMock.mockResolvedValue(mockRoomsGet([{ name: '机房A', status: '启用' }]))
+    requestMock.mockResolvedValue(mockRoomsGet([{ id: 'room-1', name: '机房A', status: '启用' }]))
 
     const view = await mountInteractiveHomeView()
     try {
@@ -738,6 +832,291 @@ describe('HomeView create room (TASK-0018)', () => {
       expect(view.inputValue(reopened, 'roomName')).toBe('')
       expect(view.selectedStatus(reopened)).toBe('启用')
       expect(view.createErrorText(reopened)).toBe('')
+    } finally {
+      view.unmount()
+    }
+  })
+})
+
+describe('HomeView edit room', () => {
+  it('shows edit button for 机房管理员 and hides for other roles', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    requestMock.mockResolvedValue(
+      mockRoomsGet([{ id: 'room-1', name: '机房A', status: '启用' }]),
+    )
+
+    const adminView = await mountSharedHomeView()
+    try {
+      const html = await adminView.html()
+      expect(html).toContain('编辑')
+    } finally {
+      adminView.unmount()
+    }
+
+    for (const role of ['运维人员', 'DBA/应用运维人员', '只读查看人员']) {
+      userMock.value = { id: '1', username: 'user', role }
+      requestMock.mockResolvedValue(
+        mockRoomsGet([{ id: 'room-1', name: '机房A', status: '启用' }]),
+      )
+      const view = await mountSharedHomeView()
+      try {
+        const html = await view.html()
+        expect(html).not.toContain('编辑')
+      } finally {
+        view.unmount()
+      }
+    }
+  })
+
+  it('opens edit form with pre-filled values from the room', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    requestMock.mockResolvedValue(
+      mockRoomsGet([{ id: 'room-1', name: '主机房', status: '停用' }]),
+    )
+
+    const view = await mountSharedHomeView()
+    try {
+      view.state.startEdit({ id: 'room-1', name: '主机房', status: '停用' })
+      await flushUi()
+
+      const html = await view.html()
+      expect(html).toMatch(/name="editName"/)
+      expect(html).toMatch(/name="editStatus"/)
+      expect(html).toContain('value="主机房"')
+      expect(html).toMatch(/<option[^>]*value="停用"[^>]*selected/)
+      expect(html).toContain('保存')
+      expect(html).toContain('取消')
+    } finally {
+      view.unmount()
+    }
+  })
+
+  it('sends PUT with correct id, reloads list, and shows updated values', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    let getData: RoomFixture[] = [{ id: 'room-1', name: '旧名', status: '启用' }]
+
+    requestMock.mockImplementation(
+      async (path: string, options: { method?: string; body?: unknown; csrfToken?: string } = {}) => {
+        if (path === '/api/auth/csrf') {
+          return {
+            ok: true,
+            data: undefined,
+            headers: new Headers({ 'X-XSRF-TOKEN': 'csrf-edit-1' }),
+            status: 200,
+          }
+        }
+        if (path === '/api/rooms/room-1' && options.method === 'PUT') {
+          getData = [{ id: 'room-1', name: '新名', status: '停用' }]
+          return {
+            ok: true,
+            data: { id: 'room-1', name: '新名', status: '停用' },
+            headers: new Headers(),
+            status: 200,
+          }
+        }
+        if (path === '/api/rooms') {
+          return mockRoomsGet(getData)
+        }
+        return { ok: false, error: 'unexpected', status: 500 }
+      },
+    )
+
+    const view = await mountSharedHomeView()
+    try {
+      view.state.startEdit({ id: 'room-1', name: '旧名', status: '启用' })
+      view.writeField('editName', '新名')
+      view.writeField('editStatus', '停用')
+      await view.state.saveEdit({ id: 'room-1', name: '旧名', status: '启用' })
+      await flushUi()
+
+      const putCalls = requestMock.mock.calls.filter(
+        (call) => call[0] === '/api/rooms/room-1' && call[1]?.method === 'PUT',
+      )
+      expect(putCalls.length).toBe(1)
+      expect(putCalls[0]?.[1]).toMatchObject({
+        method: 'PUT',
+        body: { name: '新名', status: '停用' },
+        csrfToken: 'csrf-edit-1',
+      })
+
+      expect(readSetupField<string | null>(view.state, 'editingRoomId')).toBeNull()
+
+      const html = await view.html()
+      expect(html).toContain('新名')
+      expect(html).toContain('停用')
+      expect(html).not.toContain('旧名')
+    } finally {
+      view.unmount()
+    }
+  })
+
+  it('keeps edit form open with input retained on duplicate name error', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    requestMock.mockImplementation(
+      async (path: string, options: { method?: string } = {}) => {
+        if (path === '/api/auth/csrf') {
+          return {
+            ok: true,
+            data: undefined,
+            headers: new Headers({ 'X-XSRF-TOKEN': 'csrf-dup' }),
+            status: 200,
+          }
+        }
+        if (path === '/api/rooms/room-1' && options.method === 'PUT') {
+          return { ok: false, error: '机房名称已存在', status: 409 }
+        }
+        return mockRoomsGet([{ id: 'room-1', name: '机房A', status: '启用' }])
+      },
+    )
+
+    const view = await mountSharedHomeView()
+    try {
+      view.state.startEdit({ id: 'room-1', name: '机房A', status: '启用' })
+      view.writeField('editName', '重复名')
+      await view.state.saveEdit({ id: 'room-1', name: '机房A', status: '启用' })
+      await flushUi()
+
+      expect(readSetupField<string | null>(view.state, 'editingRoomId')).toBe('room-1')
+      expect(readSetupField<string>(view.state, 'editName')).toBe('重复名')
+      expect(readSetupField<string>(view.state, 'editError')).toBe('机房名称已存在')
+
+      const html = await view.html()
+      expect(html).toContain('机房名称已存在')
+      expect(html).toMatch(/name="editName"/)
+      expect(html).toContain('value="重复名"')
+    } finally {
+      view.unmount()
+    }
+  })
+
+  it('cancel restores display row without sending PUT', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    requestMock.mockResolvedValue(
+      mockRoomsGet([{ id: 'room-1', name: '机房A', status: '启用' }]),
+    )
+
+    const view = await mountSharedHomeView()
+    try {
+      view.state.startEdit({ id: 'room-1', name: '机房A', status: '启用' })
+      view.writeField('editName', '暂不保存')
+      view.state.cancelEdit()
+      await flushUi()
+
+      expect(readSetupField<string | null>(view.state, 'editingRoomId')).toBeNull()
+
+      const html = await view.html()
+      expect(html).toContain('机房A')
+      expect(html).toContain('编辑')
+      expect(html).not.toMatch(/name="editName"/)
+
+      const putCalls = requestMock.mock.calls.filter(
+        (call) => call[1]?.method === 'PUT',
+      )
+      expect(putCalls.length).toBe(0)
+    } finally {
+      view.unmount()
+    }
+  })
+
+  it('disables save button while edit-submitting to prevent duplicate PUT', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    let resolvePut!: (value: unknown) => void
+    const putGate = new Promise((resolve) => {
+      resolvePut = resolve
+    })
+
+    requestMock.mockImplementation(
+      async (path: string, options: { method?: string } = {}) => {
+        if (path === '/api/auth/csrf') {
+          return {
+            ok: true,
+            data: undefined,
+            headers: new Headers({ 'X-XSRF-TOKEN': 'csrf-gate' }),
+            status: 200,
+          }
+        }
+        if (path === '/api/rooms/room-1' && options.method === 'PUT') {
+          await putGate
+          return {
+            ok: true,
+            data: { id: 'room-1', name: '主机房', status: '启用' },
+            headers: new Headers(),
+            status: 200,
+          }
+        }
+        return mockRoomsGet([{ id: 'room-1', name: '旧名', status: '启用' }])
+      },
+    )
+
+    const view = await mountSharedHomeView()
+    try {
+      view.state.startEdit({ id: 'room-1', name: '旧名', status: '启用' })
+      view.writeField('editName', '主机房')
+
+      const submitPromise = view.state.saveEdit({ id: 'room-1', name: '旧名', status: '启用' })
+      await flushUi()
+
+      const html = await view.html()
+      // 保存按钮文字变为保存中...且 disabled
+      const saveMatch = html.match(
+        /<button[^>]*type="button"[^>]*disabled[^>]*>\s*保存中\.\.\.\s*<\/button>/,
+      )
+      expect(saveMatch).not.toBeNull()
+
+      // 二次保存不产生新 PUT
+      await view.state.saveEdit({ id: 'room-1', name: '旧名', status: '启用' })
+      await Promise.resolve()
+      const putCalls = requestMock.mock.calls.filter(
+        (call) => call[0] === '/api/rooms/room-1' && call[1]?.method === 'PUT',
+      )
+      expect(putCalls.length).toBe(1)
+
+      resolvePut(undefined)
+      await submitPromise
+      await flushUi()
+    } finally {
+      view.unmount()
+    }
+  })
+
+  it('hides create button during edit and hides edit buttons during create', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    requestMock.mockResolvedValue(
+      mockRoomsGet([{ id: 'room-1', name: '机房A', status: '启用' }]),
+    )
+
+    const view = await mountSharedHomeView()
+    try {
+      // 初始状态：新增和编辑按钮都可见
+      let html = await view.html()
+      expect(html).toContain('新增机房')
+      expect(html).toContain('编辑')
+
+      // 进入编辑：新增按钮消失
+      view.state.startEdit({ id: 'room-1', name: '机房A', status: '启用' })
+      await flushUi()
+      html = await view.html()
+      expect(html).not.toContain('新增机房')
+      expect(html).toMatch(/name="editName"/)
+
+      // 取消编辑：新增按钮恢复
+      view.state.cancelEdit()
+      await flushUi()
+      html = await view.html()
+      expect(html).toContain('新增机房')
+
+      // 打开新增表单：编辑按钮消失
+      view.state.openCreateForm()
+      await flushUi()
+      html = await view.html()
+      expect(html).not.toContain('编辑')
+      expect(html).toMatch(/name="roomName"/)
+
+      // 取消新增：编辑按钮恢复
+      view.state.cancelCreate()
+      await flushUi()
+      html = await view.html()
+      expect(html).toContain('编辑')
     } finally {
       view.unmount()
     }

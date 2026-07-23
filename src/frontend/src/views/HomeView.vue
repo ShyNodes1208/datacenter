@@ -5,6 +5,7 @@ import { useApi } from '../composables/useApi'
 import { useAuth } from '../composables/useAuth'
 
 type RoomItem = {
+  id: string
   name: string
   status: string
 }
@@ -27,6 +28,12 @@ const roomName = ref('')
 const roomStatus = ref('启用')
 const createSubmitting = ref(false)
 const createError = ref('')
+
+const editingRoomId = ref<string | null>(null)
+const editName = ref('')
+const editStatus = ref('启用')
+const editSubmitting = ref(false)
+const editError = ref('')
 
 const isRoomAdmin = computed(() => user.value?.role === ROOM_ADMIN_ROLE)
 
@@ -54,12 +61,16 @@ async function loadRooms(): Promise<void> {
       return
     }
     const record = item as Record<string, unknown>
-    if (typeof record.name !== 'string' || typeof record.status !== 'string') {
+    if (
+      typeof record.id !== 'string' ||
+      typeof record.name !== 'string' ||
+      typeof record.status !== 'string'
+    ) {
       rooms.value = null
       roomsError.value = 'Request failed.'
       return
     }
-    parsed.push({ name: record.name, status: record.status })
+    parsed.push({ id: record.id, name: record.name, status: record.status })
   }
 
   rooms.value = parsed
@@ -78,6 +89,65 @@ function cancelCreate(): void {
   roomName.value = ''
   roomStatus.value = '启用'
   createError.value = ''
+}
+
+function startEdit(room: RoomItem): void {
+  editingRoomId.value = room.id
+  editName.value = room.name
+  editStatus.value = room.status
+  editError.value = ''
+}
+
+function cancelEdit(): void {
+  editingRoomId.value = null
+  editName.value = ''
+  editStatus.value = '启用'
+  editError.value = ''
+}
+
+async function fetchEditCsrfToken(): Promise<string | null> {
+  const result = await request('/api/auth/csrf', { method: 'GET' })
+  if (!result.ok) {
+    editError.value = result.error
+    return null
+  }
+  const token = result.headers.get('X-XSRF-TOKEN')
+  if (!token) {
+    editError.value = 'Request failed.'
+    return null
+  }
+  return token
+}
+
+async function saveEdit(room: RoomItem): Promise<void> {
+  if (editSubmitting.value) return
+  editSubmitting.value = true
+  editError.value = ''
+
+  const token = await fetchEditCsrfToken()
+  if (token === null) {
+    editSubmitting.value = false
+    return
+  }
+
+  const result = await request(`/api/rooms/${room.id}`, {
+    method: 'PUT',
+    body: { name: editName.value, status: editStatus.value },
+    csrfToken: token,
+  })
+
+  if (!result.ok) {
+    editError.value = result.error
+    editSubmitting.value = false
+    return
+  }
+
+  editingRoomId.value = null
+  editName.value = ''
+  editStatus.value = '启用'
+  editError.value = ''
+  await loadRooms()
+  editSubmitting.value = false
 }
 
 async function fetchCreateCsrfToken(): Promise<string | null> {
@@ -162,7 +232,7 @@ async function onLogout(): Promise<void> {
 
     <template v-if="isRoomAdmin">
       <button
-        v-if="!createFormVisible"
+        v-if="!createFormVisible && !editingRoomId"
         type="button"
         @click="openCreateForm"
       >
@@ -194,9 +264,24 @@ async function onLogout(): Promise<void> {
       <div v-if="roomsError" role="alert" aria-live="polite">{{ roomsError }}</div>
       <p v-else-if="rooms !== null && rooms.length === 0">暂无机房</p>
       <ul v-else-if="rooms !== null">
-        <li v-for="(room, index) in rooms" :key="index">
-          <span>{{ room.name }}</span>
-          <span>{{ room.status }}</span>
+        <li v-for="room in rooms" :key="room.id">
+          <template v-if="editingRoomId === room.id">
+            <input v-model="editName" name="editName" type="text" />
+            <select v-model="editStatus" name="editStatus">
+              <option value="启用">启用</option>
+              <option value="停用">停用</option>
+            </select>
+            <button type="button" :disabled="editSubmitting" @click="saveEdit(room)">
+              {{ editSubmitting ? '保存中...' : '保存' }}
+            </button>
+            <button type="button" :disabled="editSubmitting" @click="cancelEdit">取消</button>
+            <div v-if="editError" role="alert" aria-live="polite">{{ editError }}</div>
+          </template>
+          <template v-else>
+            <span>{{ room.name }}</span>
+            <span>{{ room.status }}</span>
+            <button v-if="isRoomAdmin && !createFormVisible" type="button" @click="startEdit(room)">编辑</button>
+          </template>
         </li>
       </ul>
     </section>

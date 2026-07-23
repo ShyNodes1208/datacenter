@@ -8,6 +8,8 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 |---|---|---|---|---|---|---|
 | TASK-0019 | src/backend/Datacenter.Api/Controllers/RoomsController.cs | Codex Backend | 2026-07-23 10:41:21 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；TASK-0019 进入 COMPLETED 或 CANCELLED 时释放 | |
 | TASK-0019 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RoomIntegrationTests.cs | Codex Backend | 2026-07-23 10:41:21 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；TASK-0019 进入 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0019 | src/frontend/src/views/HomeView.vue | Cursor Frontend | 2026-07-23 | HANDED_OFF | Reviewer：Codex Reviewer；TASK-0019 进入 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0019 | src/frontend/src/__tests__/router-and-views.test.ts | Cursor Frontend | 2026-07-23 | HANDED_OFF | Reviewer：Codex Reviewer；TASK-0019 进入 COMPLETED 或 CANCELLED 时释放 | |
 | TASK-0018 | src/backend/Datacenter.Api/Controllers/RoomsController.cs | Codex Backend | 2026-07-22 22:24:12 +08:00 | RELEASED | Reviewer：Codex Reviewer；TASK-0018 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-23 08:00:40 +08:00（CLAIMED → HANDED_OFF → RELEASED；T18-RV-001 复审 PASS；TASK-0018 COMPLETED） |
 | TASK-0018 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RoomIntegrationTests.cs | Codex Backend | 2026-07-22 22:24:12 +08:00 | RELEASED | Reviewer：Codex Reviewer；TASK-0018 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-23 08:00:40 +08:00（CLAIMED → HANDED_OFF → RELEASED；T18-RV-001 复审 PASS；TASK-0018 COMPLETED） |
 | TASK-0018 | src/frontend/src/views/HomeView.vue | Cursor Frontend | 2026-07-22 22:46:16 +08:00 | RELEASED | Reviewer：Codex Reviewer；Purpose：TASK-0018 机房管理员新增机房前端；TASK-0018 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-23 08:00:40 +08:00（CLAIMED → HANDED_OFF → RELEASED；T18-RV-001 复审 PASS；TASK-0018 COMPLETED） |
@@ -133,6 +135,17 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 - 实现内容：GET 返回 id/name/status；新增管理员 PUT 编辑端点及批准的 6 组 PUT 集成测试
 - 验证：`dotnet test` PASS（52/52）；工作流校验 PASS（20/20）；`git diff --check` PASS
 - 修改限制：独立 Reviewer 结论或合法进入 IN_FIX 前，Codex Backend 不得继续修改上述两个路径
+
+## TASK-0019 Frontend 实现交接记录
+
+- 记录时间：2026-07-23
+- 交接角色与原实施者：Cursor Frontend
+- 后续角色：Codex Reviewer
+- 原锁状态：两个前端产品文件 CLAIMED by Cursor Frontend
+- 新锁状态：两个前端产品文件 HANDED_OFF；路径和 Owner 不变
+- 实现内容：HomeView 行内编辑（编辑按钮权限、预填表单、PUT 请求、保存后重载、错误保留、取消恢复）；新增 5 个编辑测试 + 2 个互斥/防重测试
+- 验证：`npx vitest run` PASS（63/63 → 65/65）
+- 修改限制：独立 Reviewer 结论或合法进入 IN_FIX 前，Cursor Frontend 不得继续修改上述两个路径
 
 ## TASK-0008 实现审核交接记录
 
