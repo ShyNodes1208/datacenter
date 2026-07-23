@@ -6,6 +6,14 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 
 | Task ID | Module or Path | Owner | Claimed At | Status | Release Condition | Released At |
 |---|---|---|---|---|---|---|
+| TASK-0020 | src/backend/Datacenter.Api/Datacenter.Api.csproj | Codex Backend | 2026-07-23 13:22:44 +08:00 | HANDED_OFF | TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0020 | src/backend/Datacenter.Api/Models/Rack.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | HANDED_OFF | TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0020 | src/backend/Datacenter.Api/Data/AppDbContext.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | HANDED_OFF | TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0020 | src/backend/Datacenter.Api/Migrations/20260723052334_AddRacks.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | HANDED_OFF | TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0020 | src/backend/Datacenter.Api/Migrations/20260723052334_AddRacks.Designer.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | HANDED_OFF | TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0020 | src/backend/Datacenter.Api/Migrations/AppDbContextModelSnapshot.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | HANDED_OFF | TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0020 | src/backend/Datacenter.Api/Controllers/RacksController.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | HANDED_OFF | TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0020 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RackIntegrationTests.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | HANDED_OFF | TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
 | TASK-0020 | tasks/TASK-0020-IMPORT-RACKS.md | Codex Architect | 2026-07-23 +08:00 | RELEASED | 完成已批准架构规格并执行 DRAFT → READY 后释放；不转交或代领实施锁 | 2026-07-23 +08:00（Codex Architect 完成规格并释放；未认领 Backend/Frontend 实施锁） |
 | TASK-0020 | tasks/current-task.md | Codex Architect | 2026-07-23 +08:00 | RELEASED | 仅登记 TASK-0020 为下一 READY 任务；保留 TASK-0019 当前审核事实；规格完成后释放 | 2026-07-23 +08:00（Codex Architect 完成同步并释放；未认领 Backend/Frontend 实施锁） |
 | TASK-0020 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-23 +08:00 | RELEASED | 仅登记并释放三项 Architect 规格锁；不得修改 TASK-0019 产品锁 | 2026-07-23 +08:00（Codex Architect 完成登记并释放；TASK-0019 四项 HANDED_OFF 锁保持不变） |
@@ -126,6 +134,19 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 | CR6-RV-001 | tasks/TASK-0007-BACKEND-FOUNDATION.md | Codex Architect | 2026-07-19 | RELEASED | 仅恢复 675dc437^ 已批准验证基线；完成纠正后释放 | 2026-07-19（Codex Architect 完成审计纠正并释放） |
 | CR6-RV-001 | tasks/current-task.md | Codex Architect | 2026-07-19 | RELEASED | 仅同步等待独立纠正复审；完成纠正后释放 | 2026-07-19（Codex Architect 完成审计纠正并释放） |
 | CR6-RV-001 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-19 | RELEASED | 仅同步纠正复审说明；不修改 19 项实施锁 | 2026-07-19（Codex Architect 完成审计纠正并释放） |
+
+## TASK-0020 Backend 阻塞记录
+
+- 记录时间：2026-07-23 13:24:58 +08:00
+- 状态迁移：`IN_PROGRESS → BLOCKED`
+- Blocker：`BLOCKED_CHANGE_REQUEST_REQUIRED`
+- 证据：Rack 集成测试按规格直接引用 ClosedXML 时出现 CS0246；API 项目的 PackageReference 不向测试项目提供编译引用
+- 缺失批准：`tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj` 不在允许修改范围；需仅增加 ClosedXML 0.104.2
+- 责任人与解除条件：Claude 批准测试范围，Codex Architect 批准技术影响并更新文件预算后恢复 `IN_PROGRESS`
+- 锁状态：8 项 TASK-0020 后端实施锁继续 CLAIMED；不释放、不交接、不新增未批准路径
+- 已完成内容：ClosedXML API 引用、Rack 模型/配置/Migration、Controller 初版、Rack 集成测试初版均保留在工作区
+- 审计纠正：测试 `.csproj` 的 ClosedXML 0.104.2 实际已存在于当前提交基线；CS0246 来自首次命令使用 `--no-restore` 且资产文件未刷新。测试 `.csproj` 无差异，不需要新锁。项目负责人于 2026-07-23 13:27:33 +08:00 指示解除阻塞后执行 `BLOCKED → IN_PROGRESS`，原 8 项锁保持 CLAIMED。
+- Backend 交接：2026-07-23 13:29:30 +08:00，8 项后端锁 `CLAIMED → HANDED_OFF`；后端测试 69/69 PASS；Migration 无待处理模型变化；工作流 20/20 PASS；`git diff --check` PASS。任务整体保持 IN_PROGRESS，下一角色 Cursor Frontend。
 
 ## TASK-0019 Backend 实现交接记录
 

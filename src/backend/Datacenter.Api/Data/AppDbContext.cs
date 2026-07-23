@@ -9,6 +9,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<Room> Rooms => Set<Room>();
 
+    public DbSet<Rack> Racks => Set<Rack>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var user = modelBuilder.Entity<User>();
@@ -30,5 +32,19 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         room.HasIndex(item => item.Name).IsUnique();
         room.Property(item => item.Name).IsRequired();
         room.Property(item => item.Status).IsRequired();
+
+        var rack = modelBuilder.Entity<Rack>();
+        rack.ToTable("Racks");
+        rack.HasKey(item => item.Id);
+        rack.HasIndex(item => new { item.RoomId, item.Code }).IsUnique();
+        rack.Property(item => item.Code).IsRequired();
+        rack.Property(item => item.HeightU).IsRequired();
+        rack.Property(item => item.X).IsRequired();
+        rack.Property(item => item.Y).IsRequired();
+        rack.Property(item => item.Z).IsRequired();
+        rack.HasOne(item => item.Room)
+            .WithMany()
+            .HasForeignKey(item => item.RoomId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 }

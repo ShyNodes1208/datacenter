@@ -7,17 +7,17 @@
 - Previous Task：TASK-0019（COMPLETED，已合入 main）
 - Current Task：TASK-0020
 - Title：Excel 导入机柜
-- Status：READY
+- Status：IN_PROGRESS
 - Owner：Codex Backend
 - Reviewer：Codex Reviewer
 - Branch：feature/task-0020-import-racks
 - Task File：tasks/TASK-0020-IMPORT-RACKS.md
-- Implementation Started：NO
-- Active Product Locks：0
+- Implementation Started：YES
+- Active Product Locks：8（后端全部 HANDED_OFF）
 - Blocker：无
-- Next Action：Codex Backend 认领后端实施锁，执行 READY → IN_PROGRESS
+- Next Action：Cursor Frontend 核验冲突并认领两个批准的前端路径，完成导入交互与前端测试
 
-TASK-0020 规格已 READY，Architect 已完成。等待 Codex Backend 开始实施。
+TASK-0020 Backend 已完成：后端测试 69/69 PASS，Migration 模型一致性 PASS，工作流 20/20 PASS，`git diff --check` PASS。8 项后端锁于 2026-07-23 13:29:30 +08:00 转为 HANDED_OFF；任务整体保持 IN_PROGRESS，等待 Frontend 实施。
 
 ## Next Ready Task
 
