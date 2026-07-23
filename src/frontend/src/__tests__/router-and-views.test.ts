@@ -52,6 +52,32 @@ type RoomFixture = {
   status: string
 }
 
+type ImportRowFixture = {
+  row: number
+  code: string | null
+  roomName: string | null
+  roomId: string | null
+  heightU: number | null
+  brand: string | null
+  power: number | null
+  notes: string | null
+  x: number | null
+  y: number | null
+  z: number | null
+  errors: string[]
+  duplicate: boolean
+  existingRackId: string | null
+  action: 'create' | 'skip' | 'overwrite'
+}
+
+type ImportPreviewFixture = {
+  rows: ImportRowFixture[]
+  totalRows: number
+  validRows: number
+  errorRows: number
+  duplicateRows: number
+}
+
 type HomeViewSetupState = {
   errorMessage: string
   submitting: boolean
@@ -67,6 +93,17 @@ type HomeViewSetupState = {
   editStatus: string
   editSubmitting: boolean
   editError: string
+  importVisible: boolean
+  importPreview: ImportPreviewFixture | null
+  importSubmitting: boolean
+  importError: string
+  importResult: {
+    created: number
+    skipped: number
+    overwritten: number
+    failed: number
+    errors: Array<{ row: number; error: string }>
+  } | null
   isRoomAdmin: boolean
   loadRooms: () => Promise<void>
   openCreateForm: () => void
@@ -75,6 +112,11 @@ type HomeViewSetupState = {
   startEdit: (room: RoomFixture) => void
   cancelEdit: () => void
   saveEdit: (room: RoomFixture) => Promise<void>
+  openImport: () => void
+  cancelImport: () => void
+  uploadPreview: (file: File) => Promise<void>
+  submitImport: () => Promise<void>
+  closeResult: () => void
   onLogout: () => Promise<void>
 }
 
@@ -1119,6 +1161,198 @@ describe('HomeView edit room', () => {
       await flushUi()
       html = await view.html()
       expect(html).toContain('编辑')
+    } finally {
+      view.unmount()
+    }
+  })
+})
+
+describe('HomeView import racks', () => {
+  const previewRow = (overrides: Partial<ImportRowFixture> = {}): ImportRowFixture => ({
+    row: 2,
+    code: 'R001',
+    roomName: '主机房',
+    roomId: 'room-1',
+    heightU: 42,
+    brand: '华为',
+    power: 5.5,
+    notes: '核心机柜',
+    x: 1,
+    y: 2,
+    z: 1,
+    errors: [],
+    duplicate: false,
+    existingRackId: null,
+    action: 'create',
+    ...overrides,
+  })
+
+  it('shows import button for any authenticated user', async () => {
+    userMock.value = { id: '1', username: 'user', role: '只读查看人员' }
+    requestMock.mockResolvedValue(mockRoomsGet([]))
+    const state = await mountHomeViewState()
+    await state.loadRooms()
+
+    const html = await renderHomeViewHtml()
+
+    expect(html).toContain('Excel 导入机柜')
+  })
+
+  it('opens file input after clicking import', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    requestMock.mockResolvedValue(mockRoomsGet([]))
+    const view = await mountSharedHomeView()
+    try {
+      view.state.openImport()
+      await flushUi()
+
+      const html = await view.html()
+      expect(html).toMatch(/type="file"/)
+      expect(html).toMatch(/accept="\.xlsx"/)
+    } finally {
+      view.unmount()
+    }
+  })
+
+  it('cancel clears import area', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    requestMock.mockResolvedValue(mockRoomsGet([]))
+    const view = await mountSharedHomeView()
+    try {
+      view.state.openImport()
+      view.state.cancelImport()
+      await flushUi()
+
+      const html = await view.html()
+      expect(html).not.toMatch(/type="file"/)
+    } finally {
+      view.unmount()
+    }
+  })
+
+  it('uploads a file and renders the preview rows', async () => {
+    userMock.value = { id: '1', username: 'user', role: '运维人员' }
+    requestMock.mockImplementation(async (path: string) => {
+      if (path === '/api/auth/csrf') {
+        return {
+          ok: true,
+          data: undefined,
+          headers: new Headers({ 'X-XSRF-TOKEN': 'preview-token' }),
+          status: 200,
+        }
+      }
+      return mockRoomsGet([])
+    })
+    const mockFetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          rows: [previewRow()],
+          totalRows: 1,
+          validRows: 1,
+          errorRows: 0,
+          duplicateRows: 0,
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    )
+    vi.stubGlobal('fetch', mockFetch)
+
+    const view = await mountSharedHomeView()
+    try {
+      view.state.openImport()
+      await view.state.uploadPreview(
+        new File(['workbook'], 'racks.xlsx', {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        }),
+      )
+      await flushUi()
+
+      const html = await view.html()
+      expect(html).toContain('R001')
+      expect(html).toContain('主机房')
+      expect(html).toContain('核心机柜')
+      expect(html).toContain('共 1 行，1 有效，0 错误，0 重复')
+      expect(mockFetch).toHaveBeenCalledWith(
+        '/api/racks/import-preview',
+        expect.objectContaining({ method: 'POST', credentials: 'include' }),
+      )
+    } finally {
+      view.unmount()
+    }
+  })
+
+  it('shows overwrite and skip choices for a duplicate row', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    requestMock.mockResolvedValue(mockRoomsGet([]))
+    const view = await mountSharedHomeView()
+    try {
+      view.state.openImport()
+      view.writeField<ImportPreviewFixture>('importPreview', {
+        rows: [
+          previewRow({
+            duplicate: true,
+            existingRackId: 'rack-1',
+            action: 'skip',
+          }),
+        ],
+        totalRows: 1,
+        validRows: 1,
+        errorRows: 0,
+        duplicateRows: 1,
+      })
+      await flushUi()
+
+      const html = await view.html()
+      expect(html).toMatch(/<select[\s\S]*?<option[^>]*value="skip"[^>]*>跳过<\/option>/)
+      expect(html).toMatch(/<option[^>]*value="overwrite"[^>]*>覆盖<\/option>/)
+      expect(html).toContain('重复')
+    } finally {
+      view.unmount()
+    }
+  })
+
+  it('shows result counts after confirming import', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    requestMock.mockImplementation(async (path: string) => {
+      if (path === '/api/auth/csrf') {
+        return {
+          ok: true,
+          data: undefined,
+          headers: new Headers({ 'X-XSRF-TOKEN': 'import-token' }),
+          status: 200,
+        }
+      }
+      if (path === '/api/racks/import') {
+        return {
+          ok: true,
+          data: { created: 3, skipped: 1, overwritten: 2, failed: 1, errors: [] },
+          headers: new Headers(),
+          status: 200,
+        }
+      }
+      return mockRoomsGet([])
+    })
+
+    const view = await mountSharedHomeView()
+    try {
+      view.state.openImport()
+      view.writeField<ImportPreviewFixture>('importPreview', {
+        rows: [previewRow()],
+        totalRows: 1,
+        validRows: 1,
+        errorRows: 0,
+        duplicateRows: 0,
+      })
+      await view.state.submitImport()
+      await flushUi()
+
+      const html = await view.html()
+      expect(html).toContain('导入完成：新增 3，跳过 1，覆盖 2，失败 1')
+      expect(html).toMatch(/<button[^>]*>关闭<\/button>/)
+      expect(requestMock).toHaveBeenCalledWith(
+        '/api/racks/import',
+        expect.objectContaining({ method: 'POST', csrfToken: 'import-token' }),
+      )
     } finally {
       view.unmount()
     }

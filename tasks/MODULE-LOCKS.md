@@ -6,6 +6,8 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 
 | Task ID | Module or Path | Owner | Claimed At | Status | Release Condition | Released At |
 |---|---|---|---|---|---|---|
+| TASK-0020 | src/frontend/src/views/HomeView.vue | Cursor Frontend | 2026-07-23 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0020 | src/frontend/src/__tests__/router-and-views.test.ts | Cursor Frontend | 2026-07-23 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
 | TASK-0020 | src/backend/Datacenter.Api/Datacenter.Api.csproj | Codex Backend | 2026-07-23 13:22:44 +08:00 | HANDED_OFF | TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
 | TASK-0020 | src/backend/Datacenter.Api/Models/Rack.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | HANDED_OFF | TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
 | TASK-0020 | src/backend/Datacenter.Api/Data/AppDbContext.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | HANDED_OFF | TASK-0020 COMPLETED 或 CANCELLED 时释放 | |

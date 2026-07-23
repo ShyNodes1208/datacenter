@@ -10,6 +10,32 @@ type RoomItem = {
   status: string
 }
 
+type ImportRowResult = {
+  row: number
+  code: string | null
+  roomName: string | null
+  roomId: string | null
+  heightU: number | null
+  brand: string | null
+  power: number | null
+  notes: string | null
+  x: number | null
+  y: number | null
+  z: number | null
+  errors: string[]
+  duplicate: boolean
+  existingRackId: string | null
+  action: 'create' | 'skip' | 'overwrite'
+}
+
+type ImportResponse = {
+  created: number
+  skipped: number
+  overwritten: number
+  failed: number
+  errors: Array<{ row: number; error: string }>
+}
+
 const ROOM_ADMIN_ROLE = '机房管理员'
 
 const router = useRouter()
@@ -34,6 +60,18 @@ const editName = ref('')
 const editStatus = ref('启用')
 const editSubmitting = ref(false)
 const editError = ref('')
+
+const importVisible = ref(false)
+const importPreview = ref<{
+  rows: ImportRowResult[]
+  totalRows: number
+  validRows: number
+  errorRows: number
+  duplicateRows: number
+} | null>(null)
+const importSubmitting = ref(false)
+const importError = ref('')
+const importResult = ref<ImportResponse | null>(null)
 
 const isRoomAdmin = computed(() => user.value?.role === ROOM_ADMIN_ROLE)
 
@@ -204,6 +242,136 @@ onMounted(() => {
   void loadRooms()
 })
 
+function openImport(): void {
+  importVisible.value = true
+  importPreview.value = null
+  importResult.value = null
+  importError.value = ''
+}
+
+function cancelImport(): void {
+  importVisible.value = false
+  importPreview.value = null
+  importResult.value = null
+  importError.value = ''
+}
+
+async function uploadPreview(file: File): Promise<void> {
+  importError.value = ''
+  importPreview.value = null
+
+  const csrfResult = await request('/api/auth/csrf', { method: 'GET' })
+  if (!csrfResult.ok) {
+    importError.value = csrfResult.error
+    return
+  }
+  const token = csrfResult.headers.get('X-XSRF-TOKEN')
+  if (!token) {
+    importError.value = 'Request failed.'
+    return
+  }
+
+  const formData = new FormData()
+  formData.append('file', file)
+
+  let response: Response
+  try {
+    response = await fetch('/api/racks/import-preview', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'X-XSRF-TOKEN': token },
+      body: formData,
+    })
+  } catch {
+    importError.value = 'Request failed.'
+    return
+  }
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({} as Record<string, unknown>))
+    importError.value = ((body as Record<string, unknown>).error as string) || '上传失败'
+    return
+  }
+
+  const data = (await response.json()) as {
+    rows: ImportRowResult[]
+    totalRows: number
+    validRows: number
+    errorRows: number
+    duplicateRows: number
+  }
+  data.rows = data.rows.map((row) => ({
+    ...row,
+    action: row.duplicate && row.errors.length === 0 ? 'skip' as const : 'create' as const,
+  }))
+  importPreview.value = data
+}
+
+async function submitImport(): Promise<void> {
+  if (!importPreview.value || importSubmitting.value) return
+  importSubmitting.value = true
+  importError.value = ''
+
+  const csrfResult = await request('/api/auth/csrf', { method: 'GET' })
+  if (!csrfResult.ok) {
+    importError.value = csrfResult.error
+    importSubmitting.value = false
+    return
+  }
+  const token = csrfResult.headers.get('X-XSRF-TOKEN')
+  if (!token) {
+    importError.value = 'Request failed.'
+    importSubmitting.value = false
+    return
+  }
+
+  const body = {
+    rows: importPreview.value.rows
+      .filter((row) => row.errors.length === 0)
+      .map((row) => ({
+        row: row.row,
+        action: row.action,
+        code: row.code,
+        roomId: row.roomId,
+        heightU: row.heightU,
+        brand: row.brand,
+        power: row.power,
+        notes: row.notes,
+        x: row.x,
+        y: row.y,
+        z: row.z,
+        existingRackId: row.existingRackId,
+      })),
+  }
+
+  const result = await request('/api/racks/import', {
+    method: 'POST',
+    body,
+    csrfToken: token,
+  })
+
+  if (!result.ok) {
+    importError.value = result.error
+    importSubmitting.value = false
+    return
+  }
+
+  importResult.value = result.data as ImportResponse
+  importSubmitting.value = false
+}
+
+function closeResult(): void {
+  importVisible.value = false
+  importPreview.value = null
+  importResult.value = null
+}
+
+function handleFileChange(event: Event): void {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (file) void uploadPreview(file)
+}
+
 async function onLogout(): Promise<void> {
   if (submitting.value) {
     return
@@ -229,6 +397,71 @@ async function onLogout(): Promise<void> {
     <p>{{ user?.role }}</p>
     <button type="button" :disabled="submitting" @click="onLogout">登出</button>
     <div role="alert" aria-live="polite">{{ errorMessage }}</div>
+
+    <button type="button" @click="openImport">Excel 导入机柜</button>
+
+    <div v-if="importVisible" style="margin-top: 1em; padding: 1em; border: 1px solid #ccc">
+      <div v-if="!importPreview && !importResult">
+        <input type="file" accept=".xlsx" @change="handleFileChange" />
+        <div v-if="importError" role="alert" aria-live="polite">{{ importError }}</div>
+        <br />
+        <button type="button" @click="cancelImport">取消</button>
+      </div>
+
+      <div v-if="importPreview && !importResult">
+        <table style="border-collapse: collapse; width: 100%">
+          <thead>
+            <tr>
+              <th>行</th><th>编号</th><th>机房</th><th>高度</th><th>品牌</th>
+              <th>功率</th><th>备注</th><th>X</th><th>Y</th><th>Z</th>
+              <th>状态</th><th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="row in importPreview.rows"
+              :key="row.row"
+              :style="row.errors.length > 0 ? 'background:#fee' : row.duplicate ? 'background:#ffc' : ''"
+            >
+              <td>{{ row.row }}</td>
+              <td>{{ row.code }}</td><td>{{ row.roomName }}</td><td>{{ row.heightU }}</td>
+              <td>{{ row.brand }}</td><td>{{ row.power }}</td><td>{{ row.notes }}</td>
+              <td>{{ row.x }}</td><td>{{ row.y }}</td><td>{{ row.z }}</td>
+              <td>
+                <span v-if="row.errors.length" style="color: red">{{ row.errors.join(', ') }}</span>
+                <span v-else-if="row.duplicate">重复</span>
+                <span v-else style="color: green">正常</span>
+              </td>
+              <td>
+                <select v-if="row.duplicate && row.errors.length === 0" v-model="row.action">
+                  <option value="skip">跳过</option>
+                  <option value="overwrite">覆盖</option>
+                </select>
+                <span v-else>-</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          共 {{ importPreview.totalRows }} 行，{{ importPreview.validRows }} 有效，{{ importPreview.errorRows }} 错误，{{ importPreview.duplicateRows }} 重复
+        </p>
+        <button type="button" :disabled="importSubmitting" @click="submitImport">
+          {{ importSubmitting ? '导入中...' : '确认导入' }}
+        </button>
+        <button type="button" :disabled="importSubmitting" @click="cancelImport">取消</button>
+        <div v-if="importError" role="alert" aria-live="polite">{{ importError }}</div>
+      </div>
+
+      <div v-if="importResult">
+        <p>
+          导入完成：新增 {{ importResult.created }}，跳过 {{ importResult.skipped }}，覆盖 {{ importResult.overwritten }}，失败 {{ importResult.failed }}
+        </p>
+        <div v-if="importResult.errors.length">
+          <p v-for="item in importResult.errors" :key="item.row">行 {{ item.row }}：{{ item.error }}</p>
+        </div>
+        <button type="button" @click="closeResult">关闭</button>
+      </div>
+    </div>
 
     <template v-if="isRoomAdmin">
       <button
