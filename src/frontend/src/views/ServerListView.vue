@@ -168,29 +168,29 @@ onMounted(() => {
 
     <p v-else-if="servers.length === 0">暂无服务器</p>
 
-    <table v-else style="border-collapse: collapse; width: 100%">
+    <table v-else style="border-collapse: collapse; width: 100%; table-layout: fixed">
       <thead>
         <tr>
-          <th>名称</th>
-          <th>IP</th>
-          <th>设备类型</th>
-          <th>设备高度</th>
-          <th>位置状态</th>
-          <th>运行状态</th>
-          <th>操作</th>
+          <th style="text-align: left; padding: 0.3em 0.5em; width: 12%">名称</th>
+          <th style="text-align: left; padding: 0.3em 0.5em; width: 16%">IP</th>
+          <th style="text-align: left; padding: 0.3em 0.5em; width: 12%">设备类型</th>
+          <th style="text-align: left; padding: 0.3em 0.5em; width: 10%">设备高度</th>
+          <th style="text-align: left; padding: 0.3em 0.5em; width: 10%">位置状态</th>
+          <th style="text-align: left; padding: 0.3em 0.5em; width: 25%">运行状态</th>
+          <th style="text-align: left; padding: 0.3em 0.5em; width: 15%">操作</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="server in servers" :key="server.id">
-          <td>
+          <td style="padding: 0.3em 0.5em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
             <a href="#" @click.prevent="goToDetail(server.id)">{{ server.name }}</a>
           </td>
-          <td>{{ server.managementIP }}</td>
-          <td>{{ server.deviceType }}</td>
-          <td>{{ server.deviceHeight }}U</td>
-          <td>{{ server.positionStatus }}</td>
-          <td>{{ server.operationalStatus }}（人工维护）</td>
-          <td>
+          <td style="padding: 0.3em 0.5em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ server.managementIP }}</td>
+          <td style="padding: 0.3em 0.5em">{{ server.deviceType }}</td>
+          <td style="padding: 0.3em 0.5em">{{ server.deviceHeight }}U</td>
+          <td style="padding: 0.3em 0.5em">{{ server.positionStatus }}</td>
+          <td style="padding: 0.3em 0.5em">{{ server.operationalStatus }}（人工维护）</td>
+          <td style="padding: 0.3em 0.5em">
             <a href="#" @click.prevent="goToDetail(server.id)">查看</a>
           </td>
         </tr>
