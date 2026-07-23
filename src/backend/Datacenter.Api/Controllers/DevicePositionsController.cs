@@ -31,21 +31,27 @@ public sealed class DevicePositionsController(AppDbContext dbContext, IAntiforge
             .AsNoTracking()
             .Where(dp => dp.RackId == rackId)
             .OrderByDescending(dp => dp.UNumber)
-            .Select(dp => new { dp.UNumber, dp.Label })
+            .Select(dp => new { dp.UNumber, dp.UHeight, dp.Label })
             .ToListAsync(cancellationToken);
 
-        var positionDict = positions.ToDictionary(p => p.UNumber, p => p.Label);
+        var positionDict = positions.ToDictionary(p => p.UNumber, p => (p.Label, p.UHeight));
 
         var allPositions = new List<object>(rack.HeightU);
-        var occupied = 0;
+        var occupiedU = 0;
 
         for (var u = rack.HeightU; u >= 1; u--)
         {
-            var label = positionDict.TryGetValue(u, out var existingLabel) ? existingLabel : null;
-            allPositions.Add(new { uNumber = u, label });
-            if (label is not null)
+            if (positionDict.TryGetValue(u, out var existing))
             {
-                occupied++;
+                allPositions.Add(new { uNumber = u, label = existing.Label, uHeight = existing.UHeight });
+                if (existing.Label is not null)
+                {
+                    occupiedU += existing.UHeight;
+                }
+            }
+            else
+            {
+                allPositions.Add(new { uNumber = u, label = (string?)null, uHeight = 1 });
             }
         }
 
@@ -65,8 +71,8 @@ public sealed class DevicePositionsController(AppDbContext dbContext, IAntiforge
             stats = new
             {
                 total = rack.HeightU,
-                occupied,
-                empty = rack.HeightU - occupied
+                occupied = occupiedU,
+                empty = rack.HeightU - occupiedU
             }
         });
     }
@@ -118,90 +124,8 @@ public sealed class DevicePositionsController(AppDbContext dbContext, IAntiforge
                 return BadRequest(new { error = "Excel 文件不包含工作表" });
             }
 
-            // Scan row 1 for cabinet identifiers
-            var lastColumn = worksheet.Row(1).LastCellUsed()?.Address.ColumnNumber ?? 0;
-            int? targetStartColumn = null;
-
-            for (var col = 1; col <= lastColumn; col++)
-            {
-                var headerText = worksheet.Cell(1, col).GetString().Trim();
-                if (string.IsNullOrWhiteSpace(headerText))
-                {
-                    continue;
-                }
-
-                var normalized = ChineseSymbolNormalizer.Normalize(headerText);
-                // Check if this header contains the rack code
-                if (normalized.Contains(rack.Code, StringComparison.OrdinalIgnoreCase))
-                {
-                    targetStartColumn = col;
-                    break;
-                }
-            }
-
-            if (targetStartColumn is null)
-            {
-                return BadRequest(new { error = $"Excel 中未找到机柜 '{rack.Code}' 的数据列" });
-            }
-
-            var uNumberCol = targetStartColumn.Value;
-            var labelCol = uNumberCol + 1;
-
-            // Parse data rows (row 2 onward)
-            var importData = new Dictionary<int, string?>();
-            var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 1;
-            var errors = new List<string>();
-
-            for (var row = 2; row <= lastRow; row++)
-            {
-                var uNumberText = worksheet.Cell(row, uNumberCol).GetString().Trim();
-                if (string.IsNullOrWhiteSpace(uNumberText))
-                {
-                    continue; // skip empty rows
-                }
-
-                // Parse U number (e.g., "42U" → 42)
-                var uNumberStr = uNumberText.TrimEnd('U', 'u');
-                if (!int.TryParse(uNumberStr, out var uNumber) || uNumber < 1)
-                {
-                    errors.Add($"第 {row} 行 U 位编号无效：'{uNumberText}'");
-                    continue;
-                }
-
-                if (uNumber > rack.HeightU)
-                {
-                    errors.Add($"第 {row} 行 U 位编号 {uNumber} 超出机柜 U 位范围 (1-{rack.HeightU})");
-                    continue;
-                }
-
-                var label = worksheet.Cell(row, labelCol).GetString().Trim();
-                importData[uNumber] = string.IsNullOrWhiteSpace(label) ? null : label;
-            }
-
-            // Full replace: remove existing + insert new
-            var existingPositions = await dbContext.DevicePositions
-                .Where(dp => dp.RackId == rackId)
-                .ToListAsync(cancellationToken);
-
-            dbContext.DevicePositions.RemoveRange(existingPositions);
-
-            foreach (var (uNumber, label) in importData)
-            {
-                if (label is not null)
-                {
-                    dbContext.DevicePositions.Add(new DevicePosition
-                    {
-                        RackId = rackId,
-                        UNumber = uNumber,
-                        Label = label
-                    });
-                }
-            }
-
-            await dbContext.SaveChangesAsync(cancellationToken);
-
-            var occupied = importData.Count(kv => kv.Value is not null);
-            var empty = rack.HeightU - occupied;
+            var (errors, occupied) = await ImportPositionsForRack(
+                worksheet, rack, rackId, cancellationToken);
 
             return Ok(new
             {
@@ -209,10 +133,96 @@ public sealed class DevicePositionsController(AppDbContext dbContext, IAntiforge
                 rackCode = rack.Code,
                 totalUPositions = rack.HeightU,
                 occupied,
-                empty,
+                empty = rack.HeightU - occupied,
                 errors = errors.Count > 0 ? errors : null
             });
         }
+    }
+
+    private async Task<(List<string> Errors, int Occupied)> ImportPositionsForRack(
+        IXLWorksheet worksheet, Rack rack, Guid rackId, CancellationToken cancellationToken)
+    {
+        var lastColumn = worksheet.Row(1).LastCellUsed()?.Address.ColumnNumber ?? 0;
+        int? targetStartColumn = null;
+
+        for (var col = 1; col <= lastColumn; col++)
+        {
+            var headerText = worksheet.Cell(1, col).GetString().Trim();
+            if (string.IsNullOrWhiteSpace(headerText))
+            {
+                continue;
+            }
+
+            var normalized = ChineseSymbolNormalizer.Normalize(headerText);
+            if (normalized.Contains(rack.Code, StringComparison.OrdinalIgnoreCase))
+            {
+                targetStartColumn = col;
+                break;
+            }
+        }
+
+        if (targetStartColumn is null)
+        {
+            return (new List<string> { $"Excel 中未找到机柜 '{rack.Code}' 的数据列" }, 0);
+        }
+
+        var uNumberCol = targetStartColumn.Value;
+        var labelCol = uNumberCol + 1;
+
+        var importData = new Dictionary<int, string?>();
+        var errors = new List<string>();
+        var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 1;
+
+        for (var row = 2; row <= lastRow; row++)
+        {
+            var uNumberText = worksheet.Cell(row, uNumberCol).GetString().Trim();
+            if (string.IsNullOrWhiteSpace(uNumberText))
+            {
+                continue;
+            }
+
+            var uNumberStr = uNumberText.TrimEnd('U', 'u');
+            if (!int.TryParse(uNumberStr, out var uNumber) || uNumber < 1)
+            {
+                errors.Add($"第 {row} 行 U 位编号无效：'{uNumberText}'");
+                continue;
+            }
+
+            if (uNumber > rack.HeightU)
+            {
+                errors.Add($"第 {row} 行 U 位编号 {uNumber} 超出机柜 U 位范围 (1-{rack.HeightU})");
+                continue;
+            }
+
+            var label = worksheet.Cell(row, labelCol).GetString().Trim();
+            importData[uNumber] = string.IsNullOrWhiteSpace(label) ? null : label;
+        }
+
+        var existingPositions = await dbContext.DevicePositions
+            .Where(dp => dp.RackId == rackId)
+            .ToListAsync(cancellationToken);
+
+        dbContext.DevicePositions.RemoveRange(existingPositions);
+
+        var occupied = 0;
+        foreach (var (uNumber, label) in importData)
+        {
+            if (label is not null)
+            {
+                dbContext.DevicePositions.Add(new DevicePosition
+                {
+                    RackId = rackId,
+                    UNumber = uNumber,
+                    UHeight = 1,
+                    Label = label
+                });
+                occupied++;
+            }
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return (errors, occupied);
     }
 
     private async Task<BadRequestObjectResult?> ValidateAntiforgeryAsync()

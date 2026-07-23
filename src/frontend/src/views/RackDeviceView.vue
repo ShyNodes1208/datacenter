@@ -16,6 +16,7 @@ type RackInfo = {
 type UPosition = {
   uNumber: number
   label: string | null
+  uHeight: number
 }
 
 type RackStats = {
@@ -142,23 +143,24 @@ const usagePercent = computed(() => {
   return Math.round((data.value.stats.occupied / data.value.stats.total) * 100)
 })
 
-/** Merge consecutive U positions with the same label for visual grouping */
+/** Build visual groups using uHeight. Each position's range is [uNumber-uHeight+1, uNumber]. */
 const mergedPositions = computed(() => {
   if (!data.value) return []
   const positions = data.value.positions
   if (positions.length === 0) return []
 
   const merged: Array<{ startU: number; endU: number; label: string | null }> = []
-  let current = { startU: positions[0].uNumber, endU: positions[0].uNumber, label: positions[0].label }
+  const firstStartU = positions[0].uNumber - (positions[0].uHeight - 1)
+  let current = { startU: firstStartU, endU: positions[0].uNumber, label: positions[0].label }
 
   for (let i = 1; i < positions.length; i++) {
     const pos = positions[i]
+    const posStartU = pos.uNumber - (pos.uHeight - 1)
     if (pos.label === current.label && pos.uNumber === current.startU - 1) {
-      // Same label and consecutive, extend downward
-      current.startU = pos.uNumber
+      current.startU = posStartU
     } else {
       merged.push(current)
-      current = { startU: pos.uNumber, endU: pos.uNumber, label: pos.label }
+      current = { startU: posStartU, endU: pos.uNumber, label: pos.label }
     }
   }
   merged.push(current)

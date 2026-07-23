@@ -10,5 +10,7 @@ public sealed class DevicePosition
 
     public int UNumber { get; set; }
 
+    public int UHeight { get; set; } = 1;
+
     public string? Label { get; set; }
 }

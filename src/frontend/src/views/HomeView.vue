@@ -410,6 +410,95 @@ function closeResult(): void {
   importResult.value = null
 }
 
+// --- Batch device import ---
+
+type BatchRackResult = {
+  rackId: string
+  rackCode: string
+  totalUPositions: number
+  occupied: number
+  empty: number
+  errors?: string[]
+}
+
+type BatchImportResult = {
+  racks: BatchRackResult[]
+  totalRacks: number
+  totalOccupied: number
+}
+
+const batchImportVisible = ref(false)
+const batchImportResult = ref<BatchImportResult | null>(null)
+const batchImportError = ref('')
+const batchImportSubmitting = ref(false)
+
+function openBatchImport(): void {
+  batchImportVisible.value = true
+  batchImportResult.value = null
+  batchImportError.value = ''
+}
+
+function cancelBatchImport(): void {
+  batchImportVisible.value = false
+  batchImportResult.value = null
+  batchImportError.value = ''
+}
+
+function closeBatchResult(): void {
+  batchImportVisible.value = false
+  batchImportResult.value = null
+  loadRooms()
+}
+
+async function handleBatchFileChange(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  batchImportError.value = ''
+  batchImportSubmitting.value = true
+
+  const csrfResult = await request('/api/auth/csrf', { method: 'GET' })
+  if (!csrfResult.ok) {
+    batchImportError.value = csrfResult.error
+    batchImportSubmitting.value = false
+    return
+  }
+  const token = csrfResult.headers.get('X-XSRF-TOKEN')
+  if (!token) {
+    batchImportError.value = 'Request failed.'
+    batchImportSubmitting.value = false
+    return
+  }
+
+  const formData = new FormData()
+  formData.append('file', file)
+
+  let response: Response
+  try {
+    response = await fetch('/api/device-positions/import-batch', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'X-XSRF-TOKEN': token },
+      body: formData,
+    })
+  } catch {
+    batchImportError.value = 'Request failed.'
+    batchImportSubmitting.value = false
+    return
+  }
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({} as Record<string, unknown>))
+    batchImportError.value = ((body as Record<string, unknown>).error as string) || '导入失败'
+    batchImportSubmitting.value = false
+    return
+  }
+
+  batchImportResult.value = (await response.json()) as BatchImportResult
+  batchImportSubmitting.value = false
+}
+
 function handleFileChange(event: Event): void {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
@@ -443,6 +532,28 @@ async function onLogout(): Promise<void> {
     <div role="alert" aria-live="polite">{{ errorMessage }}</div>
 
     <button type="button" @click="openImport">Excel 导入机柜</button>
+    <button type="button" @click="openBatchImport" style="margin-left: 0.5em">批量导入设备</button>
+
+    <div v-if="batchImportVisible" style="margin-top: 1em; padding: 1em; border: 1px solid #ccc">
+      <div v-if="!batchImportResult">
+        <input type="file" accept=".xlsx" @change="handleBatchFileChange" />
+        <div v-if="batchImportError" role="alert" aria-live="polite">{{ batchImportError }}</div>
+        <p v-if="batchImportSubmitting">导入中...</p>
+        <br />
+        <button type="button" :disabled="batchImportSubmitting" @click="cancelBatchImport">取消</button>
+      </div>
+      <div v-else>
+        <p>导入完成：{{ batchImportResult.totalRacks }} 个机柜，共 {{ batchImportResult.totalOccupied }} 个设备</p>
+        <div v-for="rack in batchImportResult.racks" :key="rack.rackId" style="margin: 0.3em 0">
+          <strong>{{ rack.rackCode }}</strong>：
+          {{ rack.totalUPositions }}U，占用 {{ rack.occupied }}U，空闲 {{ rack.empty }}U
+          <span v-if="rack.errors?.length" style="color: red">
+            （{{ rack.errors.join('、') }}）
+          </span>
+        </div>
+        <button type="button" @click="closeBatchResult">关闭</button>
+      </div>
+    </div>
 
     <div v-if="importVisible" style="margin-top: 1em; padding: 1em; border: 1px solid #ccc">
       <div v-if="!importPreview && !importResult">
