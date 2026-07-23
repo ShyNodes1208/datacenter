@@ -67,7 +67,7 @@ type ImportRowFixture = {
   errors: string[]
   duplicate: boolean
   existingRackId: string | null
-  action: 'create' | 'skip' | 'overwrite'
+  action: '' | 'create' | 'skip' | 'overwrite'
 }
 
 type ImportPreviewFixture = {
@@ -1281,7 +1281,7 @@ describe('HomeView import racks', () => {
     }
   })
 
-  it('shows overwrite and skip choices for a duplicate row', async () => {
+  it('shows overwrite and skip choices for a duplicate row with mandatory selection gate', async () => {
     userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
     requestMock.mockResolvedValue(mockRoomsGet([]))
     const view = await mountSharedHomeView()
@@ -1292,7 +1292,7 @@ describe('HomeView import racks', () => {
           previewRow({
             duplicate: true,
             existingRackId: 'rack-1',
-            action: 'skip',
+            action: '',
           }),
         ],
         totalRows: 1,
@@ -1303,9 +1303,32 @@ describe('HomeView import racks', () => {
       await flushUi()
 
       const html = await view.html()
-      expect(html).toMatch(/<select[\s\S]*?<option[^>]*value="skip"[^>]*>跳过<\/option>/)
+      // 占位选项存在
+      expect(html).toMatch(/<option[^>]*value=""[^>]*disabled[^>]*>请选择<\/option>/)
+      // 覆盖/跳过选项存在
+      expect(html).toMatch(/<option[^>]*value="skip"[^>]*>跳过<\/option>/)
       expect(html).toMatch(/<option[^>]*value="overwrite"[^>]*>覆盖<\/option>/)
       expect(html).toContain('重复')
+      // 确认按钮因空选择被禁用
+      expect(html).toMatch(/<button[^>]*disabled[^>]*>\s*确认导入\s*<\/button>/)
+
+      // 选择覆盖后确认按钮恢复
+      view.writeField<ImportPreviewFixture>('importPreview', {
+        rows: [
+          previewRow({
+            duplicate: true,
+            existingRackId: 'rack-1',
+            action: 'overwrite',
+          }),
+        ],
+        totalRows: 1,
+        validRows: 1,
+        errorRows: 0,
+        duplicateRows: 1,
+      })
+      await flushUi()
+      const afterSelect = await view.html()
+      expect(afterSelect).not.toMatch(/<button[^>]*disabled[^>]*>\s*确认导入\s*<\/button>/)
     } finally {
       view.unmount()
     }

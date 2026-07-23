@@ -247,4 +247,6 @@ git diff --check
 
 ## 完成门禁
 
-最终必须由 Codex Reviewer 确认验收、构建与测试、迁移、CSRF/认证、文件预算、防过度开发检查全部通过；所有实施锁释放；提交已推送；工作区干净且本地/远端哈希一致，方可转为 `COMPLETED`。当前上述完成证据均为 N/A：尚未实施。
+最终必须由 Codex Reviewer 确认验收、构建与测试、迁移、CSRF/认证、文件预算、防过度开发检查全部通过；所有实施锁释放；提交已推送；工作区干净且本地/远端哈希一致，方可转为 `COMPLETED`。
+
+当前状态：READY_FOR_REVIEW。Backend 69/69 PASS，Frontend 71/71 PASS。全部 11 项实施锁已 HANDED_OFF。等待 Codex Reviewer 独立审核。

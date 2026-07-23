@@ -25,7 +25,7 @@ type ImportRowResult = {
   errors: string[]
   duplicate: boolean
   existingRackId: string | null
-  action: 'create' | 'skip' | 'overwrite'
+  action: '' | 'create' | 'skip' | 'overwrite'
 }
 
 type ImportResponse = {
