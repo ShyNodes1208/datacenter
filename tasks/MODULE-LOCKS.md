@@ -6,6 +6,8 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 
 | Task ID | Module or Path | Owner | Claimed At | Status | Release Condition | Released At |
 |---|---|---|---|---|---|---|
+| TASK-0019 | src/backend/Datacenter.Api/Controllers/RoomsController.cs | Codex Backend | 2026-07-23 10:41:21 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；TASK-0019 进入 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0019 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RoomIntegrationTests.cs | Codex Backend | 2026-07-23 10:41:21 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；TASK-0019 进入 COMPLETED 或 CANCELLED 时释放 | |
 | TASK-0018 | src/backend/Datacenter.Api/Controllers/RoomsController.cs | Codex Backend | 2026-07-22 22:24:12 +08:00 | RELEASED | Reviewer：Codex Reviewer；TASK-0018 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-23 08:00:40 +08:00（CLAIMED → HANDED_OFF → RELEASED；T18-RV-001 复审 PASS；TASK-0018 COMPLETED） |
 | TASK-0018 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RoomIntegrationTests.cs | Codex Backend | 2026-07-22 22:24:12 +08:00 | RELEASED | Reviewer：Codex Reviewer；TASK-0018 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-23 08:00:40 +08:00（CLAIMED → HANDED_OFF → RELEASED；T18-RV-001 复审 PASS；TASK-0018 COMPLETED） |
 | TASK-0018 | src/frontend/src/views/HomeView.vue | Cursor Frontend | 2026-07-22 22:46:16 +08:00 | RELEASED | Reviewer：Codex Reviewer；Purpose：TASK-0018 机房管理员新增机房前端；TASK-0018 进入 COMPLETED 或 CANCELLED 时释放 | 2026-07-23 08:00:40 +08:00（CLAIMED → HANDED_OFF → RELEASED；T18-RV-001 复审 PASS；TASK-0018 COMPLETED） |
@@ -119,6 +121,18 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 | CR6-RV-001 | tasks/TASK-0007-BACKEND-FOUNDATION.md | Codex Architect | 2026-07-19 | RELEASED | 仅恢复 675dc437^ 已批准验证基线；完成纠正后释放 | 2026-07-19（Codex Architect 完成审计纠正并释放） |
 | CR6-RV-001 | tasks/current-task.md | Codex Architect | 2026-07-19 | RELEASED | 仅同步等待独立纠正复审；完成纠正后释放 | 2026-07-19（Codex Architect 完成审计纠正并释放） |
 | CR6-RV-001 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-19 | RELEASED | 仅同步纠正复审说明；不修改 19 项实施锁 | 2026-07-19（Codex Architect 完成审计纠正并释放） |
+
+## TASK-0019 Backend 实现交接记录
+
+- 记录时间：2026-07-23 10:43:02 +08:00
+- 当前任务状态：IN_PROGRESS（Frontend 尚待实施，不提前进入 READY_FOR_REVIEW）
+- 交接角色与原实施者：Codex Backend
+- 后续角色：Cursor Frontend 自行核验并认领两个批准的前端路径
+- 原锁状态：两个后端产品文件 CLAIMED by Codex Backend
+- 新锁状态：两个后端产品文件 HANDED_OFF；路径和 Owner 不变
+- 实现内容：GET 返回 id/name/status；新增管理员 PUT 编辑端点及批准的 6 组 PUT 集成测试
+- 验证：`dotnet test` PASS（52/52）；工作流校验 PASS（20/20）；`git diff --check` PASS
+- 修改限制：独立 Reviewer 结论或合法进入 IN_FIX 前，Codex Backend 不得继续修改上述两个路径
 
 ## TASK-0008 实现审核交接记录
 

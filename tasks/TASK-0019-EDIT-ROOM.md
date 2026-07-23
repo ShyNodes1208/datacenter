@@ -2,8 +2,8 @@
 
 ## 任务信息
 
-- Status：READY
-- Implementation Started：NO
+- Status：IN_PROGRESS
+- Implementation Started：YES
 - Blocker：无
 - Task Owner：Codex Architect
 - Backend Owner：Codex Backend
@@ -12,7 +12,7 @@
 - Requirement Source：用户 2026-07-23 书面批准的本任务范围；`docs/product/MVP-PRODUCT-BASELINE.md` FR-001、BR-027、NFR-007
 - Architecture Reference：`docs/architecture/AGENT-WORKFLOW.md`；现有 Room、Controller、Cookie 认证与首页基线
 - Dependency：TASK-0009、TASK-0018（均已 COMPLETED 并进入 main）
-- Active Product Locks：0
+- Active Product Locks：2
 
 ## 目标与最小范围
 
@@ -75,8 +75,9 @@
 ## 实施与交接
 
 - Workflow：`IDLE → DRAFT → READY`；本文件提交时为 READY，未开始实现。
+- Backend Implementation Start：2026-07-23 10:41:21 +08:00，Codex Backend 核验无冲突后认领两个后端产品文件锁并执行 `READY → IN_PROGRESS`。
+- Backend Handoff：2026-07-23 10:43:02 +08:00，两个后端锁 `CLAIMED → HANDED_OFF`；`dotnet test` 52/52 PASS；工作流校验 20/20 PASS；`git diff --check` PASS。任务整体保持 `IN_PROGRESS`，下一角色为 Cursor Frontend。
 - 下一角色：Codex Backend。
 - 下一动作：Codex Backend 在一个会话中自行核验冲突并认领上述两个后端产品文件锁，执行 `READY → IN_PROGRESS`，直接完成 GET 契约调整、PUT 接口和后端测试。Architect 不代表 Backend 或 Frontend 认领产品锁。
 - Backend 完成并交接后，由 Cursor Frontend 自行认领两个前端产品文件并实施；最终由独立 Codex Reviewer 审核。
 - 验证命令：后端运行相关 `dotnet test`；前端运行现有测试与构建；交审前运行 `pwsh -NoLogo -NoProfile -File ./scripts/validate-agent-workflow.ps1` 和 `git diff --check`。
-

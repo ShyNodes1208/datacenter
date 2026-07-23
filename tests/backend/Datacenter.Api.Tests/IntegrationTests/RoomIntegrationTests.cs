@@ -29,7 +29,7 @@ public sealed class RoomIntegrationTests(AuthTestFixture fixture)
 
     [Theory]
     [MemberData(nameof(AuthenticatedRoles))]
-    public async Task AuthenticatedRolesCanGetOnlyRoomNameAndStatus(string role)
+    public async Task AuthenticatedRolesCanGetRoomIdNameAndStatus(string role)
     {
         await ReplaceRoomsAsync(
             new Room { Name = "主机房", Status = "启用" },
@@ -43,7 +43,8 @@ public sealed class RoomIntegrationTests(AuthTestFixture fixture)
         using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
         var rooms = document.RootElement.EnumerateArray().ToArray();
         Assert.Equal(2, rooms.Length);
-        Assert.All(rooms, room => Assert.Equal(["name", "status"], room.EnumerateObject().Select(property => property.Name).Order()));
+        Assert.All(rooms, room => Assert.Equal(["id", "name", "status"], room.EnumerateObject().Select(property => property.Name).Order()));
+        Assert.All(rooms, room => Assert.True(Guid.TryParse(room.GetProperty("id").GetString(), out _)));
         Assert.Contains(rooms, room => room.GetProperty("name").GetString() == "主机房" && room.GetProperty("status").GetString() == "启用");
         Assert.Contains(rooms, room => room.GetProperty("name").GetString() == "灾备机房" && room.GetProperty("status").GetString() == "停用");
     }
@@ -183,6 +184,90 @@ public sealed class RoomIntegrationTests(AuthTestFixture fixture)
         Assert.Equal(0, await CountRoomsAsync());
     }
 
+    [Fact]
+    public async Task RoomAdministratorCanUpdateRoom()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        await ReplaceRoomsAsync(room);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.RoomAdministrator);
+
+        using var response = await PutRoomAsync(client, room.Id, "核心机房", "停用");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<UpdateRoomResult>();
+        Assert.Equal(new UpdateRoomResult(room.Id, "核心机房", "停用"), result);
+        Assert.Equal(1, await CountRoomsAsync("核心机房", "停用"));
+    }
+
+    [Fact]
+    public async Task UpdateEmptyNameReturnsBadRequest()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        await ReplaceRoomsAsync(room);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.RoomAdministrator);
+
+        using var response = await PutRoomAsync(client, room.Id, string.Empty, "停用");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("机房名称不能为空", await ReadErrorAsync(response));
+    }
+
+    [Fact]
+    public async Task UpdateDuplicateNameReturnsConflict()
+    {
+        var firstRoom = new Room { Name = "主机房", Status = "启用" };
+        var secondRoom = new Room { Name = "灾备机房", Status = "停用" };
+        await ReplaceRoomsAsync(firstRoom, secondRoom);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.RoomAdministrator);
+
+        using var response = await PutRoomAsync(client, secondRoom.Id, firstRoom.Name, "启用");
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("机房名称已存在", await ReadErrorAsync(response));
+    }
+
+    [Fact]
+    public async Task UpdateNonexistentRoomReturnsNotFound()
+    {
+        await ReplaceRoomsAsync();
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.RoomAdministrator);
+
+        using var response = await PutRoomAsync(client, Guid.NewGuid(), "主机房", "启用");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("机房不存在", await ReadErrorAsync(response));
+    }
+
+    [Theory]
+    [MemberData(nameof(NonAdministratorRoles))]
+    public async Task NonAdministratorCannotUpdateRoom(string role)
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        await ReplaceRoomsAsync(room);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, role);
+
+        using var response = await PutRoomAsync(client, room.Id, "核心机房", "停用");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AnonymousCannotUpdateRoom()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        await ReplaceRoomsAsync(room);
+        using var client = fixture.CreateClient();
+
+        using var response = await PutRoomAsync(client, room.Id, "核心机房", "停用");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
     private async Task ReplaceRoomsAsync(params Room[] rooms)
     {
         await using var scope = fixture.Factory.Services.CreateAsyncScope();
@@ -227,6 +312,19 @@ public sealed class RoomIntegrationTests(AuthTestFixture fixture)
         return await client.SendAsync(request);
     }
 
+    private static async Task<HttpResponseMessage> PutRoomAsync(
+        HttpClient client, Guid id, string name, string status)
+    {
+        using var csrf = await client.GetAsync("/api/auth/csrf");
+        var token = csrf.Headers.GetValues("X-XSRF-TOKEN").Single();
+        using var request = new HttpRequestMessage(HttpMethod.Put, $"/api/rooms/{id}")
+        {
+            Content = JsonContent.Create(new { name, status })
+        };
+        request.Headers.Add("X-XSRF-TOKEN", token);
+        return await client.SendAsync(request);
+    }
+
     private static async Task<string?> ReadErrorAsync(HttpResponseMessage response)
     {
         using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
@@ -259,4 +357,6 @@ public sealed class RoomIntegrationTests(AuthTestFixture fixture)
     }
 
     private sealed record CreateRoomResult(string Name, string Status);
+
+    private sealed record UpdateRoomResult(Guid Id, string Name, string Status);
 }

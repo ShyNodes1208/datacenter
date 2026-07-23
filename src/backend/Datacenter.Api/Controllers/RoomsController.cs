@@ -18,7 +18,7 @@ public sealed class RoomsController(AppDbContext dbContext, IAntiforgery antifor
     {
         var rooms = await dbContext.Rooms
             .AsNoTracking()
-            .Select(room => new { room.Name, room.Status })
+            .Select(room => new { room.Id, room.Name, room.Status })
             .ToListAsync(cancellationToken);
 
         return Ok(rooms);
@@ -71,6 +71,60 @@ public sealed class RoomsController(AppDbContext dbContext, IAntiforgery antifor
         return StatusCode(StatusCodes.Status201Created, new { room.Name, room.Status });
     }
 
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, UpdateRoomRequest request, CancellationToken cancellationToken)
+    {
+        if (!User.IsInRole(Roles.RoomAdministrator))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden);
+        }
+
+        try
+        {
+            await antiforgery.ValidateRequestAsync(HttpContext);
+        }
+        catch (AntiforgeryValidationException)
+        {
+            return BadRequest(new { error = "防伪令牌缺失或无效" });
+        }
+
+        var name = request.Name?.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return BadRequest(new { error = "机房名称不能为空" });
+        }
+
+        if (request.Status is not ("启用" or "停用"))
+        {
+            return BadRequest(new { error = "状态值无效" });
+        }
+
+        var room = await dbContext.Rooms.FindAsync(new object[] { id }, cancellationToken);
+        if (room is null)
+        {
+            return NotFound(new { error = "机房不存在" });
+        }
+
+        if (await dbContext.Rooms.AnyAsync(r => r.Name == name && r.Id != id, cancellationToken))
+        {
+            return Conflict(new { error = "机房名称已存在" });
+        }
+
+        room.Name = name;
+        room.Status = request.Status;
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (IsRoomNameUniqueConstraintViolation(exception))
+        {
+            return Conflict(new { error = "机房名称已存在" });
+        }
+
+        return Ok(new { room.Id, room.Name, room.Status });
+    }
+
     private static bool IsRoomNameUniqueConstraintViolation(DbUpdateException exception) =>
         exception.InnerException is SqliteException
         {
@@ -81,3 +135,5 @@ public sealed class RoomsController(AppDbContext dbContext, IAntiforgery antifor
 }
 
 public sealed record CreateRoomRequest(string? Name, string? Status);
+
+public sealed record UpdateRoomRequest(string? Name, string? Status);
