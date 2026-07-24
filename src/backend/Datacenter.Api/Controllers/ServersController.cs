@@ -1,5 +1,6 @@
 using Datacenter.Api.Data;
 using Datacenter.Api.Models;
+using Datacenter.Api.Services;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -401,6 +402,10 @@ public sealed class ServersController(AppDbContext dbContext, IAntiforgery antif
         server.PositionStatus = "在架";
 
         dbContext.ServerPositions.Add(serverPosition);
+        AuditService.Record(dbContext, server, "上架", null,
+            $"{rack.Code} U{serverPosition.StartU}-U{serverPosition.EndU}",
+            User.Identity?.Name ?? "unknown");
+
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return StatusCode(StatusCodes.Status201Created, new
@@ -411,6 +416,205 @@ public sealed class ServersController(AppDbContext dbContext, IAntiforgery antif
             startU = serverPosition.StartU,
             endU = serverPosition.EndU
         });
+    }
+
+    [HttpPost("{id:guid}/move")]
+    public async Task<IActionResult> Move(Guid id, MoveServerRequest request, CancellationToken cancellationToken)
+    {
+        if (!User.IsInRole(Roles.RoomAdministrator) && !User.IsInRole(Roles.Operations))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden);
+        }
+
+        try
+        {
+            await antiforgery.ValidateRequestAsync(HttpContext);
+        }
+        catch (AntiforgeryValidationException)
+        {
+            return BadRequest(new { error = "防伪令牌缺失或无效" });
+        }
+
+        if (request.StartU < 1)
+        {
+            return BadRequest(new { error = "起始U位必须大于等于1" });
+        }
+
+        var server = await dbContext.Servers.FindAsync(new object[] { id }, cancellationToken);
+        if (server is null)
+        {
+            return NotFound(new { error = "服务器不存在" });
+        }
+
+        if (server.PositionStatus != "在架")
+        {
+            return BadRequest(new { error = "服务器不在架，无法移动" });
+        }
+
+        var oldPosition = await dbContext.ServerPositions
+            .Include(position => position.Rack)
+            .FirstOrDefaultAsync(position => position.ServerId == id && position.Status == "在架", cancellationToken);
+
+        if (oldPosition is null)
+        {
+            return BadRequest(new { error = "服务器位置记录异常" });
+        }
+
+        var targetRack = await dbContext.Racks
+            .Include(rack => rack.Room)
+            .FirstOrDefaultAsync(rack => rack.Id == request.RackId, cancellationToken);
+
+        if (targetRack is null)
+        {
+            return NotFound(new { error = "目标机柜不存在" });
+        }
+
+        if (targetRack.Room.Status != "启用")
+        {
+            return BadRequest(new { error = "目标机柜所在机房未启用" });
+        }
+
+        if (oldPosition.RackId == request.RackId && oldPosition.StartU == request.StartU)
+        {
+            return BadRequest(new { error = "移动目标与当前位置相同" });
+        }
+
+        var endU = request.StartU + server.DeviceHeight - 1;
+
+        if (endU > targetRack.HeightU)
+        {
+            return BadRequest(new { error = "U位超出目标机柜范围" });
+        }
+
+        var overlapping = await dbContext.ServerPositions
+            .AnyAsync(position =>
+                position.RackId == request.RackId
+                && position.Status == "在架"
+                && position.Id != oldPosition.Id
+                && position.StartU <= endU
+                && position.EndU >= request.StartU,
+                cancellationToken);
+
+        if (overlapping)
+        {
+            return Conflict(new { error = "目标U位范围与已有在架设备冲突" });
+        }
+
+        var fromPosition = $"{oldPosition.Rack.Code} U{oldPosition.StartU}-U{oldPosition.EndU}";
+        var toPosition = $"{targetRack.Code} U{request.StartU}-U{endU}";
+
+        oldPosition.Status = "已下架";
+
+        var newPosition = new ServerPosition
+        {
+            ServerId = id,
+            RackId = request.RackId,
+            StartU = request.StartU,
+            EndU = endU,
+            Status = "在架",
+            InstalledAt = DateTime.UtcNow
+        };
+
+        dbContext.ServerPositions.Add(newPosition);
+        AuditService.Record(dbContext, server, "移动", fromPosition, toPosition,
+            User.Identity?.Name ?? "unknown");
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return Ok(new
+        {
+            serverPositionId = newPosition.Id,
+            serverName = server.Name,
+            fromRackCode = oldPosition.Rack.Code,
+            toRackCode = targetRack.Code,
+            startU = newPosition.StartU,
+            endU = newPosition.EndU
+        });
+    }
+
+    [HttpPost("{id:guid}/decommission")]
+    public async Task<IActionResult> Decommission(Guid id, CancellationToken cancellationToken)
+    {
+        if (!User.IsInRole(Roles.RoomAdministrator) && !User.IsInRole(Roles.Operations))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden);
+        }
+
+        try
+        {
+            await antiforgery.ValidateRequestAsync(HttpContext);
+        }
+        catch (AntiforgeryValidationException)
+        {
+            return BadRequest(new { error = "防伪令牌缺失或无效" });
+        }
+
+        var server = await dbContext.Servers.FindAsync(new object[] { id }, cancellationToken);
+        if (server is null)
+        {
+            return NotFound(new { error = "服务器不存在" });
+        }
+
+        if (server.PositionStatus != "在架")
+        {
+            return BadRequest(new { error = "服务器不在架，无法下架" });
+        }
+
+        var position = await dbContext.ServerPositions
+            .Include(item => item.Rack)
+            .FirstOrDefaultAsync(item => item.ServerId == id && item.Status == "在架", cancellationToken);
+
+        if (position is null)
+        {
+            return BadRequest(new { error = "服务器位置记录异常" });
+        }
+
+        var fromPosition = $"{position.Rack.Code} U{position.StartU}-U{position.EndU}";
+
+        position.Status = "已下架";
+        server.PositionStatus = "已下架";
+
+        AuditService.Record(dbContext, server, "下架", fromPosition, null,
+            User.Identity?.Name ?? "unknown");
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return Ok(new
+        {
+            serverName = server.Name,
+            message = "服务器已下架"
+        });
+    }
+
+    [HttpGet("{id:guid}/audit-records")]
+    public async Task<IActionResult> GetAuditRecords(Guid id, CancellationToken cancellationToken)
+    {
+        var serverExists = await dbContext.Servers
+            .AsNoTracking()
+            .AnyAsync(s => s.Id == id, cancellationToken);
+
+        if (!serverExists)
+        {
+            return NotFound(new { error = "服务器不存在" });
+        }
+
+        var records = await dbContext.AuditRecords
+            .AsNoTracking()
+            .Where(ar => ar.ServerId == id)
+            .OrderByDescending(ar => ar.OperatedAt)
+            .Select(ar => new
+            {
+                ar.Id,
+                ar.OperationType,
+                ar.FromPosition,
+                ar.ToPosition,
+                ar.OperatorUsername,
+                ar.OperatedAt,
+                ar.Notes
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(records);
     }
 
     private static bool IsServerUniqueConstraintViolation(DbUpdateException exception) =>
@@ -449,5 +653,9 @@ public sealed record UpdateServerRequest(
     string? Notes);
 
 public sealed record RackServerRequest(
+    Guid RackId,
+    int StartU);
+
+public sealed record MoveServerRequest(
     Guid RackId,
     int StartU);

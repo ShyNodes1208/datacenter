@@ -152,6 +152,7 @@ onMounted(() => {
           <option value="">全部</option>
           <option value="正常">正常</option>
           <option value="异常">异常</option>
+          <option value="维护">维护</option>
         </select>
       </label>
       <button type="button" @click="doSearch">搜索</button>

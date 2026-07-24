@@ -21,6 +21,16 @@ type ServerDetail = {
   uRange?: string | null
 }
 
+type AuditRecordItem = {
+  id: string
+  operationType: string
+  fromPosition: string | null
+  toPosition: string | null
+  operatorUsername: string
+  operatedAt: string
+  notes: string | null
+}
+
 const EDIT_ROLES = ['机房管理员', '运维人员']
 
 const route = useRoute()
@@ -37,6 +47,7 @@ const canEdit = computed(() => {
 
 const server = ref<ServerDetail | null>(null)
 const error = ref('')
+const auditRecords = ref<AuditRecordItem[] | null>(null)
 
 async function loadServer(): Promise<void> {
   error.value = ''
@@ -96,8 +107,27 @@ function goBack(): void {
   router.push('/servers')
 }
 
+async function loadAuditRecords(): Promise<void> {
+  const result = await request<AuditRecordItem[]>(
+    `/api/servers/${serverId.value}/audit-records`,
+    { method: 'GET' },
+  )
+  if (result.ok && Array.isArray(result.data)) {
+    auditRecords.value = result.data
+  } else {
+    auditRecords.value = []
+  }
+}
+
+function formatOperatedAt(iso: string): string {
+  const date = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
+
 onMounted(() => {
   void loadServer()
+  void loadAuditRecords()
 })
 </script>
 
@@ -168,6 +198,32 @@ onMounted(() => {
           <p style="margin: 0">机柜：{{ server.rackCode ?? '-' }}</p>
           <p style="margin: 0">U 位范围：{{ server.uRange ?? '-' }}</p>
         </template>
+      </div>
+
+      <div style="margin-bottom: 1em; padding: 0.5em; border: 1px solid #ccc">
+        <p style="font-weight: bold; margin: 0 0 0.5em 0">操作记录</p>
+        <p v-if="auditRecords === null" style="margin: 0; color: #888">加载中...</p>
+        <p v-else-if="auditRecords.length === 0" style="margin: 0; color: #888">暂无操作记录</p>
+        <table v-else style="border-collapse: collapse; width: 100%; font-size: 13px">
+          <thead>
+            <tr style="border-bottom: 1px solid #ccc; text-align: left">
+              <th style="padding: 0.3em 0.5em">操作类型</th>
+              <th style="padding: 0.3em 0.5em">原位置</th>
+              <th style="padding: 0.3em 0.5em">新位置</th>
+              <th style="padding: 0.3em 0.5em">操作人</th>
+              <th style="padding: 0.3em 0.5em">时间</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="r in auditRecords" :key="r.id" style="border-bottom: 1px solid #eee">
+              <td style="padding: 0.3em 0.5em">{{ r.operationType }}</td>
+              <td style="padding: 0.3em 0.5em; color: #888">{{ r.fromPosition ?? '-' }}</td>
+              <td style="padding: 0.3em 0.5em; color: #888">{{ r.toPosition ?? '-' }}</td>
+              <td style="padding: 0.3em 0.5em">{{ r.operatorUsername }}</td>
+              <td style="padding: 0.3em 0.5em; white-space: nowrap">{{ formatOperatedAt(r.operatedAt) }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
       <div style="display: flex; gap: 0.5em">

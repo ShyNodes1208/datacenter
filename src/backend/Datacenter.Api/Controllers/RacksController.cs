@@ -146,6 +146,128 @@ public sealed class RacksController(AppDbContext dbContext, IAntiforgery antifor
         });
     }
 
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, UpdateRackRequest request, CancellationToken cancellationToken)
+    {
+        if (!User.IsInRole(Roles.RoomAdministrator) && !User.IsInRole(Roles.Operations))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden);
+        }
+
+        var antiforgeryError = await ValidateAntiforgeryAsync();
+        if (antiforgeryError is not null)
+        {
+            return antiforgeryError;
+        }
+
+        if (request.HeightU < 1)
+        {
+            return BadRequest(new { error = "高度(U)必须为正整数" });
+        }
+
+        var rack = await dbContext.Racks.FindAsync([id], cancellationToken);
+        if (rack is null)
+        {
+            return NotFound(new { error = "机柜不存在" });
+        }
+
+        var wouldTruncate = await dbContext.ServerPositions.AnyAsync(
+            position =>
+                position.RackId == id
+                && position.Status == "在架"
+                && position.EndU > request.HeightU,
+            cancellationToken);
+        if (wouldTruncate)
+        {
+            return Conflict(new { error = "新的 U 位总数会导致现有服务器占用超出机柜范围" });
+        }
+
+        var code = request.Code?.Trim();
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            return BadRequest(new { error = "机柜编号不能为空" });
+        }
+
+        if (await dbContext.Racks.AnyAsync(
+                item => item.RoomId == rack.RoomId && item.Code == code && item.Id != id,
+                cancellationToken))
+        {
+            return Conflict(new { error = "同一机房内机柜编号已存在" });
+        }
+
+        rack.Code = code;
+        rack.HeightU = request.HeightU;
+        rack.Brand = NullIfWhiteSpace(request.Brand);
+        rack.Power = request.Power;
+        rack.Notes = request.Notes;
+        rack.X = request.X;
+        rack.Y = request.Y;
+        rack.Z = request.Z;
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (IsRackUniqueConstraintViolation(exception))
+        {
+            return Conflict(new { error = "同一机房内机柜编号已存在" });
+        }
+
+        return Ok(new
+        {
+            rack.Id,
+            rack.Code,
+            rack.RoomId,
+            RoomName = await dbContext.Rooms.AsNoTracking()
+                .Where(room => room.Id == rack.RoomId)
+                .Select(room => room.Name)
+                .SingleAsync(cancellationToken),
+            rack.HeightU,
+            rack.Brand,
+            rack.Power,
+            rack.Notes,
+            rack.X,
+            rack.Y,
+            rack.Z
+        });
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    {
+        if (!User.IsInRole(Roles.RoomAdministrator) && !User.IsInRole(Roles.Operations))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden);
+        }
+
+        var antiforgeryError = await ValidateAntiforgeryAsync();
+        if (antiforgeryError is not null)
+        {
+            return antiforgeryError;
+        }
+
+        var rack = await dbContext.Racks.FindAsync([id], cancellationToken);
+        if (rack is null)
+        {
+            return NotFound(new { error = "机柜不存在" });
+        }
+
+        var hasServerPositions = await dbContext.ServerPositions.AnyAsync(
+            position => position.RackId == id,
+            cancellationToken);
+        if (hasServerPositions)
+        {
+            return Conflict(new { error = "机柜中存在在架服务器，不能删除" });
+        }
+
+        dbContext.DevicePositions.RemoveRange(
+            dbContext.DevicePositions.Where(position => position.RackId == id));
+        dbContext.Racks.Remove(rack);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return NoContent();
+    }
+
     [HttpPost("import-preview")]
     [RequestSizeLimit(10_000_000)]
     public async Task<IActionResult> ImportPreview(IFormFile file, CancellationToken cancellationToken)
@@ -613,3 +735,13 @@ public sealed record ImportResponse(
     List<ImportError> Errors);
 
 public sealed record ImportError(int Row, string Error);
+
+public sealed record UpdateRackRequest(
+    string? Code,
+    int HeightU,
+    string? Brand,
+    double? Power,
+    string? Notes,
+    double X,
+    double Y,
+    double Z);

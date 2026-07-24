@@ -33,6 +33,7 @@ const deviceHeight = ref<number | ''>('')
 const system = ref('')
 const owner = ref('')
 const notes = ref('')
+const operationalStatus = ref('正常')
 const positionStatus = ref('')
 
 const submitting = ref(false)
@@ -70,6 +71,7 @@ async function loadServer(): Promise<void> {
   system.value = typeof record.system === 'string' ? record.system : ''
   owner.value = typeof record.owner === 'string' ? record.owner : ''
   notes.value = typeof record.notes === 'string' ? record.notes : ''
+  operationalStatus.value = typeof record.operationalStatus === 'string' ? record.operationalStatus : '正常'
   positionStatus.value = typeof record.positionStatus === 'string' ? record.positionStatus : ''
 
   loading.value = false
@@ -126,6 +128,7 @@ async function onSubmit(): Promise<void> {
     assetNumber: assetNumber.value.trim() || undefined,
     deviceType: deviceType.value.trim(),
     deviceHeight: typeof deviceHeight.value === 'number' ? deviceHeight.value : Number(deviceHeight.value),
+    operationalStatus: operationalStatus.value,
     system: system.value.trim() || undefined,
     owner: owner.value.trim() || undefined,
     notes: notes.value.trim() || undefined,
@@ -210,6 +213,13 @@ onMounted(() => {
 
         <label style="text-align: right">设备高度</label>
         <input v-model.number="deviceHeight" type="number" min="1" />
+
+        <label style="text-align: right">运行状态</label>
+        <select v-model="operationalStatus">
+          <option value="正常">正常</option>
+          <option value="异常">异常</option>
+          <option value="维护">维护</option>
+        </select>
 
         <label style="text-align: right">所属系统</label>
         <input v-model="system" type="text" placeholder="选填" />

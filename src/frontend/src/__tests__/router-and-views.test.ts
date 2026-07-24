@@ -79,8 +79,6 @@ type ImportPreviewFixture = {
 }
 
 type HomeViewSetupState = {
-  errorMessage: string
-  submitting: boolean
   rooms: RoomFixture[] | null
   roomsError: string
   createFormVisible: boolean
@@ -117,7 +115,6 @@ type HomeViewSetupState = {
   uploadPreview: (file: File) => Promise<void>
   submitImport: () => Promise<void>
   closeResult: () => void
-  onLogout: () => Promise<void>
 }
 
 async function renderLoginViewHtml(): Promise<string> {
@@ -484,42 +481,12 @@ describe('LoginView submit behavior (U14-B)', () => {
 })
 
 describe('HomeView protected shell (U14-C)', () => {
-  it('renders current username, role, and logout button', async () => {
+  it('renders the room list section', async () => {
     userMock.value = { id: '1', username: 'admin', role: 'Admin' }
 
     const html = await renderHomeViewHtml()
 
-    expect(html).toContain('admin')
-    expect(html).toContain('Admin')
-    expect(html).toMatch(/<button[^>]*type="button"[^>]*>登出<\/button>/)
     expect(html).toContain('aria-label="机房列表"')
-  })
-
-  it('calls logout and navigates to /login after successful logout', async () => {
-    userMock.value = { id: '1', username: 'admin', role: 'Admin' }
-    logoutMock.mockResolvedValue({ ok: true })
-    pushMock.mockResolvedValue(undefined)
-
-    const state = await mountHomeViewState()
-    await state.onLogout()
-
-    expect(logoutMock).toHaveBeenCalledTimes(1)
-    expect(pushMock).toHaveBeenCalledTimes(1)
-    expect(pushMock).toHaveBeenCalledWith('/login')
-    expect(state.errorMessage).toBe('')
-  })
-
-  it('shows the unified logout error and does not navigate after failure', async () => {
-    userMock.value = { id: '1', username: 'admin', role: 'Admin' }
-    logoutMock.mockResolvedValue({ ok: false, error: '服务不可用' })
-    pushMock.mockResolvedValue(undefined)
-
-    const state = await mountHomeViewState()
-    await state.onLogout()
-
-    expect(logoutMock).toHaveBeenCalledTimes(1)
-    expect(state.errorMessage).toBe('服务不可用')
-    expect(pushMock).not.toHaveBeenCalled()
   })
 })
 

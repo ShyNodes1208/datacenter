@@ -125,6 +125,40 @@ public sealed class RoomsController(AppDbContext dbContext, IAntiforgery antifor
         return Ok(new { room.Id, room.Name, room.Status });
     }
 
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    {
+        if (!User.IsInRole(Roles.RoomAdministrator) && !User.IsInRole(Roles.Operations))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden);
+        }
+
+        try
+        {
+            await antiforgery.ValidateRequestAsync(HttpContext);
+        }
+        catch (AntiforgeryValidationException)
+        {
+            return BadRequest(new { error = "防伪令牌缺失或无效" });
+        }
+
+        var room = await dbContext.Rooms.FindAsync([id], cancellationToken);
+        if (room is null)
+        {
+            return NotFound(new { error = "机房不存在" });
+        }
+
+        if (await dbContext.Racks.AnyAsync(rack => rack.RoomId == id, cancellationToken))
+        {
+            return Conflict(new { error = "机房中存在机柜，不能删除" });
+        }
+
+        dbContext.Rooms.Remove(room);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return NoContent();
+    }
+
     private static bool IsRoomNameUniqueConstraintViolation(DbUpdateException exception) =>
         exception.InnerException is SqliteException
         {

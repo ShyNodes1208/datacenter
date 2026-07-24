@@ -17,6 +17,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<ServerPosition> ServerPositions => Set<ServerPosition>();
 
+    public DbSet<AuditRecord> AuditRecords => Set<AuditRecord>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var user = modelBuilder.Entity<User>();
@@ -108,6 +110,17 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         serverPosition.HasOne(item => item.Rack)
             .WithMany()
             .HasForeignKey(item => item.RackId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        var auditRecord = modelBuilder.Entity<AuditRecord>();
+        auditRecord.ToTable("AuditRecords");
+        auditRecord.HasKey(item => item.Id);
+        auditRecord.Property(item => item.OperationType).IsRequired();
+        auditRecord.Property(item => item.OperatorUsername).IsRequired();
+        auditRecord.Property(item => item.OperatedAt).IsRequired();
+        auditRecord.HasOne(item => item.Server)
+            .WithMany()
+            .HasForeignKey(item => item.ServerId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

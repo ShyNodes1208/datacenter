@@ -53,11 +53,8 @@ type ImportResponse = {
 const ROOM_ADMIN_ROLE = '机房管理员'
 
 const router = useRouter()
-const { user, logout } = useAuth()
+const { user } = useAuth()
 const { request } = useApi()
-
-const errorMessage = ref('')
-const submitting = ref(false)
 
 /** null = not finished loading; empty array = loaded empty list */
 const rooms = ref<RoomItem[] | null>(null)
@@ -79,6 +76,10 @@ const editStatus = ref('启用')
 const editSubmitting = ref(false)
 const editError = ref('')
 
+const deleteSubmitting = ref(false)
+const deleteError = ref('')
+const deleteErrorRoomId = ref<string | null>(null)
+
 const importVisible = ref(false)
 const importPreview = ref<{
   rows: ImportRowResult[]
@@ -91,7 +92,12 @@ const importSubmitting = ref(false)
 const importError = ref('')
 const importResult = ref<ImportResponse | null>(null)
 
+const EDIT_ROLES = ['机房管理员', '运维人员']
 const isRoomAdmin = computed(() => user.value?.role === ROOM_ADMIN_ROLE)
+const canDeleteRoom = computed(() => {
+  const role = user.value?.role
+  return role !== undefined && EDIT_ROLES.includes(role)
+})
 
 async function loadRooms(): Promise<void> {
   roomsError.value = ''
@@ -204,6 +210,49 @@ async function saveEdit(room: RoomItem): Promise<void> {
   editError.value = ''
   await loadRooms()
   editSubmitting.value = false
+}
+
+async function deleteRoom(room: RoomItem): Promise<void> {
+  if (deleteSubmitting.value) return
+  if (!window.confirm(`确认删除机房「${room.name}」？`)) return
+
+  deleteSubmitting.value = true
+  deleteError.value = ''
+  deleteErrorRoomId.value = room.id
+
+  const csrf = await request('/api/auth/csrf', { method: 'GET' })
+  if (!csrf.ok) {
+    deleteError.value = csrf.error
+    deleteSubmitting.value = false
+    return
+  }
+  const token = csrf.headers.get('X-XSRF-TOKEN')
+  if (!token) {
+    deleteError.value = 'Request failed.'
+    deleteSubmitting.value = false
+    return
+  }
+
+  const result = await request(`/api/rooms/${room.id}`, {
+    method: 'DELETE',
+    csrfToken: token,
+  })
+
+  if (!result.ok) {
+    deleteError.value = result.error
+    deleteSubmitting.value = false
+    return
+  }
+
+  if (expandedRoomId.value === room.id) {
+    expandedRoomId.value = null
+  }
+  if (editingRoomId.value === room.id) {
+    cancelEdit()
+  }
+  deleteErrorRoomId.value = null
+  deleteSubmitting.value = false
+  await loadRooms()
 }
 
 async function fetchCreateCsrfToken(): Promise<string | null> {
@@ -505,35 +554,12 @@ function handleFileChange(event: Event): void {
   if (file) void uploadPreview(file)
 }
 
-async function onLogout(): Promise<void> {
-  if (submitting.value) {
-    return
-  }
-
-  submitting.value = true
-  errorMessage.value = ''
-
-  const result = await logout()
-  if (result.ok) {
-    await router.push('/login')
-  } else {
-    errorMessage.value = result.error
-  }
-
-  submitting.value = false
-}
 </script>
 
 <template>
   <div>
-    <p>{{ user?.username }}</p>
-    <p>{{ user?.role }}</p>
-    <button type="button" :disabled="submitting" @click="onLogout">登出</button>
-    <div role="alert" aria-live="polite">{{ errorMessage }}</div>
-
     <button type="button" @click="openImport">Excel 导入机柜</button>
     <button type="button" @click="openBatchImport" style="margin-left: 0.5em">批量导入设备</button>
-    <button type="button" @click="router.push('/servers')" style="margin-left: 0.5em">服务器管理</button>
 
     <div v-if="batchImportVisible" style="margin-top: 1em; padding: 1em; border: 1px solid #ccc">
       <div v-if="!batchImportResult">
@@ -672,7 +698,25 @@ async function onLogout(): Promise<void> {
                 编辑
               </button>
             </template>
+            <button
+              v-if="canDeleteRoom && editingRoomId !== room.id"
+              type="button"
+              :disabled="deleteSubmitting"
+              @click.stop="deleteRoom(room)"
+              :style="isRoomAdmin && !createFormVisible ? 'margin-left: 0.5em' : 'margin-left: auto'"
+            >
+              删除
+            </button>
             <span v-if="racksLoading.has(room.id)" style="margin-left: auto; color: #888">加载中...</span>
+          </div>
+
+          <div
+            v-if="deleteErrorRoomId === room.id && deleteError"
+            role="alert"
+            aria-live="polite"
+            style="color: red; margin-top: 0.25em"
+          >
+            {{ deleteError }}
           </div>
 
           <!-- Inline edit form -->

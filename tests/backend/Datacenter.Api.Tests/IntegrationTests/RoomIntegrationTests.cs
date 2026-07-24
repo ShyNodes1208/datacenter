@@ -268,12 +268,114 @@ public sealed class RoomIntegrationTests(AuthTestFixture fixture)
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Fact]
+    public async Task DeleteRoom_RejectsWhenRacksExist()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        var rack = new Rack
+        {
+            RoomId = room.Id,
+            Code = "R001",
+            HeightU = 42,
+            X = 0,
+            Y = 0,
+            Z = 0
+        };
+        await ReplaceRoomsAndRacksAsync([room], [rack]);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.RoomAdministrator);
+
+        using var response = await DeleteRoomAsync(client, room.Id);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("机房中存在机柜，不能删除", await ReadErrorAsync(response));
+        Assert.Equal(1, await CountRoomsAsync("主机房", "启用"));
+    }
+
+    [Fact]
+    public async Task DeleteRoom_SucceedsWhenNoRacks()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        await ReplaceRoomsAsync(room);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.Operations);
+
+        using var response = await DeleteRoomAsync(client, room.Id);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(0, await CountRoomsAsync());
+    }
+
+    [Fact]
+    public async Task DeleteRoom_NonexistentReturnsNotFound()
+    {
+        await ReplaceRoomsAsync();
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.RoomAdministrator);
+
+        using var response = await DeleteRoomAsync(client, Guid.NewGuid());
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("机房不存在", await ReadErrorAsync(response));
+    }
+
+    [Fact]
+    public async Task DeleteRoom_ReadOnlyRoleReturnsForbidden()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        await ReplaceRoomsAsync(room);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.ReadOnlyViewer);
+
+        using var response = await DeleteRoomAsync(client, room.Id);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(1, await CountRoomsAsync("主机房", "启用"));
+    }
+
+    [Fact]
+    public async Task DeleteRoom_AnonymousReturnsUnauthorized()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        await ReplaceRoomsAsync(room);
+        using var client = fixture.CreateClient();
+
+        using var response = await DeleteRoomAsync(client, room.Id);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(1, await CountRoomsAsync("主机房", "启用"));
+    }
+
+    [Fact]
+    public async Task DeleteRoom_MissingCsrfReturnsBadRequest()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        await ReplaceRoomsAsync(room);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.RoomAdministrator);
+
+        using var response = await client.DeleteAsync($"/api/rooms/{room.Id}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("防伪令牌缺失或无效", await ReadErrorAsync(response));
+        Assert.Equal(1, await CountRoomsAsync("主机房", "启用"));
+    }
+
     private async Task ReplaceRoomsAsync(params Room[] rooms)
+    {
+        await ReplaceRoomsAndRacksAsync(rooms, []);
+    }
+
+    private async Task ReplaceRoomsAndRacksAsync(IEnumerable<Room> rooms, IEnumerable<Rack> racks)
     {
         await using var scope = fixture.Factory.Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        dbContext.ServerPositions.RemoveRange(await dbContext.ServerPositions.ToListAsync());
+        dbContext.DevicePositions.RemoveRange(await dbContext.DevicePositions.ToListAsync());
+        dbContext.Racks.RemoveRange(await dbContext.Racks.ToListAsync());
         dbContext.Rooms.RemoveRange(await dbContext.Rooms.ToListAsync());
         dbContext.Rooms.AddRange(rooms);
+        dbContext.Racks.AddRange(racks);
         await dbContext.SaveChangesAsync();
     }
 
@@ -321,6 +423,15 @@ public sealed class RoomIntegrationTests(AuthTestFixture fixture)
         {
             Content = JsonContent.Create(new { name, status })
         };
+        request.Headers.Add("X-XSRF-TOKEN", token);
+        return await client.SendAsync(request);
+    }
+
+    private static async Task<HttpResponseMessage> DeleteRoomAsync(HttpClient client, Guid id)
+    {
+        using var csrf = await client.GetAsync("/api/auth/csrf");
+        var token = csrf.Headers.GetValues("X-XSRF-TOKEN").Single();
+        using var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/rooms/{id}");
         request.Headers.Add("X-XSRF-TOKEN", token);
         return await client.SendAsync(request);
     }

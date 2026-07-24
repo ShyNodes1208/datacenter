@@ -269,15 +269,257 @@ public sealed class RackIntegrationTests(AuthTestFixture fixture)
         Assert.Equal("防伪令牌缺失或无效", await ReadErrorAsync(response));
     }
 
+    [Fact]
+    public async Task DeleteRack_RejectsWhenActiveServerExists()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        var rack = NewRack(room.Id, "R001");
+        var server = new Server
+        {
+            Name = "web-01",
+            ManagementIP = "10.0.0.1",
+            DeviceType = "机架式服务器",
+            DeviceHeight = 2,
+            PositionStatus = "在架"
+        };
+        var position = new ServerPosition
+        {
+            ServerId = server.Id,
+            RackId = rack.Id,
+            StartU = 40,
+            EndU = 42,
+            Status = "在架"
+        };
+        await ReplaceConstraintDataAsync([room], [rack], [server], [position]);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.RoomAdministrator);
+
+        using var response = await DeleteRackAsync(client, rack.Id);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("机柜中存在在架服务器，不能删除", await ReadErrorAsync(response));
+        Assert.NotNull(await FindRackByIdAsync(rack.Id));
+    }
+
+    [Fact]
+    public async Task DeleteRack_SucceedsWhenNoActiveServer()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        var rack = NewRack(room.Id, "R001");
+        await ReplaceConstraintDataAsync([room], [rack], [], []);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.Operations);
+
+        using var response = await DeleteRackAsync(client, rack.Id);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Null(await FindRackByIdAsync(rack.Id));
+    }
+
+    [Fact]
+    public async Task UpdateRack_RejectsHeightUThatTruncatesActiveServers()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        var rack = NewRack(room.Id, "R001");
+        var server = new Server
+        {
+            Name = "web-01",
+            ManagementIP = "10.0.0.1",
+            DeviceType = "机架式服务器",
+            DeviceHeight = 3,
+            PositionStatus = "在架"
+        };
+        var position = new ServerPosition
+        {
+            ServerId = server.Id,
+            RackId = rack.Id,
+            StartU = 40,
+            EndU = 42,
+            Status = "在架"
+        };
+        await ReplaceConstraintDataAsync([room], [rack], [server], [position]);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.RoomAdministrator);
+
+        using var response = await PutRackAsync(client, rack.Id, new
+        {
+            code = rack.Code,
+            heightU = 38,
+            brand = rack.Brand,
+            power = rack.Power,
+            notes = rack.Notes,
+            x = rack.X,
+            y = rack.Y,
+            z = rack.Z
+        });
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("新的 U 位总数会导致现有服务器占用超出机柜范围", await ReadErrorAsync(response));
+        Assert.Equal(42, (await FindRackByIdAsync(rack.Id))!.HeightU);
+    }
+
+    [Fact]
+    public async Task UpdateRack_AllowsHeightUAboveActiveServerEndU()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        var rack = NewRack(room.Id, "R001");
+        var server = new Server
+        {
+            Name = "web-01",
+            ManagementIP = "10.0.0.1",
+            DeviceType = "机架式服务器",
+            DeviceHeight = 3,
+            PositionStatus = "在架"
+        };
+        var position = new ServerPosition
+        {
+            ServerId = server.Id,
+            RackId = rack.Id,
+            StartU = 40,
+            EndU = 42,
+            Status = "在架"
+        };
+        await ReplaceConstraintDataAsync([room], [rack], [server], [position]);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.Operations);
+
+        using var response = await PutRackAsync(client, rack.Id, new
+        {
+            code = rack.Code,
+            heightU = 42,
+            brand = "戴尔",
+            power = rack.Power,
+            notes = rack.Notes,
+            x = rack.X,
+            y = rack.Y,
+            z = rack.Z
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var updated = await FindRackByIdAsync(rack.Id);
+        Assert.NotNull(updated);
+        Assert.Equal(42, updated.HeightU);
+        Assert.Equal("戴尔", updated.Brand);
+    }
+
+    [Fact]
+    public async Task DeleteRack_ReadOnlyRoleReturnsForbidden()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        var rack = NewRack(room.Id, "R001");
+        await ReplaceConstraintDataAsync([room], [rack], [], []);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.ReadOnlyViewer);
+
+        using var response = await DeleteRackAsync(client, rack.Id);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.NotNull(await FindRackByIdAsync(rack.Id));
+    }
+
+    [Fact]
+    public async Task DeleteRack_AnonymousReturnsUnauthorized()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        var rack = NewRack(room.Id, "R001");
+        await ReplaceConstraintDataAsync([room], [rack], [], []);
+        using var client = fixture.CreateClient();
+
+        using var response = await DeleteRackAsync(client, rack.Id);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.NotNull(await FindRackByIdAsync(rack.Id));
+    }
+
+    [Fact]
+    public async Task DeleteRack_MissingCsrfReturnsBadRequest()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        var rack = NewRack(room.Id, "R001");
+        await ReplaceConstraintDataAsync([room], [rack], [], []);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.RoomAdministrator);
+
+        using var response = await client.DeleteAsync($"/api/racks/{rack.Id}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("防伪令牌缺失或无效", await ReadErrorAsync(response));
+        Assert.NotNull(await FindRackByIdAsync(rack.Id));
+    }
+
+    [Fact]
+    public async Task UpdateRack_ReadOnlyRoleReturnsForbidden()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        var rack = NewRack(room.Id, "R001");
+        await ReplaceConstraintDataAsync([room], [rack], [], []);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.ReadOnlyViewer);
+
+        using var response = await PutRackAsync(client, rack.Id, ValidUpdateBody(rack));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateRack_AnonymousReturnsUnauthorized()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        var rack = NewRack(room.Id, "R001");
+        await ReplaceConstraintDataAsync([room], [rack], [], []);
+        using var client = fixture.CreateClient();
+
+        using var response = await PutRackAsync(client, rack.Id, ValidUpdateBody(rack));
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateRack_MissingCsrfReturnsBadRequest()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        var rack = NewRack(room.Id, "R001");
+        await ReplaceConstraintDataAsync([room], [rack], [], []);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.RoomAdministrator);
+
+        using var response = await client.PutAsJsonAsync($"/api/racks/{rack.Id}", ValidUpdateBody(rack));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("防伪令牌缺失或无效", await ReadErrorAsync(response));
+    }
+
     private async Task ReplaceDataAsync(IEnumerable<Room> rooms, IEnumerable<Rack> racks)
+    {
+        await ReplaceConstraintDataAsync(rooms, racks, [], []);
+    }
+
+    private async Task ReplaceConstraintDataAsync(
+        IEnumerable<Room> rooms,
+        IEnumerable<Rack> racks,
+        IEnumerable<Server> servers,
+        IEnumerable<ServerPosition> positions)
     {
         await using var scope = fixture.Factory.Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        dbContext.ServerPositions.RemoveRange(await dbContext.ServerPositions.ToListAsync());
+        dbContext.DevicePositions.RemoveRange(await dbContext.DevicePositions.ToListAsync());
+        dbContext.Servers.RemoveRange(await dbContext.Servers.ToListAsync());
         dbContext.Racks.RemoveRange(await dbContext.Racks.ToListAsync());
         dbContext.Rooms.RemoveRange(await dbContext.Rooms.ToListAsync());
         dbContext.Rooms.AddRange(rooms);
         dbContext.Racks.AddRange(racks);
+        dbContext.Servers.AddRange(servers);
+        dbContext.ServerPositions.AddRange(positions);
         await dbContext.SaveChangesAsync();
+    }
+
+    private async Task<Rack?> FindRackByIdAsync(Guid id)
+    {
+        await using var scope = fixture.Factory.Services.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<AppDbContext>().Racks
+            .AsNoTracking()
+            .SingleOrDefaultAsync(rack => rack.Id == id);
     }
 
     private async Task<Rack?> FindRackAsync(Guid roomId, string code)
@@ -296,6 +538,18 @@ public sealed class RackIntegrationTests(AuthTestFixture fixture)
         X = 0,
         Y = 0,
         Z = 0
+    };
+
+    private static object ValidUpdateBody(Rack rack) => new
+    {
+        code = rack.Code,
+        heightU = rack.HeightU,
+        brand = rack.Brand,
+        power = rack.Power,
+        notes = rack.Notes,
+        x = rack.X,
+        y = rack.Y,
+        z = rack.Z
     };
 
     private static object?[] ValidRow(string roomName) =>
@@ -375,6 +629,27 @@ public sealed class RackIntegrationTests(AuthTestFixture fixture)
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/racks/import")
         {
             Content = JsonContent.Create(new { rows })
+        };
+        request.Headers.Add("X-XSRF-TOKEN", token);
+        return await client.SendAsync(request);
+    }
+
+    private static async Task<HttpResponseMessage> DeleteRackAsync(HttpClient client, Guid id)
+    {
+        using var csrf = await client.GetAsync("/api/auth/csrf");
+        var token = csrf.Headers.GetValues("X-XSRF-TOKEN").Single();
+        using var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/racks/{id}");
+        request.Headers.Add("X-XSRF-TOKEN", token);
+        return await client.SendAsync(request);
+    }
+
+    private static async Task<HttpResponseMessage> PutRackAsync(HttpClient client, Guid id, object body)
+    {
+        using var csrf = await client.GetAsync("/api/auth/csrf");
+        var token = csrf.Headers.GetValues("X-XSRF-TOKEN").Single();
+        using var request = new HttpRequestMessage(HttpMethod.Put, $"/api/racks/{id}")
+        {
+            Content = JsonContent.Create(body)
         };
         request.Headers.Add("X-XSRF-TOKEN", token);
         return await client.SendAsync(request);
