@@ -78,6 +78,60 @@ public sealed class DevicePositionsController(AppDbContext dbContext, IAntiforge
         });
     }
 
+    [HttpPost("import-preview")]
+    [RequestSizeLimit(10_000_000)]
+    public async Task<IActionResult> ImportPreview(Guid rackId, IFormFile file, CancellationToken cancellationToken)
+    {
+        var antiforgeryError = await ValidateAntiforgeryAsync();
+        if (antiforgeryError is not null)
+        {
+            return antiforgeryError;
+        }
+
+        var rack = await dbContext.Racks
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.Id == rackId, cancellationToken);
+
+        if (rack is null)
+        {
+            return NotFound(new { error = "机柜不存在" });
+        }
+
+        var openResult = await OpenWorksheetAsync(file);
+        if (openResult.ErrorResult is not null)
+        {
+            return openResult.ErrorResult;
+        }
+
+        using (openResult.Workbook!)
+        {
+            var (errors, importData) = DevicePositionExcelParser.ParseForRack(
+                openResult.Worksheet!, rack.Code, rack.HeightU);
+            var positions = importData
+                .Where(kv => kv.Value.Label is not null)
+                .OrderByDescending(kv => kv.Key)
+                .Select(kv => new
+                {
+                    uNumber = kv.Key,
+                    label = kv.Value.Label,
+                    uHeight = kv.Value.UHeight
+                })
+                .ToList();
+            var occupied = positions.Sum(p => p.uHeight);
+
+            return Ok(new
+            {
+                rackId = rack.Id,
+                rackCode = rack.Code,
+                totalUPositions = rack.HeightU,
+                occupied,
+                empty = rack.HeightU - occupied,
+                positions,
+                errors = errors.Count > 0 ? errors : null
+            });
+        }
+    }
+
     [HttpPost("import")]
     [RequestSizeLimit(10_000_000)]
     public async Task<IActionResult> Import(Guid rackId, IFormFile file, CancellationToken cancellationToken)
@@ -96,37 +150,16 @@ public sealed class DevicePositionsController(AppDbContext dbContext, IAntiforge
             return NotFound(new { error = "机柜不存在" });
         }
 
-        if (file is null || file.Length == 0)
+        var openResult = await OpenWorksheetAsync(file);
+        if (openResult.ErrorResult is not null)
         {
-            return BadRequest(new { error = "请选择要导入的文件" });
+            return openResult.ErrorResult;
         }
 
-        if (!string.Equals(Path.GetExtension(file.FileName), ".xlsx", StringComparison.OrdinalIgnoreCase))
+        using (openResult.Workbook!)
         {
-            return BadRequest(new { error = "仅支持 .xlsx 文件" });
-        }
-
-        XLWorkbook workbook;
-        try
-        {
-            await using var stream = file.OpenReadStream();
-            workbook = new XLWorkbook(stream);
-        }
-        catch (Exception exception) when (exception is not OperationCanceledException)
-        {
-            return BadRequest(new { error = "无法读取 Excel 文件" });
-        }
-
-        using (workbook)
-        {
-            var worksheet = workbook.Worksheets.FirstOrDefault();
-            if (worksheet is null)
-            {
-                return BadRequest(new { error = "Excel 文件不包含工作表" });
-            }
-
             var (errors, occupied) = await ImportPositionsForRack(
-                worksheet, rack, rackId, cancellationToken);
+                openResult.Worksheet!, rack, rackId, cancellationToken);
 
             return Ok(new
             {
@@ -140,84 +173,44 @@ public sealed class DevicePositionsController(AppDbContext dbContext, IAntiforge
         }
     }
 
+    private async Task<(XLWorkbook? Workbook, IXLWorksheet? Worksheet, IActionResult? ErrorResult)> OpenWorksheetAsync(
+        IFormFile file)
+    {
+        if (file is null || file.Length == 0)
+        {
+            return (null, null, BadRequest(new { error = "请选择要导入的文件" }));
+        }
+
+        if (!string.Equals(Path.GetExtension(file.FileName), ".xlsx", StringComparison.OrdinalIgnoreCase))
+        {
+            return (null, null, BadRequest(new { error = "仅支持 .xlsx 文件" }));
+        }
+
+        XLWorkbook workbook;
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            workbook = new XLWorkbook(stream);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return (null, null, BadRequest(new { error = "无法读取 Excel 文件" }));
+        }
+
+        var worksheet = workbook.Worksheets.FirstOrDefault();
+        if (worksheet is null)
+        {
+            workbook.Dispose();
+            return (null, null, BadRequest(new { error = "Excel 文件不包含工作表" }));
+        }
+
+        return (workbook, worksheet, null);
+    }
+
     private async Task<(List<string> Errors, int Occupied)> ImportPositionsForRack(
         IXLWorksheet worksheet, Rack rack, Guid rackId, CancellationToken cancellationToken)
     {
-        var lastColumn = worksheet.Row(1).LastCellUsed()?.Address.ColumnNumber ?? 0;
-        int? targetStartColumn = null;
-
-        for (var col = 1; col <= lastColumn; col++)
-        {
-            var headerText = worksheet.Cell(1, col).GetString().Trim();
-            if (string.IsNullOrWhiteSpace(headerText))
-            {
-                continue;
-            }
-
-            var normalized = ChineseSymbolNormalizer.Normalize(headerText);
-            if (normalized.Contains(rack.Code, StringComparison.OrdinalIgnoreCase))
-            {
-                targetStartColumn = col;
-                break;
-            }
-        }
-
-        if (targetStartColumn is null)
-        {
-            return (new List<string> { $"Excel 中未找到机柜 '{rack.Code}' 的数据列" }, 0);
-        }
-
-        var uNumberCol = targetStartColumn.Value;
-        var labelCol = uNumberCol + 1;
-
-        var importData = new Dictionary<int, (string? Label, int UHeight)>();
-        var errors = new List<string>();
-        var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 1;
-
-        for (var row = 2; row <= lastRow; row++)
-        {
-            var uNumberText = worksheet.Cell(row, uNumberCol).GetString().Trim();
-            if (string.IsNullOrWhiteSpace(uNumberText))
-            {
-                continue;
-            }
-
-            var uNumberStr = uNumberText.TrimEnd('U', 'u');
-            if (!int.TryParse(uNumberStr, out var uNumber) || uNumber < 1)
-            {
-                errors.Add($"第 {row} 行 U 位编号无效：'{uNumberText}'");
-                continue;
-            }
-
-            if (uNumber > rack.HeightU)
-            {
-                errors.Add($"第 {row} 行 U 位编号 {uNumber} 超出机柜 U 位范围 (1-{rack.HeightU})");
-                continue;
-            }
-
-            var labelCell = worksheet.Cell(row, labelCol);
-            string? label;
-            int uHeight;
-
-            if (labelCell.IsMerged())
-            {
-                var mergedRange = worksheet.MergedRanges.First(r => r.Contains(labelCell.Address.ToString()));
-                if (labelCell.Address.ToString() != mergedRange.FirstCell().Address.ToString())
-                {
-                    continue;
-                }
-
-                label = mergedRange.FirstCell().GetString().Trim();
-                uHeight = mergedRange.RowCount();
-            }
-            else
-            {
-                label = labelCell.GetString().Trim();
-                uHeight = 1;
-            }
-
-            importData[uNumber] = (string.IsNullOrWhiteSpace(label) ? null : label, uHeight);
-        }
+        var (errors, importData) = DevicePositionExcelParser.ParseForRack(worksheet, rack.Code, rack.HeightU);
 
         var existingPositions = await dbContext.DevicePositions
             .Where(dp => dp.RackId == rackId)

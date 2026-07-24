@@ -114,7 +114,7 @@ public sealed class DevicePositionIntegrationTests(AuthTestFixture fixture) : IA
 
         using var workbook = new XLWorkbook();
         var worksheet = workbook.AddWorksheet("设备落位");
-        worksheet.Cell(1, 1).Value = $"机柜{_rack.Code}";
+        worksheet.Cell(1, 1).Value = $"机柜[{_rack.Code}]";
         worksheet.Cell(1, 2).Value = "";
         worksheet.Cell(1, 3).Value = "";
         worksheet.Cell(2, 1).Value = "42U";
@@ -168,6 +168,70 @@ public sealed class DevicePositionIntegrationTests(AuthTestFixture fixture) : IA
     }
 
     [Fact]
+    public async Task ImportPreviewDevicePositions_DoesNotWriteAndReturnsPositions()
+    {
+        await LoginAsRoleAsync(_client, Roles.RoomAdministrator);
+
+        await using (var scope = fixture.Factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            db.DevicePositions.Add(new DevicePosition
+            {
+                RackId = _rack.Id,
+                UNumber = 10,
+                UHeight = 1,
+                Label = "已有设备"
+            });
+            await db.SaveChangesAsync();
+        }
+
+        using var csrf = await _client.GetAsync("/api/auth/csrf");
+        var csrfToken = csrf.Headers.GetValues("X-XSRF-TOKEN").Single();
+
+        using var workbook = new XLWorkbook();
+        var worksheet = workbook.AddWorksheet("设备落位");
+        worksheet.Cell(1, 1).Value = $"机柜[{_rack.Code}]";
+        worksheet.Cell(1, 2).Value = "";
+        worksheet.Cell(2, 1).Value = "42U";
+        worksheet.Cell(2, 2).Value = "配线架";
+        worksheet.Cell(3, 1).Value = "40U";
+        worksheet.Cell(3, 2).Value = "交换机";
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+
+        var content = new MultipartFormDataContent();
+        var fileContent = new ByteArrayContent(stream.ToArray());
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        content.Add(fileContent, "file", "positions.xlsx");
+
+        using var request = new HttpRequestMessage(HttpMethod.Post,
+            $"/api/racks/{_rack.Id}/device-positions/import-preview")
+        {
+            Content = content
+        };
+        request.Headers.Add("X-XSRF-TOKEN", csrfToken);
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("\"occupied\":2", body, StringComparison.Ordinal);
+        Assert.Contains("配线架", body, StringComparison.Ordinal);
+        Assert.Contains("交换机", body, StringComparison.Ordinal);
+
+        await using (var scope = fixture.Factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var existing = await db.DevicePositions
+                .Where(dp => dp.RackId == _rack.Id)
+                .ToListAsync();
+            Assert.Single(existing);
+            Assert.Equal("已有设备", existing[0].Label);
+        }
+    }
+
+    [Fact]
     public async Task GetRacks_ByRoomId_ReturnsFilteredRacks()
     {
         await LoginAsRoleAsync(_client, Roles.ReadOnlyViewer);
@@ -177,6 +241,7 @@ public sealed class DevicePositionIntegrationTests(AuthTestFixture fixture) : IA
 
         var body = await response.Content.ReadAsStringAsync();
         Assert.Contains(_rack.Code, body, StringComparison.Ordinal);
+        Assert.Contains("\"occupiedU\":0", body, StringComparison.Ordinal);
     }
 
     [Fact]

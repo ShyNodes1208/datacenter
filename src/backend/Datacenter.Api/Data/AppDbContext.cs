@@ -56,7 +56,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             .OnDelete(DeleteBehavior.Restrict);
 
         var devicePosition = modelBuilder.Entity<DevicePosition>();
-        devicePosition.ToTable("DevicePositions");
+        devicePosition.ToTable("DevicePositions", table =>
+        {
+            table.HasCheckConstraint("CK_DevicePositions_UNumber", "UNumber >= 1");
+        });
         devicePosition.HasKey(item => item.Id);
         devicePosition.HasIndex(item => new { item.RackId, item.UNumber }).IsUnique();
         devicePosition.Property(item => item.UNumber).IsRequired();

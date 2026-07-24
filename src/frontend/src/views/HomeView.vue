@@ -16,6 +16,7 @@ type RackItem = {
   roomId: string
   roomName: string
   heightU: number
+  occupiedU: number
   brand: string | null
   power: number | null
   notes: string | null
@@ -749,7 +750,10 @@ function handleFileChange(event: Event): void {
                 "
               >
                 <div style="font-weight: bold">{{ rack.code }}</div>
-                <div style="font-size: 0.85em; color: #666">{{ rack.heightU }}U</div>
+                <div style="font-size: 0.85em; color: #666">
+                  已用 {{ rack.occupiedU }}/{{ rack.heightU }}U
+                  ({{ rack.heightU > 0 ? Math.round((rack.occupiedU / rack.heightU) * 100) : 0 }}%)
+                </div>
                 <div
                   v-if="rack.brand"
                   style="font-size: 0.85em; color: #666"

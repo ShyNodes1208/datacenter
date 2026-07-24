@@ -61,6 +61,9 @@ public sealed class RacksController(AppDbContext dbContext, IAntiforgery antifor
                 rack.RoomId,
                 RoomName = rack.Room.Name,
                 rack.HeightU,
+                OccupiedU = dbContext.ServerPositions
+                    .Where(position => position.RackId == rack.Id && position.Status == "在架")
+                    .Sum(position => position.EndU - position.StartU + 1),
                 rack.Brand,
                 rack.Power,
                 rack.Notes,

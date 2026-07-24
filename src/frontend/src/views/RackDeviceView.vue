@@ -32,6 +32,22 @@ type DevicePositionsData = {
   stats: RackStats
 }
 
+type ImportPreviewPosition = {
+  uNumber: number
+  label: string
+  uHeight: number
+}
+
+type ImportPreview = {
+  rackId: string
+  rackCode: string
+  totalUPositions: number
+  occupied: number
+  empty: number
+  positions: ImportPreviewPosition[]
+  errors?: string[]
+}
+
 type ImportResult = {
   rackId: string
   rackCode: string
@@ -97,8 +113,11 @@ const data = ref<DevicePositionsData | null>(null)
 const error = ref('')
 const importVisible = ref(false)
 const importError = ref('')
+const importPreview = ref<ImportPreview | null>(null)
+const importFile = ref<File | null>(null)
 const importResult = ref<ImportResult | null>(null)
 const importSubmitting = ref(false)
+const importPreviewLoading = ref(false)
 
 const rackVisible = ref(false)
 const rackError = ref('')
@@ -167,37 +186,89 @@ onMounted(() => {
 
 function openImport(): void {
   importVisible.value = true
+  importPreview.value = null
+  importFile.value = null
   importResult.value = null
   importError.value = ''
 }
 
 function cancelImport(): void {
   importVisible.value = false
+  importPreview.value = null
+  importFile.value = null
   importResult.value = null
   importError.value = ''
 }
 
-async function handleFileChange(event: Event): Promise<void> {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
-
-  importError.value = ''
-
+async function fetchImportCsrfToken(): Promise<string | null> {
   const csrfResult = await request('/api/auth/csrf', { method: 'GET' })
   if (!csrfResult.ok) {
     importError.value = csrfResult.error
-    return
+    return null
   }
   const token = csrfResult.headers.get('X-XSRF-TOKEN')
   if (!token) {
     importError.value = 'Request failed.'
+    return null
+  }
+  return token
+}
+
+async function uploadPreview(file: File): Promise<void> {
+  importError.value = ''
+  importPreview.value = null
+  importFile.value = null
+  importPreviewLoading.value = true
+
+  const token = await fetchImportCsrfToken()
+  if (!token) {
+    importPreviewLoading.value = false
     return
   }
 
-  importSubmitting.value = true
   const formData = new FormData()
   formData.append('file', file)
+
+  let response: Response
+  try {
+    response = await fetch(`/api/racks/${rackId.value}/device-positions/import-preview`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'X-XSRF-TOKEN': token },
+      body: formData,
+    })
+  } catch {
+    importError.value = 'Request failed.'
+    importPreviewLoading.value = false
+    return
+  }
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({} as Record<string, unknown>))
+    importError.value = ((body as Record<string, unknown>).error as string) || '预览失败'
+    importPreviewLoading.value = false
+    return
+  }
+
+  importPreview.value = (await response.json()) as ImportPreview
+  importFile.value = file
+  importPreviewLoading.value = false
+}
+
+async function submitImport(): Promise<void> {
+  if (!importFile.value || importSubmitting.value) return
+
+  importSubmitting.value = true
+  importError.value = ''
+
+  const token = await fetchImportCsrfToken()
+  if (!token) {
+    importSubmitting.value = false
+    return
+  }
+
+  const formData = new FormData()
+  formData.append('file', importFile.value)
 
   let response: Response
   try {
@@ -221,12 +292,22 @@ async function handleFileChange(event: Event): Promise<void> {
   }
 
   importResult.value = (await response.json()) as ImportResult
-  importSubmitting.value = false
+  importPreview.value = null
+  importFile.value = null
   await loadData()
+  importSubmitting.value = false
+}
+
+function handleFileChange(event: Event): void {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (file) void uploadPreview(file)
 }
 
 function closeResult(): void {
   importVisible.value = false
+  importPreview.value = null
+  importFile.value = null
   importResult.value = null
 }
 
@@ -734,19 +815,67 @@ async function deleteRack(): Promise<void> {
       </div>
 
       <div v-if="importVisible" style="margin-top: 1em; padding: 1em; border: 1px solid #ccc">
-        <template v-if="!importResult">
-          <input type="file" accept=".xlsx" @change="handleFileChange" />
+        <div v-if="!importPreview && !importResult">
+          <input type="file" accept=".xlsx" :disabled="importPreviewLoading" @change="handleFileChange" />
+          <p v-if="importPreviewLoading" style="margin: 0.5em 0">解析中...</p>
           <div v-if="importError" role="alert" aria-live="polite">{{ importError }}</div>
           <br />
-          <button type="button" :disabled="importSubmitting" @click="cancelImport">取消</button>
-        </template>
-        <template v-else>
-          <p>导入完成：{{ importResult.occupied }} 个 U 位有设备，{{ importResult.empty }} 个空闲</p>
-          <div v-if="importResult.errors?.length">
-            <p v-for="(err, i) in importResult.errors" :key="i" style="color: red">{{ err }}</p>
+          <button type="button" :disabled="importPreviewLoading" @click="cancelImport">取消</button>
+        </div>
+
+        <div v-if="importPreview && !importResult">
+          <p style="margin: 0 0 0.5em">
+            预览：将覆盖当前机柜设备数据。共 {{ importPreview.occupied }} 个占用 U 位，{{ importPreview.empty }} 个空闲。
+          </p>
+          <div style="max-height: 320px; overflow: auto">
+            <table style="border-collapse: collapse; width: 100%">
+              <thead>
+                <tr>
+                  <th style="text-align: left; padding: 2px 8px; border-bottom: 1px solid #ccc">U 位</th>
+                  <th style="text-align: left; padding: 2px 8px; border-bottom: 1px solid #ccc">设备标签</th>
+                  <th style="text-align: left; padding: 2px 8px; border-bottom: 1px solid #ccc">高度</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="pos in importPreview.positions" :key="pos.uNumber">
+                  <td style="padding: 2px 8px">U{{ pos.uNumber }}</td>
+                  <td style="padding: 2px 8px">{{ pos.label }}</td>
+                  <td style="padding: 2px 8px">{{ pos.uHeight }}U</td>
+                </tr>
+                <tr v-if="importPreview.positions.length === 0">
+                  <td colspan="3" style="padding: 2px 8px; color: #666">无设备标签（导入后机柜将清空）</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-          <button type="button" @click="closeResult">关闭</button>
-        </template>
+          <div v-if="importPreview.errors?.length" style="margin-top: 0.5em">
+            <p v-for="(err, i) in importPreview.errors" :key="i" style="color: red; margin: 0.25em 0">{{ err }}</p>
+          </div>
+          <div style="margin-top: 0.75em">
+            <button
+              type="button"
+              :disabled="importSubmitting"
+              @click="submitImport"
+            >
+              {{ importSubmitting ? '导入中...' : '确认导入' }}
+            </button>
+            <button type="button" :disabled="importSubmitting" @click="cancelImport" style="margin-left: 0.5em">
+              取消
+            </button>
+          </div>
+          <div v-if="importError" role="alert" aria-live="polite" style="margin-top: 0.5em">{{ importError }}</div>
+        </div>
+
+        <div v-if="importResult">
+          <p v-if="importSubmitting">刷新中...</p>
+          <template v-else>
+            <p>导入完成：{{ importResult.occupied }} 个 U 位有设备，{{ importResult.empty }} 个空闲</p>
+            <div v-if="importResult.errors?.length">
+              <p v-for="(err, i) in importResult.errors" :key="i" style="color: red">{{ err }}</p>
+            </div>
+            <button type="button" @click="closeResult">关闭</button>
+          </template>
+        </div>
       </div>
 
       <div v-if="rackVisible" style="margin-top: 1em; padding: 1em; border: 1px solid #ccc">
@@ -898,32 +1027,39 @@ async function deleteRack(): Promise<void> {
             v-for="group in mergedPositions"
             :key="`${group.startU}-${group.endU}`"
             :style="{
-              height: `${groupUCount(group) * 20}px`,
+              display: 'grid',
+              gridTemplateColumns: groupServerMap.has(group.startU) && groupServerMap.get(group.startU)!.showActions && canEdit
+                ? '40px 1fr 72px'
+                : '40px 1fr',
+              gridTemplateRows: `repeat(${groupUCount(group)}, 20px)`,
               backgroundColor: group.label ? '#b3d9ff' : '#e0ffe0',
               borderBottom: '1px solid #ccc',
-              display: 'flex',
-              alignItems: 'stretch',
               padding: '0 8px',
               fontSize: '12px',
               overflow: 'hidden',
+              boxSizing: 'border-box',
             }"
           >
-            <div style="display: flex; flex-direction: column; min-width: 40px; flex-shrink: 0">
-              <span
-                v-for="u in groupUNumbers(group)"
-                :key="u"
-                style="height: 20px; line-height: 20px; font-weight: bold"
-              >U{{ u }}</span>
-            </div>
+            <span
+              v-for="(u, idx) in groupUNumbers(group)"
+              :key="u"
+              :style="{
+                gridColumn: 1,
+                gridRow: idx + 1,
+                lineHeight: '20px',
+                fontWeight: 'bold',
+                borderBottom: 'none',
+              }"
+            >U{{ u }}</span>
             <span
               v-if="group.label"
-              style="flex: 1; margin-left: 8px; display: flex; align-items: center; justify-content: center; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis"
+              style="grid-column: 2; grid-row: 1 / -1; display: flex; align-items: center; justify-content: center; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-bottom: none"
             >
               {{ group.label }}
             </span>
             <div
               v-if="groupServerMap.has(group.startU) && groupServerMap.get(group.startU)!.showActions && canEdit"
-              style="display: flex; align-self: flex-start; flex-shrink: 0; width: 72px; justify-content: flex-end; gap: 2px; padding-top: 1px"
+              style="grid-column: 3; grid-row: 1; display: flex; align-self: start; justify-content: flex-end; gap: 2px; padding-top: 1px"
             >
               <button
                 type="button"
