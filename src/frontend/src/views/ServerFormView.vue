@@ -186,60 +186,163 @@ onMounted(() => {
 </script>
 
 <template>
-  <div>
-    <h2>{{ title }}</h2>
+  <div class="server-form-page">
+    <div class="form-card">
+      <h2 class="form-card__title">{{ title }}</h2>
 
-    <div v-if="loading">加载中...</div>
+      <div v-if="loading">加载中...</div>
 
-    <div v-if="error" role="alert" aria-live="polite">{{ error }}</div>
+      <div v-if="error" class="error" role="alert" aria-live="polite">{{ error }}</div>
 
-    <div v-if="validationErrors.length" role="alert" aria-live="polite" style="color: red; margin-bottom: 0.5em">
-      <p v-for="(err, i) in validationErrors" :key="i" style="margin: 0">{{ err }}</p>
-    </div>
+      <div v-if="validationErrors.length" class="validation-card" role="alert" aria-live="polite">
+        <p v-for="(err, i) in validationErrors" :key="i">{{ err }}</p>
+      </div>
 
-    <form v-if="!loading" @submit.prevent="onSubmit" style="max-width: 500px">
-      <div style="display: grid; grid-template-columns: 100px 1fr; gap: 0.5em; align-items: center">
-        <label style="text-align: right">名称</label>
+      <form v-if="!loading" class="form-grid" @submit.prevent="onSubmit">
+        <label class="required">名称</label>
         <input v-model="name" type="text" />
 
-        <label style="text-align: right">管理 IP</label>
+        <label class="required">管理 IP</label>
         <input v-model="managementIP" type="text" />
 
-        <label style="text-align: right">资产编号</label>
+        <label>资产编号</label>
         <input v-model="assetNumber" type="text" placeholder="选填" />
 
-        <label style="text-align: right">设备类型</label>
+        <label class="required">设备类型</label>
         <input v-model="deviceType" type="text" />
 
-        <label style="text-align: right">设备高度</label>
+        <label class="required">设备高度</label>
         <input v-model.number="deviceHeight" type="number" min="1" />
 
-        <label style="text-align: right">运行状态</label>
+        <label class="required">运行状态</label>
         <select v-model="operationalStatus">
           <option value="正常">正常</option>
           <option value="异常">异常</option>
           <option value="维护">维护</option>
         </select>
 
-        <label style="text-align: right">所属系统</label>
+        <label>所属系统</label>
         <input v-model="system" type="text" placeholder="选填" />
 
-        <label style="text-align: right">负责人</label>
+        <label>负责人</label>
         <input v-model="owner" type="text" placeholder="选填" />
 
-        <label v-if="isEdit" style="text-align: right">位置状态</label>
+        <label v-if="isEdit">位置状态</label>
         <input v-if="isEdit" :value="positionStatus" type="text" readonly disabled />
 
-        <label style="text-align: right">备注</label>
+        <label>备注</label>
         <textarea v-model="notes" rows="3" placeholder="选填"></textarea>
-      </div>
 
-      <div style="display: flex; gap: 0.5em; margin-top: 0.5em">
-        <button type="submit" :disabled="submitting">
-          {{ submitting ? '保存中...' : '保存' }}
-        </button>
-        <button type="button" :disabled="submitting" @click="onCancel">取消</button>
-      </div>
-    </form>
+        <div class="form-actions">
+          <button type="submit" class="btn btn--primary" :disabled="submitting">
+            {{ submitting ? '保存中...' : '保存' }}
+          </button>
+          <button type="button" class="btn btn--muted" :disabled="submitting" @click="onCancel">取消</button>
+        </div>
+      </form>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.server-form-page {
+  padding: var(--space-md);
+  background: var(--color-bg);
+  min-height: calc(100vh - 48px);
+}
+
+.form-card {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: var(--space-lg);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.form-card__title {
+  margin: 0 0 var(--space-md);
+  font-size: var(--font-lg);
+  color: var(--color-text);
+}
+
+.error {
+  color: var(--color-danger);
+  margin-bottom: var(--space-sm);
+}
+
+.validation-card {
+  margin-bottom: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius);
+  color: var(--color-danger);
+}
+
+.validation-card p {
+  margin: 0;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.form-grid label {
+  text-align: right;
+  font-size: var(--font-md);
+  color: var(--color-text);
+}
+
+.form-grid label.required::before {
+  content: '*';
+  color: var(--color-danger);
+  margin-right: 2px;
+}
+
+.form-grid input,
+.form-grid select,
+.form-grid textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: var(--font-md);
+}
+
+.form-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.btn {
+  padding: var(--space-xs) var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: var(--font-md);
+  cursor: pointer;
+}
+
+.btn--primary {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.btn--muted {
+  background: var(--color-btn-secondary);
+  color: var(--color-text-secondary);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+</style>

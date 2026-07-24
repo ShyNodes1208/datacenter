@@ -61,9 +61,6 @@ public sealed class RacksController(AppDbContext dbContext, IAntiforgery antifor
                 rack.RoomId,
                 RoomName = rack.Room.Name,
                 rack.HeightU,
-                OccupiedU = dbContext.ServerPositions
-                    .Where(position => position.RackId == rack.Id && position.Status == "在架")
-                    .Sum(position => position.EndU - position.StartU + 1),
                 rack.Brand,
                 rack.Power,
                 rack.Notes,
@@ -73,7 +70,70 @@ public sealed class RacksController(AppDbContext dbContext, IAntiforgery antifor
             })
             .ToListAsync(cancellationToken);
 
-        return Ok(racks);
+        var rackIds = racks.Select(rack => rack.Id).ToList();
+        var occupiedByRack = new Dictionary<Guid, HashSet<int>>();
+
+        if (rackIds.Count > 0)
+        {
+            var devicePositions = await dbContext.DevicePositions
+                .AsNoTracking()
+                .Where(position => rackIds.Contains(position.RackId) && position.Label != null)
+                .Select(position => new { position.RackId, position.UNumber, position.UHeight })
+                .ToListAsync(cancellationToken);
+
+            foreach (var position in devicePositions)
+            {
+                if (!occupiedByRack.TryGetValue(position.RackId, out var occupiedUs))
+                {
+                    occupiedUs = [];
+                    occupiedByRack[position.RackId] = occupiedUs;
+                }
+
+                var bottomU = position.UNumber - position.UHeight + 1;
+                for (var u = bottomU; u <= position.UNumber; u++)
+                {
+                    occupiedUs.Add(u);
+                }
+            }
+
+            var serverPositions = await dbContext.ServerPositions
+                .AsNoTracking()
+                .Where(position => rackIds.Contains(position.RackId) && position.Status == "在架")
+                .Select(position => new { position.RackId, position.StartU, position.EndU })
+                .ToListAsync(cancellationToken);
+
+            foreach (var position in serverPositions)
+            {
+                if (!occupiedByRack.TryGetValue(position.RackId, out var occupiedUs))
+                {
+                    occupiedUs = [];
+                    occupiedByRack[position.RackId] = occupiedUs;
+                }
+
+                for (var u = position.StartU; u <= position.EndU; u++)
+                {
+                    occupiedUs.Add(u);
+                }
+            }
+        }
+
+        var result = racks.Select(rack => new
+        {
+            rack.Id,
+            rack.Code,
+            rack.RoomId,
+            rack.RoomName,
+            rack.HeightU,
+            OccupiedU = occupiedByRack.TryGetValue(rack.Id, out var occupiedUs) ? occupiedUs.Count : 0,
+            rack.Brand,
+            rack.Power,
+            rack.Notes,
+            rack.X,
+            rack.Y,
+            rack.Z
+        });
+
+        return Ok(result);
     }
 
     [HttpGet("{id:guid}/availability")]

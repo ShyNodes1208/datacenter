@@ -127,8 +127,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <div>
-    <div style="margin-bottom: 1em; display: flex; flex-wrap: wrap; gap: 0.5em; align-items: center">
+  <div class="server-list">
+    <div class="search-card">
       <label>
         名称
         <input v-model="searchName" type="text" placeholder="名称" />
@@ -155,47 +155,163 @@ onMounted(() => {
           <option value="维护">维护</option>
         </select>
       </label>
-      <button type="button" @click="doSearch">搜索</button>
-      <button type="button" @click="clearSearch">清空</button>
+      <button type="button" class="btn" @click="doSearch">搜索</button>
+      <button type="button" class="btn btn--muted" @click="clearSearch">清空</button>
     </div>
 
-    <button v-if="canEdit" type="button" @click="goToNew" style="margin-bottom: 1em">
+    <button v-if="canEdit" type="button" class="btn btn--primary" @click="goToNew">
       新增服务器
     </button>
 
-    <div v-if="error" role="alert" aria-live="polite">{{ error }}</div>
+    <div v-if="error" class="error" role="alert" aria-live="polite">{{ error }}</div>
 
     <p v-else-if="servers === null">加载中...</p>
 
     <p v-else-if="servers.length === 0">暂无服务器</p>
 
-    <table v-else style="border-collapse: collapse; width: 100%; table-layout: fixed">
+    <table v-else class="data-table">
       <thead>
         <tr>
-          <th style="text-align: left; padding: 0.3em 0.5em; width: 12%">名称</th>
-          <th style="text-align: left; padding: 0.3em 0.5em; width: 16%">IP</th>
-          <th style="text-align: left; padding: 0.3em 0.5em; width: 12%">设备类型</th>
-          <th style="text-align: left; padding: 0.3em 0.5em; width: 10%">设备高度</th>
-          <th style="text-align: left; padding: 0.3em 0.5em; width: 10%">位置状态</th>
-          <th style="text-align: left; padding: 0.3em 0.5em; width: 25%">运行状态</th>
-          <th style="text-align: left; padding: 0.3em 0.5em; width: 15%">操作</th>
+          <th style="width: 12%">名称</th>
+          <th style="width: 16%">IP</th>
+          <th style="width: 12%">设备类型</th>
+          <th style="width: 10%">设备高度</th>
+          <th style="width: 10%">位置状态</th>
+          <th style="width: 25%">运行状态</th>
+          <th style="width: 15%">操作</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="server in servers" :key="server.id">
-          <td style="padding: 0.3em 0.5em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
+          <td class="ellipsis">
             <a href="#" @click.prevent="goToDetail(server.id)">{{ server.name }}</a>
           </td>
-          <td style="padding: 0.3em 0.5em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ server.managementIP }}</td>
-          <td style="padding: 0.3em 0.5em">{{ server.deviceType }}</td>
-          <td style="padding: 0.3em 0.5em">{{ server.deviceHeight }}U</td>
-          <td style="padding: 0.3em 0.5em">{{ server.positionStatus }}</td>
-          <td style="padding: 0.3em 0.5em">{{ server.operationalStatus }}（人工维护）</td>
-          <td style="padding: 0.3em 0.5em">
-            <a href="#" @click.prevent="goToDetail(server.id)">查看</a>
+          <td class="ellipsis">{{ server.managementIP }}</td>
+          <td>{{ server.deviceType }}</td>
+          <td>{{ server.deviceHeight }}U</td>
+          <td>{{ server.positionStatus }}</td>
+          <td>{{ server.operationalStatus }}（人工维护）</td>
+          <td>
+            <button type="button" class="btn btn--small" @click="goToDetail(server.id)">查看</button>
           </td>
         </tr>
       </tbody>
     </table>
   </div>
 </template>
+
+<style scoped>
+.server-list {
+  padding: var(--space-md);
+  color: var(--color-text);
+  font-size: var(--font-md);
+}
+
+.search-card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: center;
+  margin-bottom: var(--space-md);
+  padding: var(--space-md);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.search-card label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+}
+
+.search-card input,
+.search-card select {
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: var(--font-md);
+}
+
+.btn {
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg-card);
+  color: var(--color-text);
+  font-size: var(--font-md);
+  cursor: pointer;
+}
+
+.btn--primary {
+  margin-bottom: var(--space-md);
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.btn--muted {
+  color: var(--color-text-secondary);
+}
+
+.btn--small {
+  font-size: var(--font-sm);
+  padding: 2px var(--space-sm);
+}
+
+.error {
+  color: var(--color-danger);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+
+.data-table th {
+  text-align: left;
+  padding: var(--space-sm);
+  background: var(--color-table-header);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+}
+
+.data-table td {
+  padding: var(--space-sm);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--font-md);
+}
+
+.data-table tbody tr:nth-child(even) {
+  background: var(--color-table-stripe);
+}
+
+.data-table tbody tr:hover {
+  background: var(--color-table-hover);
+}
+
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.data-table a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.data-table a:hover {
+  text-decoration: underline;
+}
+</style>

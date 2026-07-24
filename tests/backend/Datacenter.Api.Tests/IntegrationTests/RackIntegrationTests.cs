@@ -270,6 +270,54 @@ public sealed class RackIntegrationTests(AuthTestFixture fixture)
     }
 
     [Fact]
+    public async Task GetRacks_OccupiedU_UnionsDeviceAndServerPositions()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        var rack = NewRack(room.Id, "R001");
+        var server = new Server
+        {
+            Name = "web-01",
+            ManagementIP = "10.0.0.1",
+            DeviceType = "机架式服务器",
+            DeviceHeight = 2,
+            PositionStatus = "在架"
+        };
+        var serverPosition = new ServerPosition
+        {
+            ServerId = server.Id,
+            RackId = rack.Id,
+            StartU = 20,
+            EndU = 21,
+            Status = "在架"
+        };
+        await ReplaceConstraintDataAsync([room], [rack], [server], [serverPosition]);
+
+        await using (var scope = fixture.Factory.Services.CreateAsyncScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            dbContext.DevicePositions.Add(new DevicePosition
+            {
+                RackId = rack.Id,
+                UNumber = 15,
+                UHeight = 6,
+                Label = "交换机"
+            });
+            await dbContext.SaveChangesAsync();
+        }
+
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.ReadOnlyViewer);
+
+        using var response = await client.GetAsync($"/api/racks?roomId={room.Id}");
+        response.EnsureSuccessStatusCode();
+
+        using var document = await ReadDocumentAsync(response);
+        var item = document.RootElement.EnumerateArray().Single(el => el.GetProperty("id").GetGuid() == rack.Id);
+        // Device U10-U15 (6) + Server U20-U21 (2) = 8
+        Assert.Equal(8, item.GetProperty("occupiedU").GetInt32());
+    }
+
+    [Fact]
     public async Task DeleteRack_RejectsWhenActiveServerExists()
     {
         var room = new Room { Name = "主机房", Status = "启用" };

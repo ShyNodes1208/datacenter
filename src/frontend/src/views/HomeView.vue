@@ -16,7 +16,7 @@ type RackItem = {
   roomId: string
   roomName: string
   heightU: number
-  occupiedU: number
+  occupiedU?: number
   brand: string | null
   power: number | null
   notes: string | null
@@ -320,7 +320,13 @@ async function toggleRoom(roomId: string): Promise<void> {
     const result = await request<RackItem[]>(`/api/racks?roomId=${roomId}`, { method: 'GET' })
     if (result.ok && Array.isArray(result.data)) {
       const racks = new Map(roomRacks.value)
-      racks.set(roomId, result.data)
+      racks.set(
+        roomId,
+        result.data.map((rack) => ({
+          ...rack,
+          occupiedU: typeof rack.occupiedU === 'number' ? rack.occupiedU : 0,
+        })),
+      )
       roomRacks.value = racks
     }
 
@@ -558,41 +564,51 @@ function handleFileChange(event: Event): void {
 </script>
 
 <template>
-  <div>
-    <button type="button" @click="openImport">Excel 导入机柜</button>
-    <button type="button" @click="openBatchImport" style="margin-left: 0.5em">批量导入设备</button>
+  <div class="home-page">
+    <div class="toolbar">
+      <button type="button" class="btn btn--icon-import" @click="openImport">Excel 导入机柜</button>
+      <button type="button" class="btn btn--icon-import" @click="openBatchImport">批量导入设备</button>
+      <button
+        v-if="isRoomAdmin && !createFormVisible && !editingRoomId"
+        type="button"
+        class="btn btn--primary btn--icon-add"
+        @click="openCreateForm"
+      >
+        新增机房
+      </button>
+    </div>
 
-    <div v-if="batchImportVisible" style="margin-top: 1em; padding: 1em; border: 1px solid #ccc">
+    <div v-if="batchImportVisible" class="panel">
       <div v-if="!batchImportResult">
         <input type="file" accept=".xlsx" @change="handleBatchFileChange" />
-        <div v-if="batchImportError" role="alert" aria-live="polite">{{ batchImportError }}</div>
+        <div v-if="batchImportError" class="error" role="alert" aria-live="polite">{{ batchImportError }}</div>
         <p v-if="batchImportSubmitting">导入中...</p>
         <br />
-        <button type="button" :disabled="batchImportSubmitting" @click="cancelBatchImport">取消</button>
+        <button type="button" class="btn" :disabled="batchImportSubmitting" @click="cancelBatchImport">取消</button>
       </div>
       <div v-else>
         <p>导入完成：{{ batchImportResult.totalRacks }} 个机柜，共 {{ batchImportResult.totalOccupied }} 个设备</p>
-        <div v-for="rack in batchImportResult.racks" :key="rack.rackId" style="margin: 0.3em 0">
+        <div v-for="rack in batchImportResult.racks" :key="rack.rackId" class="panel-line">
           <strong>{{ rack.rackCode }}</strong>：
           {{ rack.totalUPositions }}U，占用 {{ rack.occupied }}U，空闲 {{ rack.empty }}U
-          <span v-if="rack.errors?.length" style="color: red">
+          <span v-if="rack.errors?.length" class="error">
             （{{ rack.errors.join('、') }}）
           </span>
         </div>
-        <button type="button" @click="closeBatchResult">关闭</button>
+        <button type="button" class="btn" @click="closeBatchResult">关闭</button>
       </div>
     </div>
 
-    <div v-if="importVisible" style="margin-top: 1em; padding: 1em; border: 1px solid #ccc">
+    <div v-if="importVisible" class="panel">
       <div v-if="!importPreview && !importResult">
         <input type="file" accept=".xlsx" @change="handleFileChange" />
-        <div v-if="importError" role="alert" aria-live="polite">{{ importError }}</div>
+        <div v-if="importError" class="error" role="alert" aria-live="polite">{{ importError }}</div>
         <br />
-        <button type="button" @click="cancelImport">取消</button>
+        <button type="button" class="btn" @click="cancelImport">取消</button>
       </div>
 
       <div v-if="importPreview && !importResult">
-        <table style="border-collapse: collapse; width: 100%">
+        <table class="preview-table">
           <thead>
             <tr>
               <th>行</th><th>编号</th><th>机房</th><th>高度</th><th>品牌</th>
@@ -604,16 +620,16 @@ function handleFileChange(event: Event): void {
             <tr
               v-for="row in importPreview.rows"
               :key="row.row"
-              :style="row.errors.length > 0 ? 'background:#fee' : row.duplicate ? 'background:#ffc' : ''"
+              :class="{ 'row-error': row.errors.length > 0, 'row-dup': row.duplicate && row.errors.length === 0 }"
             >
               <td>{{ row.row }}</td>
               <td>{{ row.code }}</td><td>{{ row.roomName }}</td><td>{{ row.heightU }}</td>
               <td>{{ row.brand }}</td><td>{{ row.power }}</td><td>{{ row.notes }}</td>
               <td>{{ row.x }}</td><td>{{ row.y }}</td><td>{{ row.z }}</td>
               <td>
-                <span v-if="row.errors.length" style="color: red">{{ row.errors.join(', ') }}</span>
+                <span v-if="row.errors.length" class="error">{{ row.errors.join(', ') }}</span>
                 <span v-else-if="row.duplicate">重复</span>
-                <span v-else style="color: green">正常</span>
+                <span v-else class="ok">正常</span>
               </td>
               <td>
                 <select v-if="row.duplicate && row.errors.length === 0" v-model="row.action">
@@ -629,11 +645,11 @@ function handleFileChange(event: Event): void {
         <p>
           共 {{ importPreview.totalRows }} 行，{{ importPreview.validRows }} 有效，{{ importPreview.errorRows }} 错误，{{ importPreview.duplicateRows }} 重复
         </p>
-        <button type="button" :disabled="importSubmitting || importPreview.rows.some(r => r.action === '')" @click="submitImport">
+        <button type="button" class="btn btn--primary" :disabled="importSubmitting || importPreview.rows.some(r => r.action === '')" @click="submitImport">
           {{ importSubmitting ? '导入中...' : '确认导入' }}
         </button>
-        <button type="button" :disabled="importSubmitting" @click="cancelImport">取消</button>
-        <div v-if="importError" role="alert" aria-live="polite">{{ importError }}</div>
+        <button type="button" class="btn" :disabled="importSubmitting" @click="cancelImport">取消</button>
+        <div v-if="importError" class="error" role="alert" aria-live="polite">{{ importError }}</div>
       </div>
 
       <div v-if="importResult">
@@ -641,60 +657,48 @@ function handleFileChange(event: Event): void {
           导入完成：新增 {{ importResult.created }}，跳过 {{ importResult.skipped }}，覆盖 {{ importResult.overwritten }}，失败 {{ importResult.failed }}
         </p>
         <div v-if="importResult.errors.length">
-          <p v-for="item in importResult.errors" :key="item.row">行 {{ item.row }}：{{ item.error }}</p>
+          <p v-for="item in importResult.errors" :key="item.row" class="error">行 {{ item.row }}：{{ item.error }}</p>
         </div>
-        <button type="button" @click="closeResult">关闭</button>
+        <button type="button" class="btn" @click="closeResult">关闭</button>
       </div>
     </div>
 
-    <template v-if="isRoomAdmin">
-      <button
-        v-if="!createFormVisible && !editingRoomId"
-        type="button"
-        @click="openCreateForm"
-      >
-        新增机房
+    <form v-if="isRoomAdmin && createFormVisible" class="panel create-form" @submit.prevent="onCreateRoom">
+      <label>
+        机房名称
+        <input v-model="roomName" name="roomName" type="text" />
+      </label>
+      <label>
+        状态
+        <select v-model="roomStatus" name="roomStatus">
+          <option value="启用">启用</option>
+          <option value="停用">停用</option>
+        </select>
+      </label>
+      <button type="submit" class="btn btn--primary" :disabled="createSubmitting">
+        {{ createSubmitting ? '保存中...' : '保存' }}
       </button>
-      <form v-if="createFormVisible" @submit.prevent="onCreateRoom">
-        <label>
-          机房名称
-          <input v-model="roomName" name="roomName" type="text" />
-        </label>
-        <label>
-          状态
-          <select v-model="roomStatus" name="roomStatus">
-            <option value="启用">启用</option>
-            <option value="停用">停用</option>
-          </select>
-        </label>
-        <button type="submit" :disabled="createSubmitting">
-          {{ createSubmitting ? '保存中...' : '保存' }}
-        </button>
-        <button type="button" :disabled="createSubmitting" @click="cancelCreate">
-          取消
-        </button>
-        <div role="alert" aria-live="polite">{{ createError }}</div>
-      </form>
-    </template>
+      <button type="button" class="btn" :disabled="createSubmitting" @click="cancelCreate">
+        取消
+      </button>
+      <div class="error" role="alert" aria-live="polite">{{ createError }}</div>
+    </form>
 
-    <section aria-label="机房列表">
-      <div v-if="roomsError" role="alert" aria-live="polite">{{ roomsError }}</div>
+    <section class="room-list" aria-label="机房列表">
+      <div v-if="roomsError" class="error" role="alert" aria-live="polite">{{ roomsError }}</div>
       <p v-else-if="rooms !== null && rooms.length === 0">暂无机房</p>
-      <div v-else-if="rooms !== null">
-        <div v-for="room in rooms" :key="room.id" style="margin-bottom: 1em; border: 1px solid #ccc; padding: 0.5em">
-          <div
-            @click="toggleRoom(room.id)"
-            style="cursor: pointer; display: flex; align-items: center; gap: 0.5em"
-          >
-            <span style="font-weight: bold; font-size: 1.1em">{{ room.name }}</span>
-            <span :style="{ color: room.status === '启用' ? 'green' : 'red' }">{{ room.status }}</span>
-            <span style="color: #888; font-size: 0.85em">[{{ expandedRoomId === room.id ? '收起' : '展开' }}]</span>
+      <div v-else-if="rooms !== null" class="room-cards">
+        <div v-for="room in rooms" :key="room.id" class="room-card">
+          <div class="room-card__header" @click="toggleRoom(room.id)">
+            <span class="room-card__arrow">{{ expandedRoomId === room.id ? '▼' : '▶' }}</span>
+            <span class="room-card__name">{{ room.name }}</span>
+            <span class="room-card__status" :class="room.status === '启用' ? 'is-on' : 'is-off'">{{ room.status }}</span>
             <template v-if="isRoomAdmin && !createFormVisible">
               <button
                 v-if="editingRoomId !== room.id"
                 type="button"
+                class="btn btn--small btn--icon-edit"
                 @click.stop="startEdit(room)"
-                style="margin-left: auto"
               >
                 编辑
               </button>
@@ -702,63 +706,53 @@ function handleFileChange(event: Event): void {
             <button
               v-if="canDeleteRoom && editingRoomId !== room.id"
               type="button"
+              class="btn btn--small btn--danger btn--icon-delete"
               :disabled="deleteSubmitting"
               @click.stop="deleteRoom(room)"
-              :style="isRoomAdmin && !createFormVisible ? 'margin-left: 0.5em' : 'margin-left: auto'"
             >
               删除
             </button>
-            <span v-if="racksLoading.has(room.id)" style="margin-left: auto; color: #888">加载中...</span>
+            <span v-if="racksLoading.has(room.id)" class="muted">加载中...</span>
           </div>
 
           <div
             v-if="deleteErrorRoomId === room.id && deleteError"
+            class="error"
             role="alert"
             aria-live="polite"
-            style="color: red; margin-top: 0.25em"
           >
             {{ deleteError }}
           </div>
 
-          <!-- Inline edit form -->
-          <div v-if="editingRoomId === room.id" style="margin-top: 0.5em; padding: 0.5em; background: #f5f5f5">
+          <div v-if="editingRoomId === room.id" class="edit-form">
             <input v-model="editName" name="editName" type="text" />
             <select v-model="editStatus" name="editStatus">
               <option value="启用">启用</option>
               <option value="停用">停用</option>
             </select>
-            <button type="button" :disabled="editSubmitting" @click="saveEdit(room)">
+            <button type="button" class="btn btn--primary btn--small" :disabled="editSubmitting" @click="saveEdit(room)">
               {{ editSubmitting ? '保存中...' : '保存' }}
             </button>
-            <button type="button" :disabled="editSubmitting" @click="cancelEdit">取消</button>
-            <div v-if="editError" role="alert" aria-live="polite">{{ editError }}</div>
+            <button type="button" class="btn btn--small" :disabled="editSubmitting" @click="cancelEdit">取消</button>
+            <div v-if="editError" class="error" role="alert" aria-live="polite">{{ editError }}</div>
           </div>
 
-          <!-- Rack cards (expanded) -->
-          <div v-if="expandedRoomId === room.id && roomRacks.has(room.id)" style="margin-top: 0.5em">
-            <div v-if="roomRacks.get(room.id)!.length === 0" style="color: #888; font-size: 0.9em">
+          <div v-if="expandedRoomId === room.id && roomRacks.has(room.id)" class="rack-grid">
+            <div v-if="roomRacks.get(room.id)!.length === 0" class="muted">
               暂无导入的机柜
             </div>
-            <div v-else style="display: flex; flex-wrap: wrap; gap: 0.5em">
-              <div
-                v-for="rack in roomRacks.get(room.id)!"
-                :key="rack.id"
-                @click="goToRack(rack.id)"
-                style="
-                  border: 1px solid #999; padding: 0.5em; cursor: pointer;
-                  min-width: 120px; background: #f9f9f9;
-                "
-              >
-                <div style="font-weight: bold">{{ rack.code }}</div>
-                <div style="font-size: 0.85em; color: #666">
-                  已用 {{ rack.occupiedU }}/{{ rack.heightU }}U
-                  ({{ rack.heightU > 0 ? Math.round((rack.occupiedU / rack.heightU) * 100) : 0 }}%)
+            <div
+              v-for="rack in roomRacks.get(room.id)!"
+              :key="rack.id"
+              class="rack-card"
+              @click="goToRack(rack.id)"
+            >
+              <div class="rack-card__code">{{ rack.code }}</div>
+                <div class="rack-card__stats">
+                  已用 {{ rack.occupiedU ?? 0 }}/{{ rack.heightU }}U
+                  ({{ rack.heightU > 0 ? Math.round(((rack.occupiedU ?? 0) / rack.heightU) * 100) : 0 }}%)
                 </div>
-                <div
-                  v-if="rack.brand"
-                  style="font-size: 0.85em; color: #666"
-                >{{ rack.brand }}</div>
-              </div>
+              <div v-if="rack.brand" class="rack-card__brand">{{ rack.brand }}</div>
             </div>
           </div>
         </div>
@@ -766,3 +760,223 @@ function handleFileChange(event: Event): void {
     </section>
   </div>
 </template>
+
+<style scoped>
+.home-page {
+  padding: var(--space-md);
+  background: var(--color-bg);
+  min-height: calc(100vh - 48px);
+  color: var(--color-text);
+  font-size: var(--font-md);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.btn {
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg-card);
+  color: var(--color-text);
+  font-size: var(--font-md);
+  cursor: pointer;
+}
+
+.btn--primary {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.btn--danger {
+  color: var(--color-danger);
+  border-color: #f5c6cb;
+}
+
+.btn--small {
+  font-size: var(--font-sm);
+  padding: 2px 8px;
+}
+
+.btn--icon-add::before {
+  content: '✚ ';
+}
+
+.btn--icon-edit::before {
+  content: '✎ ';
+}
+
+.btn--icon-delete::before {
+  content: '✕ ';
+}
+
+.btn--icon-import::before {
+  content: '↥ ';
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.panel {
+  margin-bottom: var(--space-md);
+  padding: var(--space-md);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.panel-line {
+  margin: var(--space-xs) 0;
+}
+
+.create-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: flex-end;
+}
+
+.create-form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  font-size: var(--font-sm);
+}
+
+.error {
+  color: var(--color-danger);
+}
+
+.ok {
+  color: var(--color-success);
+}
+
+.muted {
+  color: var(--color-text-secondary);
+  font-size: var(--font-sm);
+}
+
+.preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.preview-table th,
+.preview-table td {
+  border: 1px solid var(--color-border);
+  padding: 2px 6px;
+  text-align: left;
+}
+
+.row-error {
+  background: var(--color-error-bg);
+}
+
+.row-dup {
+  background: #fff8e1;
+}
+
+.room-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.room-card {
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.room-card__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: #f0f3f7;
+  cursor: pointer;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.room-card__arrow {
+  color: var(--color-text-secondary);
+  font-size: var(--font-sm);
+  width: 1em;
+}
+
+.room-card__name {
+  font-weight: bold;
+  font-size: var(--font-lg);
+}
+
+.room-card__status.is-on {
+  color: var(--color-success);
+  font-size: var(--font-sm);
+}
+
+.room-card__status.is-off {
+  color: var(--color-danger);
+  font-size: var(--font-sm);
+}
+
+.edit-form {
+  padding: var(--space-md);
+  background: #fafbfc;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.rack-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  padding: var(--space-md);
+}
+
+.rack-card {
+  min-width: 160px;
+  padding: var(--space-md);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: box-shadow 0.15s ease;
+}
+
+.rack-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  border-color: var(--color-primary);
+}
+
+.rack-card__code {
+  font-weight: bold;
+  margin-bottom: var(--space-xs);
+}
+
+.rack-card__stats {
+  font-size: var(--font-md);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.rack-card__brand {
+  margin-top: var(--space-xs);
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+}
+</style>

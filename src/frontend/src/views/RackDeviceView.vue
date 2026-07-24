@@ -782,318 +782,546 @@ async function deleteRack(): Promise<void> {
 </script>
 
 <template>
-  <div>
-    <div v-if="error" role="alert" aria-live="polite">{{ error }}</div>
+  <div class="rack-page">
+    <div v-if="error" class="error" role="alert" aria-live="polite">{{ error }}</div>
 
     <template v-if="data">
-      <p>
-        <a href="/" @click.prevent="router.push('/')">机房列表</a>
-        &gt; {{ data.rack.roomName }} &gt; {{ data.rack.code }}
-      </p>
-
-      <p>
-        U 位总数：{{ data.stats.total }} |
-        已占用：{{ data.stats.occupied }} |
-        空闲：{{ data.stats.empty }} |
-        使用率：{{ usagePercent }}%
-        <span style="color: #888; font-size: 0.85em"> | 在架服务器：{{ rackedServerCount }}</span>
-      </p>
-
-      <button type="button" @click="openImport">导入设备</button>
-      <button v-if="canEdit" type="button" @click="openRack" style="margin-left: 0.5em">上架服务器</button>
-      <button
-        v-if="canEdit"
-        type="button"
-        :disabled="deleteRackSubmitting"
-        @click="deleteRack"
-        style="margin-left: 0.5em"
-      >
-        {{ deleteRackSubmitting ? '删除中...' : '删除机柜' }}
-      </button>
-      <div v-if="deleteRackError" role="alert" aria-live="polite" style="color: red; margin-top: 0.5em">
+      <div class="toolbar">
+        <div class="toolbar__left">
+          <p class="breadcrumb">
+            <a href="/" @click.prevent="router.push('/')">机房列表</a>
+            &gt; {{ data.rack.roomName }} &gt; {{ data.rack.code }}
+          </p>
+          <p class="toolbar__stats">
+            U 位总数：{{ data.stats.total }} |
+            已占用：{{ data.stats.occupied }} |
+            空闲：{{ data.stats.empty }} |
+            使用率：{{ usagePercent }}%
+            <span class="muted"> | 在架服务器：{{ rackedServerCount }}</span>
+          </p>
+        </div>
+        <div class="toolbar__actions">
+          <button type="button" class="btn" @click="openImport">导入设备</button>
+          <button v-if="canEdit" type="button" class="btn btn--primary" @click="openRack">上架服务器</button>
+          <button
+            v-if="canEdit"
+            type="button"
+            class="btn btn--danger"
+            :disabled="deleteRackSubmitting"
+            @click="deleteRack"
+          >
+            {{ deleteRackSubmitting ? '删除中...' : '删除机柜' }}
+          </button>
+        </div>
+      </div>
+      <div v-if="deleteRackError" class="error" role="alert" aria-live="polite">
         {{ deleteRackError }}
       </div>
 
-      <div v-if="importVisible" style="margin-top: 1em; padding: 1em; border: 1px solid #ccc">
-        <div v-if="!importPreview && !importResult">
-          <input type="file" accept=".xlsx" :disabled="importPreviewLoading" @change="handleFileChange" />
-          <p v-if="importPreviewLoading" style="margin: 0.5em 0">解析中...</p>
-          <div v-if="importError" role="alert" aria-live="polite">{{ importError }}</div>
-          <br />
-          <button type="button" :disabled="importPreviewLoading" @click="cancelImport">取消</button>
-        </div>
+      <div v-if="importVisible" class="panel">
+        <div class="panel__title">导入设备</div>
+        <div class="panel__body">
+          <div v-if="!importPreview && !importResult">
+            <input type="file" accept=".xlsx" :disabled="importPreviewLoading" @change="handleFileChange" />
+            <p v-if="importPreviewLoading">解析中...</p>
+            <div v-if="importError" class="error" role="alert" aria-live="polite">{{ importError }}</div>
+            <br />
+            <button type="button" class="btn" :disabled="importPreviewLoading" @click="cancelImport">取消</button>
+          </div>
 
-        <div v-if="importPreview && !importResult">
-          <p style="margin: 0 0 0.5em">
-            预览：将覆盖当前机柜设备数据。共 {{ importPreview.occupied }} 个占用 U 位，{{ importPreview.empty }} 个空闲。
-          </p>
-          <div style="max-height: 320px; overflow: auto">
-            <table style="border-collapse: collapse; width: 100%">
-              <thead>
-                <tr>
-                  <th style="text-align: left; padding: 2px 8px; border-bottom: 1px solid #ccc">U 位</th>
-                  <th style="text-align: left; padding: 2px 8px; border-bottom: 1px solid #ccc">设备标签</th>
-                  <th style="text-align: left; padding: 2px 8px; border-bottom: 1px solid #ccc">高度</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="pos in importPreview.positions" :key="pos.uNumber">
-                  <td style="padding: 2px 8px">U{{ pos.uNumber }}</td>
-                  <td style="padding: 2px 8px">{{ pos.label }}</td>
-                  <td style="padding: 2px 8px">{{ pos.uHeight }}U</td>
-                </tr>
-                <tr v-if="importPreview.positions.length === 0">
-                  <td colspan="3" style="padding: 2px 8px; color: #666">无设备标签（导入后机柜将清空）</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div v-if="importPreview.errors?.length" style="margin-top: 0.5em">
-            <p v-for="(err, i) in importPreview.errors" :key="i" style="color: red; margin: 0.25em 0">{{ err }}</p>
-          </div>
-          <div style="margin-top: 0.75em">
-            <button
-              type="button"
-              :disabled="importSubmitting"
-              @click="submitImport"
-            >
-              {{ importSubmitting ? '导入中...' : '确认导入' }}
-            </button>
-            <button type="button" :disabled="importSubmitting" @click="cancelImport" style="margin-left: 0.5em">
-              取消
-            </button>
-          </div>
-          <div v-if="importError" role="alert" aria-live="polite" style="margin-top: 0.5em">{{ importError }}</div>
-        </div>
-
-        <div v-if="importResult">
-          <p v-if="importSubmitting">刷新中...</p>
-          <template v-else>
-            <p>导入完成：{{ importResult.occupied }} 个 U 位有设备，{{ importResult.empty }} 个空闲</p>
-            <div v-if="importResult.errors?.length">
-              <p v-for="(err, i) in importResult.errors" :key="i" style="color: red">{{ err }}</p>
+          <div v-if="importPreview && !importResult">
+            <p>
+              预览：将覆盖当前机柜设备数据。共 {{ importPreview.occupied }} 个占用 U 位，{{ importPreview.empty }} 个空闲。
+            </p>
+            <div class="preview-scroll">
+              <table class="preview-table">
+                <thead>
+                  <tr>
+                    <th>U 位</th>
+                    <th>设备标签</th>
+                    <th>高度</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="pos in importPreview.positions" :key="pos.uNumber">
+                    <td>U{{ pos.uNumber }}</td>
+                    <td>{{ pos.label }}</td>
+                    <td>{{ pos.uHeight }}U</td>
+                  </tr>
+                  <tr v-if="importPreview.positions.length === 0">
+                    <td colspan="3" class="muted">无设备标签（导入后机柜将清空）</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-            <button type="button" @click="closeResult">关闭</button>
+            <div v-if="importPreview.errors?.length">
+              <p v-for="(err, i) in importPreview.errors" :key="i" class="error">{{ err }}</p>
+            </div>
+            <div class="panel__actions">
+              <button
+                type="button"
+                class="btn btn--primary"
+                :disabled="importSubmitting"
+                @click="submitImport"
+              >
+                {{ importSubmitting ? '导入中...' : '确认导入' }}
+              </button>
+              <button type="button" class="btn" :disabled="importSubmitting" @click="cancelImport">
+                取消
+              </button>
+            </div>
+            <div v-if="importError" class="error" role="alert" aria-live="polite">{{ importError }}</div>
+          </div>
+
+          <div v-if="importResult">
+            <p v-if="importSubmitting">刷新中...</p>
+            <template v-else>
+              <p>导入完成：{{ importResult.occupied }} 个 U 位有设备，{{ importResult.empty }} 个空闲</p>
+              <div v-if="importResult.errors?.length">
+                <p v-for="(err, i) in importResult.errors" :key="i" class="error">{{ err }}</p>
+              </div>
+              <button type="button" class="btn" @click="closeResult">关闭</button>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="rackVisible" class="panel">
+        <div class="panel__title">上架服务器</div>
+        <div class="panel__body">
+          <div v-if="loadingServers">加载服务器列表...</div>
+          <template v-else>
+            <div class="field">
+              <label>
+                选择服务器：
+                <select v-model="selectedServerId">
+                  <option value="" disabled>请选择服务器</option>
+                  <option v-for="s in availableServers" :key="s.id" :value="s.id">
+                    {{ s.name }} ({{ s.deviceType }} {{ s.deviceHeight }}U)
+                  </option>
+                </select>
+              </label>
+              <span v-if="availableServers.length === 0 && !loadingServers" class="muted">
+                暂无可上架服务器
+              </span>
+            </div>
+
+            <div v-if="selectedServer" class="field">
+              <p>设备类型：{{ selectedServer.deviceType }}</p>
+              <p>设备高度：{{ selectedServer.deviceHeight }}U</p>
+            </div>
+
+            <div class="field">
+              <label>
+                起始 U 位：
+                <input v-model.number="rackStartU" type="number" min="1" :max="data.rack.heightU" class="u-input" />
+              </label>
+            </div>
+
+            <div v-if="selectedServer && rackStartU !== null && rackStartU >= 1 && computedEndU !== null" class="field">
+              <p>
+                占用范围：U{{ rackStartU }}-U{{ computedEndU }}（{{ selectedServer.deviceHeight }}U）
+              </p>
+            </div>
+
+            <div v-if="rackValidation" class="error" role="alert" aria-live="polite">
+              {{ rackValidation }}
+            </div>
+            <div v-if="rackError" class="error" role="alert" aria-live="polite">
+              {{ rackError }}
+            </div>
+
+            <div class="panel__actions">
+              <button
+                type="button"
+                class="btn btn--primary"
+                :disabled="rackSubmitting || !selectedServer || rackStartU === null || rackStartU < 1 || rackValidation !== null"
+                @click="confirmRack"
+              >
+                {{ rackSubmitting ? '上架中...' : '确认上架' }}
+              </button>
+              <button type="button" class="btn" :disabled="rackSubmitting" @click="cancelRack">
+                取消
+              </button>
+            </div>
           </template>
         </div>
       </div>
 
-      <div v-if="rackVisible" style="margin-top: 1em; padding: 1em; border: 1px solid #ccc">
-        <h4 style="margin: 0 0 0.5em">上架服务器</h4>
+      <div v-if="moveVisible" class="panel">
+        <div class="panel__title">移动服务器</div>
+        <div class="panel__body">
+          <p>服务器：{{ movingServerName }}</p>
+          <div v-if="loadingRacks">加载机柜列表...</div>
+          <template v-else>
+            <div class="field">
+              <label>
+                目标机柜：
+                <select v-model="moveRackId">
+                  <option value="" disabled>请选择机柜</option>
+                  <option v-for="r in rackOptions" :key="r.id" :value="r.id">
+                    {{ r.code }} ({{ r.roomName }} {{ r.heightU }}U)
+                  </option>
+                </select>
+              </label>
+            </div>
 
-        <div v-if="loadingServers">加载服务器列表...</div>
+            <div v-if="moveRackId" class="field">
+              <p>设备高度：{{ movingServerHeight }}U</p>
+            </div>
 
-        <template v-else>
-          <div style="margin-bottom: 0.5em">
-            <label>
-              选择服务器：
-              <select v-model="selectedServerId">
-                <option value="" disabled>请选择服务器</option>
-                <option v-for="s in availableServers" :key="s.id" :value="s.id">
-                  {{ s.name }} ({{ s.deviceType }} {{ s.deviceHeight }}U)
-                </option>
-              </select>
-            </label>
-            <span v-if="availableServers.length === 0 && !loadingServers" style="color: #999; margin-left: 0.5em">
-              暂无可上架服务器
-            </span>
-          </div>
+            <div class="field">
+              <label>
+                起始 U 位：
+                <input v-model.number="moveStartU" type="number" min="1" :max="selectedRackHeight" class="u-input" />
+              </label>
+            </div>
 
-          <div v-if="selectedServer" style="margin-bottom: 0.5em">
-            <p style="margin: 0.25em 0">设备类型：{{ selectedServer.deviceType }}</p>
-            <p style="margin: 0.25em 0">设备高度：{{ selectedServer.deviceHeight }}U</p>
-          </div>
+            <div v-if="moveStartU !== null && moveStartU >= 1 && moveEndU !== null && moveRackId" class="field">
+              <p>
+                占用范围：U{{ moveStartU }}-U{{ moveEndU }}（{{ movingServerHeight }}U）
+              </p>
+            </div>
 
-          <div style="margin-bottom: 0.5em">
-            <label>
-              起始 U 位：
-              <input v-model.number="rackStartU" type="number" min="1" :max="data.rack.heightU" style="width: 80px" />
-            </label>
-          </div>
+            <div v-if="moveValidation" class="error" role="alert" aria-live="polite">
+              {{ moveValidation }}
+            </div>
+            <div v-if="moveError" class="error" role="alert" aria-live="polite">
+              {{ moveError }}
+            </div>
 
-          <div v-if="selectedServer && rackStartU !== null && rackStartU >= 1 && computedEndU !== null" style="margin-bottom: 0.5em">
-            <p style="margin: 0.25em 0">
-              占用范围：U{{ rackStartU }}-U{{ computedEndU }}（{{ selectedServer.deviceHeight }}U）
-            </p>
-          </div>
-
-          <div v-if="rackValidation" style="color: red; margin-bottom: 0.5em" role="alert" aria-live="polite">
-            {{ rackValidation }}
-          </div>
-          <div v-if="rackError" style="color: red; margin-bottom: 0.5em" role="alert" aria-live="polite">
-            {{ rackError }}
-          </div>
-
-          <div>
-            <button
-              type="button"
-              :disabled="rackSubmitting || !selectedServer || rackStartU === null || rackStartU < 1 || rackValidation !== null"
-              @click="confirmRack"
-            >
-              {{ rackSubmitting ? '上架中...' : '确认上架' }}
-            </button>
-            <button type="button" :disabled="rackSubmitting" @click="cancelRack" style="margin-left: 0.5em">
-              取消
-            </button>
-          </div>
-        </template>
-      </div>
-
-      <div v-if="moveVisible" style="margin-top: 1em; padding: 1em; border: 1px solid #ccc">
-        <h4 style="margin: 0 0 0.5em">移动服务器</h4>
-        <p style="margin: 0.25em 0">服务器：{{ movingServerName }}</p>
-
-        <div v-if="loadingRacks">加载机柜列表...</div>
-
-        <template v-else>
-          <div style="margin-bottom: 0.5em">
-            <label>
-              目标机柜：
-              <select v-model="moveRackId">
-                <option value="" disabled>请选择机柜</option>
-                <option v-for="r in rackOptions" :key="r.id" :value="r.id">
-                  {{ r.code }} ({{ r.roomName }} {{ r.heightU }}U)
-                </option>
-              </select>
-            </label>
-          </div>
-
-          <div v-if="moveRackId" style="margin-bottom: 0.5em">
-            <p style="margin: 0.25em 0">设备高度：{{ movingServerHeight }}U</p>
-          </div>
-
-          <div style="margin-bottom: 0.5em">
-            <label>
-              起始 U 位：
-              <input v-model.number="moveStartU" type="number" min="1" :max="selectedRackHeight" style="width: 80px" />
-            </label>
-          </div>
-
-          <div v-if="moveStartU !== null && moveStartU >= 1 && moveEndU !== null && moveRackId" style="margin-bottom: 0.5em">
-            <p style="margin: 0.25em 0">
-              占用范围：U{{ moveStartU }}-U{{ moveEndU }}（{{ movingServerHeight }}U）
-            </p>
-          </div>
-
-          <div v-if="moveValidation" style="color: red; margin-bottom: 0.5em" role="alert" aria-live="polite">
-            {{ moveValidation }}
-          </div>
-          <div v-if="moveError" style="color: red; margin-bottom: 0.5em" role="alert" aria-live="polite">
-            {{ moveError }}
-          </div>
-
-          <div>
-            <button
-              type="button"
-              :disabled="moveSubmitting || !moveRackId || moveStartU === null || moveStartU < 1 || moveValidation !== null"
-              @click="confirmMove"
-            >
-              {{ moveSubmitting ? '移动中...' : '确认移动' }}
-            </button>
-            <button type="button" :disabled="moveSubmitting" @click="cancelMove" style="margin-left: 0.5em">
-              取消
-            </button>
-          </div>
-        </template>
-      </div>
-
-      <div v-if="decommissionVisible" style="margin-top: 1em; padding: 1em; border: 1px solid #ccc">
-        <h4 style="margin: 0 0 0.5em">下架服务器</h4>
-        <p style="margin: 0.25em 0">确认将服务器 <strong>{{ decommissioningServerName }}</strong> 下架？</p>
-        <p style="margin: 0.25em 0; color: #666; font-size: 0.9em">下架后 U 位将释放，服务器记录保留。</p>
-
-        <div v-if="decommissionError" style="color: red; margin-bottom: 0.5em" role="alert" aria-live="polite">
-          {{ decommissionError }}
-        </div>
-
-        <div style="margin-top: 0.75em">
-          <button
-            type="button"
-            :disabled="decommissionSubmitting"
-            @click="confirmDecommission"
-          >
-            {{ decommissionSubmitting ? '下架中...' : '确认下架' }}
-          </button>
-          <button type="button" :disabled="decommissionSubmitting" @click="cancelDecommission" style="margin-left: 0.5em">
-            取消
-          </button>
+            <div class="panel__actions">
+              <button
+                type="button"
+                class="btn btn--primary"
+                :disabled="moveSubmitting || !moveRackId || moveStartU === null || moveStartU < 1 || moveValidation !== null"
+                @click="confirmMove"
+              >
+                {{ moveSubmitting ? '移动中...' : '确认移动' }}
+              </button>
+              <button type="button" class="btn" :disabled="moveSubmitting" @click="cancelMove">
+                取消
+              </button>
+            </div>
+          </template>
         </div>
       </div>
 
-      <div style="margin-top: 1em; display: flex; gap: 1em">
-        <!-- U-position rack view (left) -->
-        <div style="flex: 1; border: 2px solid #333; max-width: 400px">
+      <div v-if="decommissionVisible" class="panel">
+        <div class="panel__title">下架服务器</div>
+        <div class="panel__body">
+          <p>确认将服务器 <strong>{{ decommissioningServerName }}</strong> 下架？</p>
+          <p class="muted">下架后 U 位将释放，服务器记录保留。</p>
+
+          <div v-if="decommissionError" class="error" role="alert" aria-live="polite">
+            {{ decommissionError }}
+          </div>
+
+          <div class="panel__actions">
+            <button
+              type="button"
+              class="btn btn--danger"
+              :disabled="decommissionSubmitting"
+              @click="confirmDecommission"
+            >
+              {{ decommissionSubmitting ? '下架中...' : '确认下架' }}
+            </button>
+            <button type="button" class="btn" :disabled="decommissionSubmitting" @click="cancelDecommission">
+              取消
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="main-layout">
+        <div class="stats-card">
+          <h3>容量统计</h3>
+          <p>U 位总数：{{ data.stats.total }}</p>
+          <p>已占用：{{ data.stats.occupied }}</p>
+          <p>空闲：{{ data.stats.empty }}</p>
+          <p>使用率：{{ usagePercent }}%</p>
+          <div class="usage-bar">
+            <div
+              class="usage-bar__fill"
+              :style="{ width: `${usagePercent}%` }"
+            ></div>
+          </div>
+        </div>
+
+        <div class="rack-shell">
           <div
             v-for="group in mergedPositions"
             :key="`${group.startU}-${group.endU}`"
+            class="u-group"
+            :class="{ 'u-group--occupied': !!group.label }"
             :style="{
               display: 'grid',
               gridTemplateColumns: groupServerMap.has(group.startU) && groupServerMap.get(group.startU)!.showActions && canEdit
                 ? '40px 1fr 72px'
                 : '40px 1fr',
               gridTemplateRows: `repeat(${groupUCount(group)}, 20px)`,
-              backgroundColor: group.label ? '#b3d9ff' : '#e0ffe0',
-              borderBottom: '1px solid #ccc',
-              padding: '0 8px',
-              fontSize: '12px',
-              overflow: 'hidden',
-              boxSizing: 'border-box',
             }"
           >
             <span
               v-for="(u, idx) in groupUNumbers(group)"
               :key="u"
+              class="u-label"
               :style="{
                 gridColumn: 1,
                 gridRow: idx + 1,
-                lineHeight: '20px',
-                fontWeight: 'bold',
-                borderBottom: 'none',
               }"
             >U{{ u }}</span>
             <span
               v-if="group.label"
-              style="grid-column: 2; grid-row: 1 / -1; display: flex; align-items: center; justify-content: center; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-bottom: none"
+              class="u-name"
             >
               {{ group.label }}
             </span>
             <div
               v-if="groupServerMap.has(group.startU) && groupServerMap.get(group.startU)!.showActions && canEdit"
-              style="grid-column: 3; grid-row: 1; display: flex; align-self: start; justify-content: flex-end; gap: 2px; padding-top: 1px"
+              class="u-actions"
             >
               <button
                 type="button"
+                class="btn btn--tiny"
                 @click.stop="openMove(groupServerMap.get(group.startU)!.serverId, groupServerMap.get(group.startU)!.serverName)"
-                style="font-size: 10px; padding: 1px 4px"
               >移动</button>
               <button
                 type="button"
+                class="btn btn--tiny"
                 @click.stop="openDecommission(groupServerMap.get(group.startU)!.serverId, groupServerMap.get(group.startU)!.serverName)"
-                style="font-size: 10px; padding: 1px 4px"
               >下架</button>
             </div>
-          </div>
-        </div>
-
-        <!-- Stats panel (right) -->
-        <div style="width: 200px; padding: 1em; border: 1px solid #ccc; align-self: flex-start">
-          <h3>容量统计</h3>
-          <p>U 位总数：{{ data.stats.total }}</p>
-          <p>已占用：{{ data.stats.occupied }}</p>
-          <p>空闲：{{ data.stats.empty }}</p>
-          <p>使用率：{{ usagePercent }}%</p>
-          <div style="background: #eee; height: 20px; border-radius: 4px; overflow: hidden">
-            <div
-              :style="{
-                width: `${usagePercent}%`,
-                height: '100%',
-                backgroundColor: '#4a90d9',
-                transition: 'width 0.3s',
-              }"
-            ></div>
           </div>
         </div>
       </div>
     </template>
   </div>
 </template>
+
+<style scoped>
+.rack-page {
+  padding: var(--space-md);
+  background: var(--color-bg);
+  min-height: calc(100vh - 48px);
+  color: var(--color-text);
+  font-size: var(--font-md);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+  padding: var(--space-md);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.breadcrumb {
+  margin: 0 0 var(--space-xs);
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
+}
+
+.breadcrumb a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.toolbar__stats {
+  margin: 0;
+}
+
+.toolbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  align-items: flex-start;
+}
+
+.btn {
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg-card);
+  color: var(--color-text);
+  font-size: var(--font-md);
+  cursor: pointer;
+}
+
+.btn--primary {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.btn--danger {
+  color: var(--color-danger);
+  border-color: #f5c6cb;
+}
+
+.btn--tiny {
+  font-size: 10px;
+  padding: 1px 4px;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error {
+  color: var(--color-danger);
+  margin: var(--space-xs) 0;
+}
+
+.muted {
+  color: var(--color-text-secondary);
+  font-size: var(--font-sm);
+}
+
+.panel {
+  margin-bottom: var(--space-md);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.panel__title {
+  padding: var(--space-sm) var(--space-md);
+  background: #f0f3f7;
+  border-bottom: 1px solid var(--color-border);
+  font-weight: bold;
+}
+
+.panel__body {
+  padding: var(--space-md);
+}
+
+.panel__actions {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.field {
+  margin-bottom: var(--space-sm);
+}
+
+.field p {
+  margin: var(--space-xs) 0;
+}
+
+.u-input {
+  width: 80px;
+}
+
+.preview-scroll {
+  max-height: 320px;
+  overflow: auto;
+  margin-bottom: var(--space-sm);
+}
+
+.preview-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.preview-table th,
+.preview-table td {
+  text-align: left;
+  padding: 2px 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.main-layout {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  align-items: flex-start;
+}
+
+.stats-card {
+  width: 200px;
+  padding: var(--space-md);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.stats-card h3 {
+  margin: 0 0 var(--space-sm);
+}
+
+.usage-bar {
+  background: #eee;
+  height: 20px;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.usage-bar__fill {
+  height: 100%;
+  background: var(--color-primary);
+  transition: width 0.3s;
+}
+
+.rack-shell {
+  flex: 1;
+  max-width: 400px;
+  border: 4px solid #2c3e50;
+  border-radius: 4px;
+  background: #1a252f;
+  padding: 4px;
+  box-shadow: var(--shadow);
+}
+
+.u-group {
+  background: #e8f8e8;
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 8px;
+  font-size: var(--font-sm);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.u-group--occupied {
+  background: var(--color-primary-light);
+}
+
+.u-label {
+  line-height: 20px;
+  font-weight: bold;
+  border-bottom: none;
+}
+
+.u-name {
+  grid-column: 2;
+  grid-row: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-bottom: none;
+}
+
+.u-actions {
+  grid-column: 3;
+  grid-row: 1;
+  display: flex;
+  align-self: start;
+  justify-content: flex-end;
+  gap: 2px;
+  padding-top: 1px;
+}
+</style>
