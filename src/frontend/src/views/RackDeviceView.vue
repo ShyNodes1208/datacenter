@@ -7,6 +7,7 @@ import { useAuth } from '../composables/useAuth'
 type RackInfo = {
   id: string
   code: string
+  roomId: string
   roomName: string
   heightU: number
   x: number
@@ -790,7 +791,9 @@ async function deleteRack(): Promise<void> {
         <div class="toolbar__left">
           <p class="breadcrumb">
             <a href="/" @click.prevent="router.push('/')">机房列表</a>
-            &gt; {{ data.rack.roomName }} &gt; {{ data.rack.code }}
+            &gt; {{ data.rack.roomName }}
+            <router-link :to="`/rooms/${data.rack.roomId}/floorplan`">平面图</router-link>
+            &gt; {{ data.rack.code }}
           </p>
           <p class="toolbar__stats">
             U 位总数：{{ data.stats.total }} |

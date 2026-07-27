@@ -693,6 +693,7 @@ function handleFileChange(event: Event): void {
             <span class="room-card__arrow">{{ expandedRoomId === room.id ? '▼' : '▶' }}</span>
             <span class="room-card__name">{{ room.name }}</span>
             <span class="room-card__status" :class="room.status === '启用' ? 'is-on' : 'is-off'">{{ room.status }}</span>
+            <button class="btn btn--small btn--muted" @click.stop="router.push(`/rooms/${room.id}/floorplan`)">平面图</button>
             <template v-if="isRoomAdmin && !createFormVisible">
               <button
                 v-if="editingRoomId !== room.id"
