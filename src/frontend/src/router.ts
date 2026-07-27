@@ -23,6 +23,7 @@ export const router = createRouter({
     { path: '/servers/new', component: ServerFormView, meta: { requiresAuth: true } },
     { path: '/servers/:id/edit', component: ServerFormView, meta: { requiresAuth: true } },
     { path: '/servers/:id', component: ServerDetailView, meta: { requiresAuth: true } },
+    { path: '/rooms/:id/floorplan', component: () => import('./views/FloorplanView.vue'), meta: { requiresAuth: true } },
   ],
 })
 
