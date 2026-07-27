@@ -561,6 +561,72 @@ function handleFileChange(event: Event): void {
   if (file) void uploadPreview(file)
 }
 
+// ---------- Server import ----------
+const serverImportVisible = ref(false)
+const serverImportResult = ref<{ created: number; skipped: number; racked: number } | null>(null)
+const serverImportError = ref('')
+const serverImportSubmitting = ref(false)
+
+function openServerImport(): void {
+  serverImportVisible.value = true
+  serverImportResult.value = null
+  serverImportError.value = ''
+}
+
+function cancelServerImport(): void {
+  serverImportVisible.value = false
+  serverImportResult.value = null
+  serverImportError.value = ''
+}
+
+function closeServerResult(): void {
+  serverImportVisible.value = false
+  serverImportResult.value = null
+  loadRooms()
+}
+
+async function handleServerFileChange(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  const csrfResult = await request('/api/auth/csrf', { method: 'GET' })
+  if (!csrfResult.ok) {
+    serverImportError.value = csrfResult.error
+    return
+  }
+  const token = csrfResult.headers.get('X-XSRF-TOKEN')
+  if (!token) { serverImportError.value = 'Request failed.'; return }
+
+  serverImportError.value = ''
+  serverImportSubmitting.value = true
+
+  const formData = new FormData()
+  formData.append('file', file)
+
+  let response: Response
+  try {
+    response = await fetch('/api/servers/import-batch', {
+      method: 'POST', credentials: 'include',
+      headers: { 'X-XSRF-TOKEN': token }, body: formData,
+    })
+  } catch {
+    serverImportError.value = 'Request failed.'
+    serverImportSubmitting.value = false
+    return
+  }
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({ error: '导入失败' } as Record<string, unknown>))
+    serverImportError.value = ((body as Record<string, unknown>).error as string) || '导入失败'
+    serverImportSubmitting.value = false
+    return
+  }
+
+  serverImportResult.value = (await response.json()) as { created: number; skipped: number; racked: number }
+  serverImportSubmitting.value = false
+}
+
 </script>
 
 <template>
@@ -568,6 +634,7 @@ function handleFileChange(event: Event): void {
     <div class="toolbar">
       <button type="button" class="btn btn--icon-import" @click="openImport">Excel 导入机柜</button>
       <button type="button" class="btn btn--icon-import" @click="openBatchImport">批量导入设备</button>
+      <button type="button" class="btn btn--icon-import" @click="openServerImport">Excel 导入服务器</button>
       <button
         v-if="isRoomAdmin && !createFormVisible && !editingRoomId"
         type="button"
@@ -596,6 +663,22 @@ function handleFileChange(event: Event): void {
           </span>
         </div>
         <button type="button" class="btn" @click="closeBatchResult">关闭</button>
+      </div>
+    </div>
+
+    <div v-if="serverImportVisible" class="panel">
+      <div v-if="!serverImportResult">
+        <p>导入服务器信息（含自动上架）。</p>
+        <p class="muted">列：服务器名称、管理IP、资产编号、设备类型、设备高度(U)、运行状态、系统、负责人、备注、所在机柜、起始U位</p>
+        <input type="file" accept=".xlsx" @change="handleServerFileChange" />
+        <div v-if="serverImportError" class="error" role="alert" aria-live="polite">{{ serverImportError }}</div>
+        <p v-if="serverImportSubmitting">导入中...</p>
+        <br />
+        <button type="button" class="btn" :disabled="serverImportSubmitting" @click="cancelServerImport">取消</button>
+      </div>
+      <div v-else>
+        <p>导入完成：新增 {{ serverImportResult.created }}，跳过 {{ serverImportResult.skipped }}，已上架 {{ serverImportResult.racked }}</p>
+        <button type="button" class="btn" @click="closeServerResult">关闭</button>
       </div>
     </div>
 

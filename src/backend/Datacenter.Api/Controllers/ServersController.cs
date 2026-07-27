@@ -1,3 +1,4 @@
+using ClosedXML.Excel;
 using Datacenter.Api.Data;
 using Datacenter.Api.Models;
 using Datacenter.Api.Services;
@@ -616,6 +617,201 @@ public sealed class ServersController(AppDbContext dbContext, IAntiforgery antif
 
         return Ok(records);
     }
+
+    [HttpPost("import-batch")]
+    [RequestSizeLimit(10_000_000)]
+    public async Task<IActionResult> ImportBatch(IFormFile file, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await antiforgery.ValidateRequestAsync(HttpContext);
+        }
+        catch (AntiforgeryValidationException)
+        {
+            return BadRequest(new { error = "防伪令牌缺失或无效" });
+        }
+
+        if (file is null || file.Length == 0)
+        {
+            return BadRequest(new { error = "请选择要导入的文件" });
+        }
+
+        if (!string.Equals(Path.GetExtension(file.FileName), ".xlsx", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { error = "仅支持 .xlsx 文件" });
+        }
+
+        XLWorkbook workbook;
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            workbook = new XLWorkbook(stream);
+        }
+        catch (Exception) when (true)
+        {
+            return BadRequest(new { error = "无法读取 Excel 文件" });
+        }
+
+        using (workbook)
+        {
+            var worksheet = workbook.Worksheets.FirstOrDefault();
+            if (worksheet is null)
+            {
+                return BadRequest(new { error = "Excel 文件不包含工作表" });
+            }
+
+            // Header mappings (Chinese → canonical)
+            var headerMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var lastCol = worksheet.Row(1).LastCellUsed()?.Address.ColumnNumber ?? 0;
+            for (var col = 1; col <= lastCol; col++)
+            {
+                var h = worksheet.Cell(1, col).GetString().Trim();
+                if (!string.IsNullOrWhiteSpace(h))
+                {
+                    headerMap[h] = col;
+                }
+            }
+
+            // Required: name, managementIP
+            if (!headerMap.ContainsKey("服务器名称"))
+                return BadRequest(new { error = "缺少列：服务器名称" });
+            if (!headerMap.ContainsKey("管理IP"))
+                return BadRequest(new { error = "缺少列：管理IP" });
+
+            // Load all racks for auto-rack lookup
+            var racks = await dbContext.Racks.AsNoTracking().ToListAsync(cancellationToken);
+            var rackMap = racks.ToDictionary(r => r.Code, r => r, StringComparer.OrdinalIgnoreCase);
+
+            var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 1;
+            var created = 0;
+            var skipped = 0;
+            var racked = 0;
+            var errors = new List<object>();
+
+            for (var row = 2; row <= lastRow; row++)
+            {
+                var name = RowCell(worksheet, row, headerMap, "服务器名称");
+                var ip = RowCell(worksheet, row, headerMap, "管理IP");
+                if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(ip))
+                    continue;
+
+                if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(ip))
+                {
+                    errors.Add(new { row, error = "服务器名称和管理IP不能为空" });
+                    continue;
+                }
+
+                // Check existing server by name
+                var existing = await dbContext.Servers
+                    .FirstOrDefaultAsync(s => s.Name == name, cancellationToken);
+
+                if (existing is not null)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                var assetNumber = RowCell(worksheet, row, headerMap, "资产编号");
+                var deviceType = RowCell(worksheet, row, headerMap, "设备类型") ?? "服务器";
+                var deviceHeightStr = RowCell(worksheet, row, headerMap, "设备高度(U)") ?? "1";
+                if (!int.TryParse(deviceHeightStr, out var deviceHeight) || deviceHeight < 1)
+                    deviceHeight = 1;
+
+                var opStatus = RowCell(worksheet, row, headerMap, "运行状态") ?? "正常";
+                if (opStatus != "正常" && opStatus != "异常" && opStatus != "维护")
+                    opStatus = "正常";
+
+                var system = RowCell(worksheet, row, headerMap, "系统");
+                var owner = RowCell(worksheet, row, headerMap, "负责人");
+                var notes = RowCell(worksheet, row, headerMap, "备注");
+
+                var server = new Server
+                {
+                    Name = name,
+                    ManagementIP = ip,
+                    AssetNumber = NullIfWhiteSpace(assetNumber),
+                    DeviceType = deviceType,
+                    DeviceHeight = deviceHeight,
+                    OperationalStatus = opStatus,
+                    PositionStatus = "未上架",
+                    System = NullIfWhiteSpace(system),
+                    Owner = NullIfWhiteSpace(owner),
+                    Notes = NullIfWhiteSpace(notes)
+                };
+
+                dbContext.Servers.Add(server);
+
+                // Auto-rack if rack code and start U provided
+                var rackCode = RowCell(worksheet, row, headerMap, "所在机柜");
+                var startUStr = RowCell(worksheet, row, headerMap, "起始U位");
+
+                if (!string.IsNullOrWhiteSpace(rackCode) && rackMap.TryGetValue(rackCode, out var targetRack)
+                    && int.TryParse(startUStr, out var startU) && startU >= 1)
+                {
+                    var endU = startU + deviceHeight - 1;
+                    if (endU > targetRack.HeightU)
+                    {
+                        errors.Add(new { row, error = $"机柜 '{rackCode}' 高度 {targetRack.HeightU}U，无法容纳 {deviceHeight}U 设备 (U{startU}-U{endU})" });
+                    }
+                    else
+                    {
+                        var hasConflict = await dbContext.ServerPositions.AnyAsync(p =>
+                            p.RackId == targetRack.Id && p.Status == "在架"
+                            && p.StartU <= endU && p.EndU >= startU, cancellationToken);
+
+                        if (hasConflict)
+                        {
+                            errors.Add(new { row, error = $"机柜 '{rackCode}' U{startU}-U{endU} 已被占用" });
+                        }
+                        else
+                        {
+                            server.PositionStatus = "在架";
+                            dbContext.ServerPositions.Add(new ServerPosition
+                            {
+                                Server = server,
+                                RackId = targetRack.Id,
+                                StartU = startU,
+                                EndU = endU,
+                                Status = "在架",
+                                InstalledAt = DateTime.UtcNow
+                            });
+                            AuditService.Record(dbContext, server, "上架", null,
+                                $"{targetRack.Code} U{startU}-U{endU}", User.Identity?.Name ?? "unknown");
+                            racked++;
+                        }
+                    }
+                }
+
+                created++;
+
+                try
+                {
+                    await dbContext.SaveChangesAsync(cancellationToken);
+                }
+                catch (DbUpdateException ex) when (IsServerUniqueConstraintViolation(ex))
+                {
+                    dbContext.ChangeTracker.Clear();
+                    skipped++;
+                    created--;
+                }
+            }
+
+            return Ok(new { created, skipped, racked, errors = errors.Count > 0 ? errors : null });
+        }
+    }
+
+    private static string? RowCell(IXLWorksheet ws, int row, Dictionary<string, int> map, string header)
+    {
+        if (map.TryGetValue(header, out var col))
+        {
+            var val = ws.Cell(row, col).GetString().Trim();
+            return string.IsNullOrWhiteSpace(val) ? null : val;
+        }
+        return null;
+    }
+
+    private static string? NullIfWhiteSpace(string? s) =>
+        string.IsNullOrWhiteSpace(s) ? null : s;
 
     private static bool IsServerUniqueConstraintViolation(DbUpdateException exception) =>
         exception.InnerException is SqliteException
