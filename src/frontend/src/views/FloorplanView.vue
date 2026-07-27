@@ -102,8 +102,8 @@ const occPct = computed(() => {
   return Math.round((selectedRack.value.occupiedU / selectedRack.value.heightU) * 100)
 })
 
-function setViewMode(): void { if (mode.value === 'edit') toggleMode() }
-function setEditMode(): void { if (mode.value === 'view') toggleMode() }
+function setViewMode(): void { if (mode.value !== 'view') toggleMode() }
+function setEditMode(): void { if (mode.value !== 'edit') toggleMode() }
 function goBack(): void { router.push('/') }
 function goToRack(rackId: string): void { router.push(`/racks/${encodeURIComponent(rackId)}`) }
 function onDragEnd(rackId: string, x: number, y: number): void { handleDragEnd(rackId, x, y) }

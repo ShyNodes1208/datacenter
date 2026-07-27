@@ -199,7 +199,12 @@ watch(() => props.racks, () => { renderRacks() }, { deep: true })
 watch(() => props.snapLines, () => { renderSnapLines() }, { deep: true })
 
 onMounted(() => {
-  init()
+  try {
+    init()
+  } catch (err) {
+    console.error('FloorplanCanvas init failed:', err)
+    return
+  }
   if (containerRef.value) {
     resizeObserver = new ResizeObserver(() => {
       if (!stage || !containerRef.value) return
