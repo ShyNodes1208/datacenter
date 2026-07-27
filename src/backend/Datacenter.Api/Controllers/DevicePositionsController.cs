@@ -63,6 +63,7 @@ public sealed class DevicePositionsController(AppDbContext dbContext, IAntiforge
                 rack.Id,
                 rack.Code,
                 RoomName = rack.Room.Name,
+                RoomId = rack.RoomId,
                 rack.HeightU,
                 rack.X,
                 rack.Y,
