@@ -1,5 +1,5 @@
 import { ref, computed, type Ref } from 'vue'
-import type { RackItem } from './useFloorplan'
+import { type RackItem, SCALE_FACTOR } from './useFloorplan'
 
 export interface SnapLine {
   x1: number; y1: number; x2: number; y2: number
@@ -54,8 +54,8 @@ export function useFloorplanEditor(
 
     for (const rack of racks.value) {
       if (rack.id === rackId) continue
-      const rx = rack.x * 0.1
-      const ry = rack.y * 0.1
+      const rx = rack.x * SCALE_FACTOR
+      const ry = rack.y * SCALE_FACTOR
 
       if (Math.abs(sx - rx) <= SNAP_DIST)
         lines.push({ x1: sx, y1: Math.min(sy, ry), x2: sx, y2: Math.max(sy + RACK_H, ry + RACK_H) })
