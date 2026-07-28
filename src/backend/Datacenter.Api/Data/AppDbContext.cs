@@ -19,6 +19,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<AuditRecord> AuditRecords => Set<AuditRecord>();
 
+    public DbSet<Wall> Walls => Set<Wall>();
+
+    public DbSet<Zone> Zones => Set<Zone>();
+
+    public DbSet<FloorplanLabel> FloorplanLabels => Set<FloorplanLabel>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var user = modelBuilder.Entity<User>();
@@ -125,5 +131,42 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
             .WithMany()
             .HasForeignKey(item => item.ServerId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        var wall = modelBuilder.Entity<Wall>();
+        wall.ToTable("Walls");
+        wall.HasKey(item => item.Id);
+        wall.Property(item => item.X1).IsRequired();
+        wall.Property(item => item.Y1).IsRequired();
+        wall.Property(item => item.X2).IsRequired();
+        wall.Property(item => item.Y2).IsRequired();
+        wall.HasOne(item => item.Room)
+            .WithMany()
+            .HasForeignKey(item => item.RoomId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        var zone = modelBuilder.Entity<Zone>();
+        zone.ToTable("Zones", table =>
+        {
+            table.HasCheckConstraint(
+                "CK_Zones_ZoneType",
+                "ZoneType IN ('cold-aisle', 'hot-aisle', 'functional', 'custom')");
+        });
+        zone.HasKey(item => item.Id);
+        zone.Property(item => item.Name).IsRequired();
+        zone.Property(item => item.ZoneType).IsRequired();
+        zone.HasOne(item => item.Room)
+            .WithMany()
+            .HasForeignKey(item => item.RoomId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        var floorplanLabel = modelBuilder.Entity<FloorplanLabel>();
+        floorplanLabel.ToTable("FloorplanLabels");
+        floorplanLabel.HasKey(item => item.Id);
+        floorplanLabel.Property(item => item.Text).IsRequired();
+        floorplanLabel.Property(item => item.FontSize).IsRequired();
+        floorplanLabel.HasOne(item => item.Room)
+            .WithMany()
+            .HasForeignKey(item => item.RoomId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }
