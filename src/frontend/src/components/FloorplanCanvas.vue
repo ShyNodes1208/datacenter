@@ -15,6 +15,7 @@ const props = defineProps<{
   zones: ZoneItem[]
   labels: LabelItem[]
   mode: 'view' | 'edit'
+  activeTool: 'select' | 'wall' | 'rack' | 'label' | 'zone' | 'delete'
   snapLines: SnapLine[]
   toCanvasX: (db: number) => number
   toCanvasY: (db: number) => number
@@ -27,6 +28,10 @@ const emit = defineEmits<{
   'rack-dragend': [rackId: string, x: number, y: number]
   'element-click': [elementId: string]
   'element-dragend': [elementId: string, x: number, y: number]
+  'wall-drawn': [x1: number, y1: number, x2: number, y2: number]
+  'zone-drawn': [x: number, y: number, width: number, height: number]
+  'label-placed': [x: number, y: number]
+  'element-delete': [elementId: string, elementType: string]
 }>()
 
 const containerRef = ref<HTMLDivElement>()
@@ -39,6 +44,9 @@ let snapLayer: Konva.Layer | null = null
 let labelLayer: Konva.Layer | null = null
 let resizeObserver: ResizeObserver | null = null
 let dragMoved = false
+let drawStartX = 0
+let drawStartY = 0
+let drawPreview: Konva.Shape | null = null
 
 const GRID = 60
 const RACK_W = 60
@@ -254,16 +262,74 @@ function init(): void {
     stage!.batchDraw()
   })
 
-  // Pan
+  // Drawing & panning
   let panning = false
-  stage.on('mousedown', (e) => { if (e.target === stage) panning = true })
-  stage.on('mousemove', (e) => {
-    if (!panning) return
-    const p = stage!.position()
-    stage!.position({ x: p.x + e.evt.movementX, y: p.y + e.evt.movementY })
-    stage!.batchDraw()
+  stage.on('mousedown', (e) => {
+    if (e.target !== stage) return
+    const pos = stage!.getPointerPosition()
+    if (!pos) return
+
+    if (props.activeTool === 'wall' || props.activeTool === 'zone') {
+      drawStartX = pos.x
+      drawStartY = pos.y
+    } else if (props.activeTool === 'label') {
+      emit('label-placed', pos.x, pos.y)
+    } else {
+      panning = true
+    }
   })
-  stage.on('mouseup', () => { panning = false })
+
+  stage.on('mousemove', (e) => {
+    const pos = stage!.getPointerPosition()
+    if (!pos) return
+
+    if (drawPreview) {
+      drawPreview.destroy()
+      drawPreview = null
+    }
+
+    if (props.activeTool === 'wall' && stage && (e.target === stage || drawPreview)) {
+      drawPreview = new Konva.Line({
+        points: [drawStartX, drawStartY, pos.x, pos.y],
+        stroke: '#333', strokeWidth: 2, dash: [6, 4],
+      })
+      rackLayer?.add(drawPreview)
+      rackLayer?.batchDraw()
+    } else if (props.activeTool === 'zone' && stage) {
+      const x = Math.min(drawStartX, pos.x)
+      const y = Math.min(drawStartY, pos.y)
+      const w = Math.abs(pos.x - drawStartX)
+      const h = Math.abs(pos.y - drawStartY)
+      drawPreview = new Konva.Rect({
+        x, y, width: w, height: h,
+        fill: 'rgba(100,149,237,0.1)',
+        stroke: 'rgba(100,149,237,0.5)', strokeWidth: 1, dash: [6, 4],
+      })
+      rackLayer?.add(drawPreview)
+      rackLayer?.batchDraw()
+    } else if (panning) {
+      const p = stage!.position()
+      stage!.position({ x: p.x + e.evt.movementX, y: p.y + e.evt.movementY })
+      stage!.batchDraw()
+    }
+  })
+
+  stage.on('mouseup', () => {
+    if (drawPreview) {
+      if (props.activeTool === 'wall') {
+        const line = drawPreview as Konva.Line
+        const pts = line.points()
+        emit('wall-drawn', pts[0], pts[1], pts[2], pts[3])
+      } else if (props.activeTool === 'zone') {
+        const rect = drawPreview as Konva.Rect
+        emit('zone-drawn', rect.x(), rect.y(), rect.width(), rect.height())
+      }
+      drawPreview.destroy()
+      drawPreview = null
+      rackLayer?.batchDraw()
+    }
+    panning = false
+  })
   stage.on('mouseleave', () => { panning = false })
 }
 
