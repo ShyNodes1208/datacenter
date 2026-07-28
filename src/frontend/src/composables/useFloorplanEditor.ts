@@ -11,6 +11,14 @@ interface UndoEntry {
   newX: number; newY: number
 }
 
+interface ElementAction {
+  action: 'create' | 'delete' | 'update'
+  elementType: 'wall' | 'zone' | 'label'
+  elementId: string
+  previousData?: Record<string, unknown>
+  newData?: Record<string, unknown>
+}
+
 const GRID_SIZE = 60
 const SNAP_DIST = 8
 const RACK_W = 60
@@ -28,6 +36,8 @@ export function useFloorplanEditor(
   const snapLines = ref<SnapLine[]>([])
   const undoStack = ref<UndoEntry[]>([])
   const redoStack = ref<UndoEntry[]>([])
+  const elementUndoStack = ref<ElementAction[]>([])
+  const elementRedoStack = ref<ElementAction[]>([])
 
   const canUndo = computed(() => undoStack.value.length > 0)
   const canRedo = computed(() => redoStack.value.length > 0)
@@ -125,9 +135,32 @@ export function useFloorplanEditor(
     undoStack.value.push(entry)
   }
 
+  function pushElementAction(action: ElementAction): void {
+    elementUndoStack.value.push(action)
+    elementRedoStack.value = []
+  }
+
+  function undoElement(): ElementAction | null {
+    const action = elementUndoStack.value.pop()
+    if (action) elementRedoStack.value.push(action)
+    return action ?? null
+  }
+
+  function redoElement(): ElementAction | null {
+    const action = elementRedoStack.value.pop()
+    if (action) elementUndoStack.value.push(action)
+    return action ?? null
+  }
+
+  function clearElementHistory(): void {
+    elementUndoStack.value = []
+    elementRedoStack.value = []
+  }
+
   return {
     mode, selectedRackId, isDragging, snapLines,
     toggleMode, selectRack, snapPosition, handleDragStart, handleDragEnd,
     undo, redo, canUndo, canRedo,
+    pushElementAction, undoElement, redoElement, clearElementHistory,
   }
 }
