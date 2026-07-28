@@ -39,8 +39,8 @@ export function useFloorplanEditor(
   const elementUndoStack = ref<ElementAction[]>([])
   const elementRedoStack = ref<ElementAction[]>([])
 
-  const canUndo = computed(() => undoStack.value.length > 0)
-  const canRedo = computed(() => redoStack.value.length > 0)
+  const canUndo = computed(() => undoStack.value.length > 0 || elementUndoStack.value.length > 0)
+  const canRedo = computed(() => redoStack.value.length > 0 || elementRedoStack.value.length > 0)
 
   function toggleMode(): void {
     mode.value = mode.value === 'view' ? 'edit' : 'view'

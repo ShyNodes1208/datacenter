@@ -155,7 +155,7 @@ async function saveRackPosition(id: string, x: number, y: number): Promise<boole
 }
 
 const editor = useFloorplanEditor(racks, toDbX, toDbY, saveRackPosition)
-const { mode, selectedRackId, snapLines, toggleMode, selectRack, snapPosition, handleDragStart, handleDragEnd, undo, redo, canUndo, canRedo } = editor
+const { mode, selectedRackId, snapLines, toggleMode, selectRack, snapPosition, handleDragStart, handleDragEnd, undo: rackUndo, redo: rackRedo, canUndo, canRedo, pushElementAction, undoElement, redoElement } = editor
 
 const roomName = computed(() => racks.value[0]?.roomName ?? '机房平面图')
 const selectedRack = computed(() => selectedRackId.value ? racks.value.find(r => r.id === selectedRackId.value) ?? null : null)
@@ -173,29 +173,61 @@ function onDragEnd(rackId: string, x: number, y: number): void { handleDragEnd(r
 
 // Drawing event handlers
 async function onWallDrawn(x1: number, y1: number, x2: number, y2: number): Promise<void> {
-  const wall = await addWall({ x1: toDbX(x1), y1: toDbY(y1), x2: toDbX(x2), y2: toDbY(y2) })
-  if (wall) activeTool.value = 'select'
+  const wallData = { x1: toDbX(x1), y1: toDbY(y1), x2: toDbX(x2), y2: toDbY(y2) }
+  const wall = await addWall(wallData)
+  if (wall) {
+    pushElementAction({ action: 'create', elementType: 'wall', elementId: wall.id, newData: { ...wallData, color: wall.color, thickness: wall.thickness } })
+    activeTool.value = 'select'
+  }
 }
 
 async function onZoneDrawn(x: number, y: number, w: number, h: number): Promise<void> {
   const name = window.prompt('区域名称：', '新区域')
   if (!name) return
-  const zone = await addZone({ x: toDbX(x), y: toDbY(y), width: toDbX(w), height: toDbY(h), name, zoneType: 'functional' })
-  if (zone) activeTool.value = 'select'
+  const zoneData = { x: toDbX(x), y: toDbY(y), width: toDbX(w), height: toDbY(h), name, zoneType: 'functional' as const }
+  const zone = await addZone(zoneData)
+  if (zone) {
+    pushElementAction({ action: 'create', elementType: 'zone', elementId: zone.id, newData: { ...zoneData, color: zone.color } })
+    activeTool.value = 'select'
+  }
 }
 
 async function onLabelPlaced(x: number, y: number): Promise<void> {
   const text = window.prompt('标签文字：')
   if (!text) return
-  const label = await addLabel({ x: toDbX(x), y: toDbY(y), text })
-  if (label) activeTool.value = 'select'
+  const labelData = { x: toDbX(x), y: toDbY(y), text }
+  const label = await addLabel(labelData)
+  if (label) {
+    pushElementAction({ action: 'create', elementType: 'label', elementId: label.id, newData: { ...labelData, fontSize: label.fontSize, color: label.color } })
+    activeTool.value = 'select'
+  }
 }
 
 async function onElementDelete(id: string, type: string): Promise<void> {
   if (!window.confirm('确认删除此元素？')) return
-  if (type === 'wall') await deleteWall(id)
-  else if (type === 'zone') await deleteZone(id)
-  else if (type === 'label') await deleteLabel(id)
+
+  // Capture data before deletion for undo
+  let prevData: Record<string, unknown> | undefined
+  if (type === 'wall') {
+    const w = walls.value.find(e => e.id === id)
+    if (w) prevData = { x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2, color: w.color, thickness: w.thickness }
+  } else if (type === 'zone') {
+    const z = zones.value.find(e => e.id === id)
+    if (z) prevData = { x: z.x, y: z.y, width: z.width, height: z.height, name: z.name, zoneType: z.zoneType, color: z.color }
+  } else if (type === 'label') {
+    const l = labels.value.find(e => e.id === id)
+    if (l) prevData = { x: l.x, y: l.y, text: l.text, fontSize: l.fontSize, color: l.color }
+  }
+
+  let ok = false
+  if (type === 'wall') ok = await deleteWall(id)
+  else if (type === 'zone') ok = await deleteZone(id)
+  else if (type === 'label') ok = await deleteLabel(id)
+
+  if (ok) {
+    pushElementAction({ action: 'delete', elementType: type as 'wall' | 'zone' | 'label', elementId: id, previousData: prevData })
+  }
+
   selectedElementId.value = null
   selectedElementType.value = null
 }
@@ -204,15 +236,44 @@ async function onPropertyUpdate(patch: Record<string, unknown>): Promise<void> {
   if (!selectedElementId.value || !selectedElementType.value) return
   const id = selectedElementId.value
   const type = selectedElementType.value
+
+  let prevData: Record<string, unknown> | undefined
+  let success = false
+
   if (type === 'wall') {
     const w = walls.value.find(e => e.id === id)
-    if (w) await updateWall(id, { x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2, ...patch })
+    if (w) {
+      prevData = { x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2, color: w.color, thickness: w.thickness }
+      success = await updateWall(id, { x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2, ...patch })
+    }
   } else if (type === 'zone') {
     const z = zones.value.find(e => e.id === id)
-    if (z) await updateZone(id, { x: z.x, y: z.y, width: z.width, height: z.height, name: z.name, zoneType: z.zoneType, ...patch })
+    if (z) {
+      prevData = { x: z.x, y: z.y, width: z.width, height: z.height, name: z.name, zoneType: z.zoneType, color: z.color }
+      success = await updateZone(id, { x: z.x, y: z.y, width: z.width, height: z.height, name: z.name, zoneType: z.zoneType, ...patch })
+    }
   } else if (type === 'label') {
     const l = labels.value.find(e => e.id === id)
-    if (l) await updateLabel(id, { x: l.x, y: l.y, text: l.text, fontSize: l.fontSize, color: l.color, ...patch })
+    if (l) {
+      prevData = { x: l.x, y: l.y, text: l.text, fontSize: l.fontSize, color: l.color }
+      success = await updateLabel(id, { x: l.x, y: l.y, text: l.text, fontSize: l.fontSize, color: l.color, ...patch })
+    }
+  }
+
+  if (success && prevData) {
+    // Read updated state for newData (data was updated reactively by update* functions)
+    let newData: Record<string, unknown> | undefined
+    if (type === 'wall') {
+      const w = walls.value.find(e => e.id === id)
+      if (w) newData = { x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2, color: w.color, thickness: w.thickness }
+    } else if (type === 'zone') {
+      const z = zones.value.find(e => e.id === id)
+      if (z) newData = { x: z.x, y: z.y, width: z.width, height: z.height, name: z.name, zoneType: z.zoneType, color: z.color }
+    } else if (type === 'label') {
+      const l = labels.value.find(e => e.id === id)
+      if (l) newData = { x: l.x, y: l.y, text: l.text, fontSize: l.fontSize, color: l.color }
+    }
+    pushElementAction({ action: 'update', elementType: type as 'wall' | 'zone' | 'label', elementId: id, previousData: prevData, newData })
   }
 }
 
@@ -314,6 +375,84 @@ function exportSvg(): void {
   a.href = url; a.download = `${room}.svg`
   a.click()
   URL.revokeObjectURL(url)
+}
+
+// Element undo/redo helpers — reverse an element operation
+async function handleElementUndo(action: { action: string; elementType: string; elementId: string; previousData?: Record<string, unknown> }): Promise<void> {
+  if (action.action === 'create') {
+    // Undo create = delete the element
+    if (action.elementType === 'wall') await deleteWall(action.elementId)
+    else if (action.elementType === 'zone') await deleteZone(action.elementId)
+    else if (action.elementType === 'label') await deleteLabel(action.elementId)
+  } else if (action.action === 'delete' && action.previousData) {
+    // Undo delete = recreate the element
+    const d = action.previousData
+    if (action.elementType === 'wall') {
+      await addWall({ x1: d.x1 as number, y1: d.y1 as number, x2: d.x2 as number, y2: d.y2 as number, color: d.color as string, thickness: d.thickness as number })
+    } else if (action.elementType === 'zone') {
+      await addZone({ x: d.x as number, y: d.y as number, width: d.width as number, height: d.height as number, name: d.name as string, zoneType: (d.zoneType as string) || 'functional', color: d.color as string })
+    } else if (action.elementType === 'label') {
+      await addLabel({ x: d.x as number, y: d.y as number, text: d.text as string, fontSize: d.fontSize as number, color: d.color as string })
+    }
+  } else if (action.action === 'update' && action.previousData) {
+    // Undo update = restore previous data
+    const d = action.previousData
+    if (action.elementType === 'wall') {
+      await updateWall(action.elementId, { x1: d.x1 as number, y1: d.y1 as number, x2: d.x2 as number, y2: d.y2 as number, color: d.color as string, thickness: d.thickness as number })
+    } else if (action.elementType === 'zone') {
+      await updateZone(action.elementId, { x: d.x as number, y: d.y as number, width: d.width as number, height: d.height as number, name: d.name as string, zoneType: (d.zoneType as string) || 'functional', color: d.color as string })
+    } else if (action.elementType === 'label') {
+      await updateLabel(action.elementId, { x: d.x as number, y: d.y as number, text: d.text as string, fontSize: d.fontSize as number, color: d.color as string })
+    }
+  }
+}
+
+async function handleElementRedo(action: { action: string; elementType: string; elementId: string; previousData?: Record<string, unknown>; newData?: Record<string, unknown> }): Promise<void> {
+  if (action.action === 'create' && action.newData) {
+    // Redo create = recreate (was deleted by undo)
+    const d = action.newData
+    if (action.elementType === 'wall') {
+      await addWall({ x1: d.x1 as number, y1: d.y1 as number, x2: d.x2 as number, y2: d.y2 as number, color: d.color as string, thickness: d.thickness as number })
+    } else if (action.elementType === 'zone') {
+      await addZone({ x: d.x as number, y: d.y as number, width: d.width as number, height: d.height as number, name: d.name as string, zoneType: (d.zoneType as string) || 'functional', color: d.color as string })
+    } else if (action.elementType === 'label') {
+      await addLabel({ x: d.x as number, y: d.y as number, text: d.text as string, fontSize: d.fontSize as number, color: d.color as string })
+    }
+  } else if (action.action === 'delete') {
+    // Redo delete = delete again
+    if (action.elementType === 'wall') await deleteWall(action.elementId)
+    else if (action.elementType === 'zone') await deleteZone(action.elementId)
+    else if (action.elementType === 'label') await deleteLabel(action.elementId)
+  } else if (action.action === 'update' && action.newData) {
+    // Redo update = re-apply new data
+    const d = action.newData
+    if (action.elementType === 'wall') {
+      await updateWall(action.elementId, { x1: d.x1 as number, y1: d.y1 as number, x2: d.x2 as number, y2: d.y2 as number, color: d.color as string, thickness: d.thickness as number })
+    } else if (action.elementType === 'zone') {
+      await updateZone(action.elementId, { x: d.x as number, y: d.y as number, width: d.width as number, height: d.height as number, name: d.name as string, zoneType: (d.zoneType as string) || 'functional', color: d.color as string })
+    } else if (action.elementType === 'label') {
+      await updateLabel(action.elementId, { x: d.x as number, y: d.y as number, text: d.text as string, fontSize: d.fontSize as number, color: d.color as string })
+    }
+  }
+}
+
+// Combined undo/redo that tries element stack first, then rack stack
+async function undo(): Promise<void> {
+  const elementAction = undoElement()
+  if (elementAction) {
+    await handleElementUndo(elementAction)
+  } else {
+    await rackUndo()
+  }
+}
+
+async function redo(): Promise<void> {
+  const elementAction = redoElement()
+  if (elementAction) {
+    await handleElementRedo(elementAction)
+  } else {
+    await rackRedo()
+  }
 }
 
 // Keyboard shortcuts
