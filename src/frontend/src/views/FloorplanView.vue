@@ -251,8 +251,69 @@ async function onRackCreate(): Promise<void> {
   }
 }
 
+function escapeXml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+function occColor(occ: number | undefined, total: number): { fill: string; stroke: string } {
+  if (!occ || occ === 0) return { fill: 'transparent', stroke: '#999' }
+  const pct = occ / total
+  if (pct > 0.8) return { fill: '#fce4e4', stroke: '#e74c3c' }
+  if (pct >= 0.5) return { fill: '#fef3e0', stroke: '#f0ad4e' }
+  return { fill: '#e8f8e8', stroke: '#52c41a' }
+}
+
 function exportSvg(): void {
-  // implemented in Task 12
+  // Access Konva stage via DOM: the canvas element inside .canvas-wrap
+  const canvasEl = document.querySelector('.canvas-wrap canvas') as HTMLCanvasElement | null
+  if (!canvasEl) return
+
+  // Konva stores the stage on the container div; find the stage
+  const containerDiv = canvasEl.closest('.konvajs-content')?.parentElement
+  if (!containerDiv) return
+
+  // Build SVG manually from element data for clean output
+  const room = roomName.value
+  const lines: string[] = []
+  lines.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${canvasEl.width} ${canvasEl.height}">`)
+
+  // Walls
+  for (const w of walls.value) {
+    const x1 = toCanvasX(w.x1); const y1 = toCanvasY(w.y1)
+    const x2 = toCanvasX(w.x2); const y2 = toCanvasY(w.y2)
+    lines.push(`  <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${w.color}" stroke-width="${w.thickness}" stroke-linecap="round"/>`)
+  }
+
+  // Zones
+  for (const z of zones.value) {
+    const x = toCanvasX(z.x); const y = toCanvasY(z.y)
+    const w = z.width * 0.1; const h = z.height * 0.1
+    lines.push(`  <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${z.color}" stroke="${z.color.replace(/[\d.]+\)$/, '0.4)')}" stroke-width="1" rx="2"/>`)
+    lines.push(`  <text x="${x + 4}" y="${y + 16}" font-size="11" fill="#666">${escapeXml(z.name)}</text>`)
+  }
+
+  // Racks
+  for (const r of racks.value) {
+    const x = toCanvasX(r.x); const y = toCanvasY(r.y)
+    const c = occColor(r.occupiedU, r.heightU)
+    lines.push(`  <rect x="${x}" y="${y}" width="60" height="100" fill="${c.fill}" stroke="${c.stroke}" stroke-width="1.5" rx="3"/>`)
+    lines.push(`  <text x="${x + 30}" y="${y + 55}" font-size="11" text-anchor="middle" fill="#2c3e50">${escapeXml(r.code)}</text>`)
+  }
+
+  // Labels
+  for (const l of labels.value) {
+    const x = toCanvasX(l.x); const y = toCanvasY(l.y)
+    lines.push(`  <text x="${x}" y="${y + l.fontSize}" font-size="${l.fontSize}" fill="${l.color}">${escapeXml(l.text)}</text>`)
+  }
+
+  lines.push('</svg>')
+
+  const blob = new Blob([lines.join('\n')], { type: 'image/svg+xml' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = `${room}.svg`
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 // Keyboard shortcuts
