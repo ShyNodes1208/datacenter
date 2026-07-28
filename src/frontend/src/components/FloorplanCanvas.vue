@@ -7,9 +7,13 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import Konva from 'konva'
 import type { RackItem } from '../composables/useFloorplan'
 import type { SnapLine } from '../composables/useFloorplanEditor'
+import type { WallItem, ZoneItem, LabelItem } from '../composables/useFloorplanElements'
 
 const props = defineProps<{
   racks: RackItem[]
+  walls: WallItem[]
+  zones: ZoneItem[]
+  labels: LabelItem[]
   mode: 'view' | 'edit'
   snapLines: SnapLine[]
   toCanvasX: (db: number) => number
@@ -21,19 +25,25 @@ const emit = defineEmits<{
   'rack-click': [rackId: string]
   'rack-dragstart': [rackId: string]
   'rack-dragend': [rackId: string, x: number, y: number]
+  'element-click': [elementId: string]
+  'element-dragend': [elementId: string, x: number, y: number]
 }>()
 
 const containerRef = ref<HTMLDivElement>()
 let stage: Konva.Stage | null = null
 let gridLayer: Konva.Layer | null = null
+let zoneLayer: Konva.Layer | null = null
+let wallLayer: Konva.Layer | null = null
 let rackLayer: Konva.Layer | null = null
 let snapLayer: Konva.Layer | null = null
+let labelLayer: Konva.Layer | null = null
 let resizeObserver: ResizeObserver | null = null
 let dragMoved = false
 
 const GRID = 60
 const RACK_W = 60
 const RACK_H = 100
+const SCALE_FACTOR = 0.1
 
 function occColor(occ: number | undefined, total: number): { fill: string; stroke: string } {
   if (!occ || occ === 0) return { fill: 'transparent', stroke: '#999' }
@@ -138,6 +148,66 @@ function renderSnapLines(): void {
   snapLayer.batchDraw()
 }
 
+function renderWalls(): void {
+  if (!wallLayer) return
+  wallLayer.destroyChildren()
+  for (const w of props.walls) {
+    const x1 = props.toCanvasX(w.x1)
+    const y1 = props.toCanvasY(w.y1)
+    const x2 = props.toCanvasX(w.x2)
+    const y2 = props.toCanvasY(w.y2)
+    wallLayer.add(new Konva.Line({
+      points: [x1, y1, x2, y2],
+      stroke: w.color,
+      strokeWidth: w.thickness,
+      lineCap: 'round',
+      listening: false,
+    }))
+  }
+  wallLayer.batchDraw()
+}
+
+function renderZones(): void {
+  if (!zoneLayer) return
+  zoneLayer.destroyChildren()
+  for (const z of props.zones) {
+    const x = props.toCanvasX(z.x)
+    const y = props.toCanvasY(z.y)
+    const w = z.width * SCALE_FACTOR
+    const h = z.height * SCALE_FACTOR
+    zoneLayer.add(new Konva.Rect({
+      x, y, width: w, height: h,
+      fill: z.color,
+      stroke: z.color.replace(/[\d.]+\)$/, '0.4)'),
+      strokeWidth: 1,
+      cornerRadius: 2,
+      listening: false,
+    }))
+    zoneLayer.add(new Konva.Text({
+      x: x + 4, y: y + 4,
+      text: z.name,
+      fontSize: 11, fontFamily: 'sans-serif',
+      fill: '#666', listening: false,
+    }))
+  }
+  zoneLayer.batchDraw()
+}
+
+function renderLabels(): void {
+  if (!labelLayer) return
+  labelLayer.destroyChildren()
+  for (const l of props.labels) {
+    const x = props.toCanvasX(l.x)
+    const y = props.toCanvasY(l.y)
+    labelLayer.add(new Konva.Text({
+      x, y, text: l.text,
+      fontSize: l.fontSize, fontFamily: 'sans-serif',
+      fill: l.color, listening: false,
+    }))
+  }
+  labelLayer.batchDraw()
+}
+
 function init(): void {
   if (!containerRef.value) return
   const w = containerRef.value.clientWidth
@@ -149,12 +219,24 @@ function init(): void {
   drawGrid(gridLayer, w * 3, h * 3)
   stage.add(gridLayer)
 
+  zoneLayer = new Konva.Layer({ listening: false })
+  renderZones()
+  stage.add(zoneLayer)
+
+  wallLayer = new Konva.Layer({ listening: false })
+  renderWalls()
+  stage.add(wallLayer)
+
   rackLayer = new Konva.Layer()
   renderRacks()
   stage.add(rackLayer)
 
   snapLayer = new Konva.Layer({ listening: false })
   stage.add(snapLayer)
+
+  labelLayer = new Konva.Layer({ listening: false })
+  renderLabels()
+  stage.add(labelLayer)
 
   // Zoom
   stage.on('wheel', (e) => {
@@ -197,6 +279,11 @@ watch(() => props.racks, () => { renderRacks() }, { deep: true })
 
 // Watch snapLines for drag alignment rendering
 watch(() => props.snapLines, () => { renderSnapLines() }, { deep: true })
+
+// Watch walls, zones, labels for re-render
+watch(() => props.walls, () => { renderWalls() }, { deep: true })
+watch(() => props.zones, () => { renderZones() }, { deep: true })
+watch(() => props.labels, () => { renderLabels() }, { deep: true })
 
 onMounted(() => {
   try {
