@@ -10,23 +10,21 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <Teleport to="body">
-    <div
-      v-if="visible"
-      class="drawer-overlay"
-      @click.self="emit('close')"
-    >
-      <div class="drawer-panel">
-        <div class="drawer-header">
-          <h3 class="drawer-title">{{ title }}</h3>
-          <button class="drawer-close" @click="emit('close')" aria-label="关闭">✕</button>
-        </div>
-        <div class="drawer-body">
-          <slot></slot>
-        </div>
+  <div
+    v-if="visible"
+    class="drawer-overlay"
+    @click.self="emit('close')"
+  >
+    <div class="drawer-panel">
+      <div class="drawer-header">
+        <h3 class="drawer-title">{{ title }}</h3>
+        <button class="drawer-close" @click="emit('close')" aria-label="关闭">✕</button>
+      </div>
+      <div class="drawer-body">
+        <slot></slot>
       </div>
     </div>
-  </Teleport>
+  </div>
 </template>
 
 <style scoped>

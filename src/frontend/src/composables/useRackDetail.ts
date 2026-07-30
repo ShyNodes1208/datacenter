@@ -36,6 +36,93 @@ interface DevicePositionsResponse {
   }
 }
 
+export function buildUSlotsFromOccupancy(
+  occupancy: Map<number, { serverName: string; serverId?: string; deviceType: string; deviceHeight: number }>,
+  heightU: number,
+): USlot[] {
+  if (heightU <= 0) return []
+
+  const slots: USlot[] = []
+  let u = heightU
+
+  while (u >= 1) {
+    const info = occupancy.get(u)
+    if (info) {
+      const topU = u
+      let bottomU = u
+      const mergeKey = info.serverId ?? info.serverName
+
+      while (bottomU - 1 >= 1) {
+        const below = occupancy.get(bottomU - 1)
+        if (!below) break
+        const belowKey = below.serverId ?? below.serverName
+        if (belowKey !== mergeKey) break
+        bottomU--
+      }
+
+      const uCount = topU - bottomU + 1
+
+      let ci = 0
+      for (const prev of slots) {
+        if (prev.occupied && prev.deviceType === info.deviceType) {
+          ci++
+        } else if (prev.occupied && prev.deviceType !== info.deviceType) {
+          ci = 0
+        }
+      }
+
+      slots.push({
+        startU: topU,
+        endU: bottomU,
+        uCount,
+        occupied: true,
+        serverId: info.serverId,
+        serverName: info.serverName,
+        deviceType: info.deviceType,
+        deviceHeight: info.deviceHeight,
+        colorIndex: ci,
+      })
+
+      u = bottomU - 1
+    } else {
+      const topU = u
+      let bottomU = u
+      while (bottomU - 1 >= 1 && !occupancy.has(bottomU - 1)) {
+        bottomU--
+      }
+
+      slots.push({
+        startU: topU,
+        endU: bottomU,
+        uCount: topU - bottomU + 1,
+        occupied: false,
+        colorIndex: 0,
+      })
+
+      u = bottomU - 1
+    }
+  }
+
+  return slots
+}
+
+export function buildUSlotsFromSummaryPositions(
+  positions: Array<{ uNumber: number; occupied: boolean; serverName?: string; deviceType?: string; deviceHeight?: number }>,
+  heightU: number,
+): USlot[] {
+  const map = new Map<number, { serverName: string; serverId?: string; deviceType: string; deviceHeight: number }>()
+  for (const pos of positions) {
+    if (pos.occupied && pos.serverName) {
+      map.set(pos.uNumber, {
+        serverName: pos.serverName,
+        deviceType: pos.deviceType ?? '未知',
+        deviceHeight: pos.deviceHeight ?? 1,
+      })
+    }
+  }
+  return buildUSlotsFromOccupancy(map, heightU)
+}
+
 export function useRackDetail(rackId: string) {
   const { request } = useApi()
 
@@ -45,69 +132,8 @@ export function useRackDetail(rackId: string) {
   const serverOccupancy = ref<Map<number, { serverName: string; serverId: string; deviceType: string; deviceHeight: number }>>(new Map())
 
   const uSlots = computed<USlot[]>(() => {
-    const positions = serverOccupancy.value
     if (!rack.value) return []
-
-    const heightU = rack.value.heightU
-    if (heightU <= 0) return []
-
-    const slots: USlot[] = []
-    let u = heightU
-
-    while (u >= 1) {
-      const info = positions.get(u)
-      if (info) {
-        const topU = u
-        let bottomU = u
-
-        while (bottomU - 1 >= 1 && positions.get(bottomU - 1)?.serverId === info.serverId) {
-          bottomU--
-        }
-
-        const uCount = topU - bottomU + 1
-
-        let ci = 0
-        for (const prev of slots) {
-          if (prev.occupied && prev.deviceType === info.deviceType) {
-            ci++
-          } else if (prev.occupied && prev.deviceType !== info.deviceType) {
-            ci = 0
-          }
-        }
-
-        slots.push({
-          startU: topU,
-          endU: bottomU,
-          uCount,
-          occupied: true,
-          serverId: info.serverId,
-          serverName: info.serverName,
-          deviceType: info.deviceType,
-          deviceHeight: info.deviceHeight,
-          colorIndex: ci,
-        })
-
-        u = bottomU - 1
-      } else {
-        const topU = u
-        let bottomU = u
-        while (bottomU - 1 >= 1 && !positions.has(bottomU - 1)) {
-          bottomU--
-        }
-
-        slots.push({
-          startU: topU,
-          endU: bottomU,
-          uCount: topU - bottomU + 1,
-          occupied: false,
-          colorIndex: 0,
-        })
-
-        u = bottomU - 1
-      }
-    }
-
-    return slots
+    return buildUSlotsFromOccupancy(serverOccupancy.value, rack.value.heightU)
   })
 
   const stats = computed(() => {

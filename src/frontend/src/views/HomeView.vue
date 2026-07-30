@@ -3,27 +3,12 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApi } from '../composables/useApi'
 import { useAuth } from '../composables/useAuth'
-
-type RoomItem = {
-  id: string
-  name: string
-  status: string
-}
-
-type RackItem = {
-  id: string
-  code: string
-  roomId: string
-  roomName: string
-  heightU: number
-  occupiedU?: number
-  brand: string | null
-  power: number | null
-  notes: string | null
-  x: number
-  y: number
-  z: number
-}
+import { useDashboard, type RoomItem } from '../composables/useDashboard'
+import { buildUSlotsFromSummaryPositions } from '../composables/useRackDetail'
+import DashboardStats from '../components/DashboardStats.vue'
+import RackFrontPanel from '../components/RackFrontPanel.vue'
+import RackOperationDrawer from '../components/RackOperationDrawer.vue'
+import type { USlot } from '../components/RackFrontPanel.vue'
 
 type ImportRowResult = {
   row: number
@@ -56,14 +41,24 @@ const ROOM_ADMIN_ROLE = '机房管理员'
 const router = useRouter()
 const { user } = useAuth()
 const { request } = useApi()
+const { stats, rooms, error: dashboardError, loadStats, loadRooms: loadRoomsFromDashboard } = useDashboard()
 
 /** null = not finished loading; empty array = loaded empty list */
-const rooms = ref<RoomItem[] | null>(null)
 const roomsError = ref('')
 
 const expandedRoomId = ref<string | null>(null)
-const roomRacks = ref<Map<string, RackItem[]>>(new Map())
-const racksLoading = ref<Set<string>>(new Set())
+
+interface RackSummaryItem {
+  id: string
+  code: string
+  heightU: number
+  brand: string | null
+  occupiedU: number
+  positions: USlot[]
+}
+
+const roomRackSummaries = ref<Map<string, { racks: RackSummaryItem[] }>>(new Map())
+const summaryLoading = ref<Set<string>>(new Set())
 
 const createFormVisible = ref(false)
 const roomName = ref('')
@@ -102,41 +97,15 @@ const canDeleteRoom = computed(() => {
 
 async function loadRooms(): Promise<void> {
   roomsError.value = ''
-
-  const result = await request<unknown>('/api/rooms', { method: 'GET' })
-  if (!result.ok) {
-    rooms.value = null
-    roomsError.value = result.error
-    return
+  await loadRoomsFromDashboard()
+  if (rooms.value === null) {
+    roomsError.value = dashboardError.value || 'Request failed.'
   }
+}
 
-  if (!Array.isArray(result.data)) {
-    rooms.value = null
-    roomsError.value = 'Request failed.'
-    return
-  }
-
-  const parsed: RoomItem[] = []
-  for (const item of result.data) {
-    if (item === null || typeof item !== 'object') {
-      rooms.value = null
-      roomsError.value = 'Request failed.'
-      return
-    }
-    const record = item as Record<string, unknown>
-    if (
-      typeof record.id !== 'string' ||
-      typeof record.name !== 'string' ||
-      typeof record.status !== 'string'
-    ) {
-      rooms.value = null
-      roomsError.value = 'Request failed.'
-      return
-    }
-    parsed.push({ id: record.id, name: record.name, status: record.status })
-  }
-
-  rooms.value = parsed
+async function refreshDashboard(): Promise<void> {
+  roomRackSummaries.value = new Map()
+  await Promise.all([loadStats(), loadRooms()])
 }
 
 function openCreateForm(): void {
@@ -210,6 +179,7 @@ async function saveEdit(room: RoomItem): Promise<void> {
   editStatus.value = '启用'
   editError.value = ''
   await loadRooms()
+  await loadStats()
   editSubmitting.value = false
 }
 
@@ -253,7 +223,7 @@ async function deleteRoom(room: RoomItem): Promise<void> {
   }
   deleteErrorRoomId.value = null
   deleteSubmitting.value = false
-  await loadRooms()
+  await refreshDashboard()
 }
 
 async function fetchCreateCsrfToken(): Promise<string | null> {
@@ -302,7 +272,7 @@ async function onCreateRoom(): Promise<void> {
   roomName.value = ''
   roomStatus.value = '启用'
   createError.value = ''
-  await loadRooms()
+  await refreshDashboard()
   createSubmitting.value = false
 }
 
@@ -313,24 +283,36 @@ async function toggleRoom(roomId: string): Promise<void> {
   }
   expandedRoomId.value = roomId
 
-  // Load racks if not already cached
-  if (!roomRacks.value.has(roomId)) {
-    racksLoading.value.add(roomId)
+  if (!roomRackSummaries.value.has(roomId)) {
+    summaryLoading.value.add(roomId)
 
-    const result = await request<RackItem[]>(`/api/racks?roomId=${roomId}`, { method: 'GET' })
-    if (result.ok && Array.isArray(result.data)) {
-      const racks = new Map(roomRacks.value)
-      racks.set(
-        roomId,
-        result.data.map((rack) => ({
-          ...rack,
-          occupiedU: typeof rack.occupiedU === 'number' ? rack.occupiedU : 0,
+    const result = await request<{
+      racks: Array<{
+        id: string
+        code: string
+        heightU: number
+        brand: string | null
+        occupiedU: number
+        positions: Array<{ uNumber: number; occupied: boolean; serverName?: string; deviceType?: string; deviceHeight?: number }>
+      }>
+    }>(`/api/rooms/${roomId}/racks-summary`, { method: 'GET' })
+
+    if (result.ok && result.data) {
+      const map = new Map(roomRackSummaries.value)
+      map.set(roomId, {
+        racks: result.data.racks.map((rack) => ({
+          id: rack.id,
+          code: rack.code,
+          heightU: rack.heightU,
+          brand: rack.brand,
+          occupiedU: rack.occupiedU,
+          positions: buildUSlotsFromSummaryPositions(rack.positions, rack.heightU),
         })),
-      )
-      roomRacks.value = racks
+      })
+      roomRackSummaries.value = map
     }
 
-    racksLoading.value.delete(roomId)
+    summaryLoading.value.delete(roomId)
   }
 }
 
@@ -339,7 +321,7 @@ function goToRack(rackId: string): void {
 }
 
 onMounted(() => {
-  void loadRooms()
+  void refreshDashboard()
 })
 
 function openImport(): void {
@@ -458,6 +440,7 @@ async function submitImport(): Promise<void> {
 
   importResult.value = result.data as ImportResponse
   importSubmitting.value = false
+  await refreshDashboard()
 }
 
 function closeResult(): void {
@@ -503,7 +486,7 @@ function cancelBatchImport(): void {
 function closeBatchResult(): void {
   batchImportVisible.value = false
   batchImportResult.value = null
-  loadRooms()
+  void refreshDashboard()
 }
 
 async function handleBatchFileChange(event: Event): Promise<void> {
@@ -582,7 +565,7 @@ function cancelServerImport(): void {
 function closeServerResult(): void {
   serverImportVisible.value = false
   serverImportResult.value = null
-  loadRooms()
+  void refreshDashboard()
 }
 
 async function handleServerFileChange(event: Event): Promise<void> {
@@ -631,6 +614,8 @@ async function handleServerFileChange(event: Event): Promise<void> {
 
 <template>
   <div class="home-page">
+    <DashboardStats v-if="stats" :stats="stats" />
+
     <div class="toolbar">
       <button type="button" class="btn btn--icon-import" @click="openImport">Excel 导入机柜</button>
       <button type="button" class="btn btn--icon-import" @click="openBatchImport">批量导入设备</button>
@@ -645,7 +630,7 @@ async function handleServerFileChange(event: Event): Promise<void> {
       </button>
     </div>
 
-    <div v-if="batchImportVisible" class="panel">
+    <RackOperationDrawer :visible="batchImportVisible" title="批量导入设备" @close="cancelBatchImport">
       <div v-if="!batchImportResult">
         <input type="file" accept=".xlsx" @change="handleBatchFileChange" />
         <div v-if="batchImportError" class="error" role="alert" aria-live="polite">{{ batchImportError }}</div>
@@ -664,9 +649,9 @@ async function handleServerFileChange(event: Event): Promise<void> {
         </div>
         <button type="button" class="btn" @click="closeBatchResult">关闭</button>
       </div>
-    </div>
+    </RackOperationDrawer>
 
-    <div v-if="serverImportVisible" class="panel">
+    <RackOperationDrawer :visible="serverImportVisible" title="Excel 导入服务器" @close="cancelServerImport">
       <div v-if="!serverImportResult">
         <p>导入服务器信息（含自动上架）。</p>
         <p class="muted">列：服务器名称、管理IP、资产编号、设备类型、设备高度(U)、运行状态、系统、负责人、备注、所在机柜、起始U位</p>
@@ -680,9 +665,9 @@ async function handleServerFileChange(event: Event): Promise<void> {
         <p>导入完成：新增 {{ serverImportResult.created }}，跳过 {{ serverImportResult.skipped }}，已上架 {{ serverImportResult.racked }}</p>
         <button type="button" class="btn" @click="closeServerResult">关闭</button>
       </div>
-    </div>
+    </RackOperationDrawer>
 
-    <div v-if="importVisible" class="panel">
+    <RackOperationDrawer :visible="importVisible" title="Excel 导入机柜" @close="cancelImport">
       <div v-if="!importPreview && !importResult">
         <input type="file" accept=".xlsx" @change="handleFileChange" />
         <div v-if="importError" class="error" role="alert" aria-live="polite">{{ importError }}</div>
@@ -744,28 +729,30 @@ async function handleServerFileChange(event: Event): Promise<void> {
         </div>
         <button type="button" class="btn" @click="closeResult">关闭</button>
       </div>
-    </div>
+    </RackOperationDrawer>
 
-    <form v-if="isRoomAdmin && createFormVisible" class="panel create-form" @submit.prevent="onCreateRoom">
-      <label>
-        机房名称
-        <input v-model="roomName" name="roomName" type="text" />
-      </label>
-      <label>
-        状态
-        <select v-model="roomStatus" name="roomStatus">
-          <option value="启用">启用</option>
-          <option value="停用">停用</option>
-        </select>
-      </label>
-      <button type="submit" class="btn btn--primary" :disabled="createSubmitting">
-        {{ createSubmitting ? '保存中...' : '保存' }}
-      </button>
-      <button type="button" class="btn" :disabled="createSubmitting" @click="cancelCreate">
-        取消
-      </button>
-      <div class="error" role="alert" aria-live="polite">{{ createError }}</div>
-    </form>
+    <RackOperationDrawer :visible="createFormVisible" title="新增机房" @close="cancelCreate">
+      <form class="create-form" @submit.prevent="onCreateRoom">
+        <label>
+          机房名称
+          <input v-model="roomName" name="roomName" type="text" />
+        </label>
+        <label>
+          状态
+          <select v-model="roomStatus" name="roomStatus">
+            <option value="启用">启用</option>
+            <option value="停用">停用</option>
+          </select>
+        </label>
+        <button type="submit" class="btn btn--primary" :disabled="createSubmitting">
+          {{ createSubmitting ? '保存中...' : '保存' }}
+        </button>
+        <button type="button" class="btn" :disabled="createSubmitting" @click="cancelCreate">
+          取消
+        </button>
+        <div class="error" role="alert" aria-live="polite">{{ createError }}</div>
+      </form>
+    </RackOperationDrawer>
 
     <section class="room-list" aria-label="机房列表">
       <div v-if="roomsError" class="error" role="alert" aria-live="polite">{{ roomsError }}</div>
@@ -796,7 +783,7 @@ async function handleServerFileChange(event: Event): Promise<void> {
             >
               删除
             </button>
-            <span v-if="racksLoading.has(room.id)" class="muted">加载中...</span>
+            <span v-if="summaryLoading.has(room.id)" class="muted">加载中...</span>
           </div>
 
           <div
@@ -821,22 +808,23 @@ async function handleServerFileChange(event: Event): Promise<void> {
             <div v-if="editError" class="error" role="alert" aria-live="polite">{{ editError }}</div>
           </div>
 
-          <div v-if="expandedRoomId === room.id && roomRacks.has(room.id)" class="rack-grid">
-            <div v-if="roomRacks.get(room.id)!.length === 0" class="muted">
+          <div v-if="expandedRoomId === room.id" class="room-rack-grid">
+            <div v-if="summaryLoading.has(room.id)">加载中...</div>
+            <div v-else-if="!roomRackSummaries.has(room.id)" class="muted">加载失败</div>
+            <div v-else-if="roomRackSummaries.get(room.id)!.racks.length === 0" class="muted">
               暂无导入的机柜
             </div>
-            <div
-              v-for="rack in roomRacks.get(room.id)!"
-              :key="rack.id"
-              class="rack-card"
-              @click="goToRack(rack.id)"
-            >
-              <div class="rack-card__code">{{ rack.code }}</div>
-                <div class="rack-card__stats">
-                  已用 {{ rack.occupiedU ?? 0 }}/{{ rack.heightU }}U
-                  ({{ rack.heightU > 0 ? Math.round(((rack.occupiedU ?? 0) / rack.heightU) * 100) : 0 }}%)
-                </div>
-              <div v-if="rack.brand" class="rack-card__brand">{{ rack.brand }}</div>
+            <div v-else class="mini-rack-grid">
+              <RackFrontPanel
+                v-for="rack in roomRackSummaries.get(room.id)!.racks"
+                :key="rack.id"
+                :rack-code="rack.code"
+                :height-u="rack.heightU"
+                :u-slots="rack.positions"
+                :room-id="room.id"
+                compact
+                @click="goToRack(rack.id)"
+              />
             </div>
           </div>
         </div>
@@ -923,9 +911,8 @@ async function handleServerFileChange(event: Event): Promise<void> {
 
 .create-form {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: var(--space-sm);
-  align-items: flex-end;
 }
 
 .create-form label {
@@ -1025,42 +1012,23 @@ async function handleServerFileChange(event: Event): Promise<void> {
   align-items: center;
 }
 
-.rack-grid {
+.room-rack-grid {
+  padding: var(--space-md);
+}
+
+.mini-rack-grid {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-md);
-  padding: var(--space-md);
 }
 
-.rack-card {
-  min-width: 160px;
-  padding: var(--space-md);
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+.mini-rack-grid > * {
   cursor: pointer;
-  transition: box-shadow 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.rack-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-  border-color: var(--color-primary);
-}
-
-.rack-card__code {
-  font-weight: bold;
-  margin-bottom: var(--space-xs);
-}
-
-.rack-card__stats {
-  font-size: var(--font-md);
-  color: var(--color-primary);
-  font-weight: 600;
-}
-
-.rack-card__brand {
-  margin-top: var(--space-xs);
-  font-size: var(--font-sm);
-  color: var(--color-text-secondary);
+.mini-rack-grid > *:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 </style>

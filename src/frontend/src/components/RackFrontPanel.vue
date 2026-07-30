@@ -19,6 +19,7 @@ const props = defineProps<{
   heightU: number
   uSlots: USlot[]
   roomId: string
+  compact?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -27,6 +28,11 @@ const emit = defineEmits<{
   (e: 'move-click', serverId: string, serverName: string): void
   (e: 'decommission-click', serverId: string, serverName: string): void
 }>()
+
+const statsText = computed(() => {
+  const occupied = props.uSlots.filter(s => s.occupied).reduce((sum, s) => sum + s.uCount, 0)
+  return `${occupied}/${props.heightU}U`
+})
 
 interface RulerSlot {
   uNumber: number
@@ -86,7 +92,8 @@ const deviceBlocks = computed<DeviceBlock[]>(() => {
 })
 
 function totalRows(count: number): string {
-  return `repeat(${count}, 24px)`
+  const h = props.compact ? 4 : 24
+  return `repeat(${count}, ${h}px)`
 }
 
 function onServerClick(e: MouseEvent, serverId: string): void {
@@ -103,13 +110,24 @@ function onEmptyBlockClick(block: DeviceBlock): void {
 </script>
 
 <template>
-  <div class="rfp" :style="{ display: 'grid', gridTemplateColumns: '48px 1fr', gridTemplateRows: 'auto 1fr' }">
-    <div class="rfp__header-left"></div>
-    <div class="rfp__header-right">
+  <div
+    class="rfp"
+    :class="{ 'rfp--compact': compact }"
+    :title="compact ? `${rackCode} ${statsText}` : undefined"
+    :style="{
+      display: 'grid',
+      gridTemplateColumns: compact ? '1fr' : '48px 1fr',
+      gridTemplateRows: 'auto 1fr',
+      ...(compact ? { maxWidth: '60px', cursor: 'pointer' } : {}),
+    }"
+  >
+    <div v-if="!compact" class="rfp__header-left"></div>
+    <div class="rfp__header-right" :class="{ 'rfp__header-right--compact': compact }">
       <span class="rfp__rack-code">{{ rackCode }}</span>
     </div>
 
     <div
+      v-if="!compact"
       class="rfp__ruler"
       :style="{ display: 'grid', gridTemplateRows: totalRows(heightU) }"
     >
@@ -135,11 +153,11 @@ function onEmptyBlockClick(block: DeviceBlock): void {
         :style="{
           gridRow: `span ${block.rowSpan}`,
           background: block.occupied ? block.colors.background : undefined,
-          cursor: block.occupied && block.serverId ? 'pointer' : !block.occupied ? 'pointer' : undefined,
+          cursor: block.occupied && block.serverId && !compact ? 'pointer' : !block.occupied && !compact ? 'pointer' : undefined,
         }"
-        @click="block.occupied && block.serverId ? onServerClick($event, block.serverId) : onEmptyBlockClick(block)"
+        @click="!compact && block.occupied && block.serverId ? onServerClick($event, block.serverId) : !compact ? onEmptyBlockClick(block) : undefined"
       >
-        <template v-if="block.occupied && block.serverName">
+        <template v-if="block.occupied && block.serverName && !compact">
           <div class="rfp__block-content">
             <div class="rfp__block-name">{{ block.serverName }}</div>
             <div class="rfp__block-meta">
@@ -164,7 +182,10 @@ function onEmptyBlockClick(block: DeviceBlock): void {
             </div>
           </div>
         </template>
-        <template v-else-if="!block.occupied">
+        <template v-else-if="block.occupied && compact">
+          <!-- bare colored block -->
+        </template>
+        <template v-else-if="!block.occupied && !compact">
           <div class="rfp__block-empty-hint">空闲 {{ block.uCount }}U</div>
         </template>
       </div>
@@ -181,6 +202,11 @@ function onEmptyBlockClick(block: DeviceBlock): void {
   user-select: none;
 }
 
+.rfp--compact {
+  border-width: 2px;
+  border-radius: 4px;
+}
+
 .rfp__header-left {
   background: #243447;
   border-bottom: 1px solid #3d5266;
@@ -194,11 +220,25 @@ function onEmptyBlockClick(block: DeviceBlock): void {
   align-items: center;
 }
 
+.rfp__header-right--compact {
+  padding: 2px 4px;
+  justify-content: center;
+}
+
 .rfp__rack-code {
   color: #c8d6e5;
   font-weight: 700;
   font-size: 13px;
   letter-spacing: 0.03em;
+}
+
+.rfp--compact .rfp__rack-code {
+  font-size: 8px;
+  letter-spacing: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 52px;
 }
 
 .rfp__ruler {
@@ -231,6 +271,10 @@ function onEmptyBlockClick(block: DeviceBlock): void {
   border-bottom: 1px solid #2c3e50;
   box-sizing: border-box;
   transition: filter 0.1s ease;
+}
+
+.rfp--compact .rfp__block {
+  border-bottom-width: 1px;
 }
 
 .rfp__block--empty {
