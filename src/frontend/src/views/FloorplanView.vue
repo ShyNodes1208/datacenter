@@ -29,6 +29,7 @@
         <div v-else-if="error" class="status-msg status-msg--error">{{ error }}</div>
         <FloorplanCanvas
           v-else
+          ref="canvasRef"
           :racks="racks"
           :mode="mode"
           :snap-lines="snapLines"
@@ -63,7 +64,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useFloorplan } from '../composables/useFloorplan'
 import { useFloorplanEditor } from '../composables/useFloorplanEditor'
@@ -73,6 +74,7 @@ import FloorplanCanvas from '../components/FloorplanCanvas.vue'
 const route = useRoute()
 const router = useRouter()
 const roomId = computed(() => route.params.id as string)
+const canvasRef = ref<InstanceType<typeof FloorplanCanvas>>()
 
 const { racks, loading, error, loadRacks, toCanvasX, toCanvasY, toDbX, toDbY } = useFloorplan(roomId.value)
 const { request } = useApi()
@@ -130,6 +132,7 @@ function onKeyDown(e: KeyboardEvent): void {
   if (e.key === '2' && mode.value === 'view') toggleMode()
   if (e.ctrlKey && e.key === 'z') { e.preventDefault(); editor.undo() }
   if (e.ctrlKey && e.key === 'y') { e.preventDefault(); editor.redo() }
+  if (e.ctrlKey && e.key === '0') { e.preventDefault(); canvasRef.value?.fitToScreen() }
 }
 
 // Load data + register keyboard on mount

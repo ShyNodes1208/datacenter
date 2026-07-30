@@ -1,5 +1,12 @@
 <template>
-  <div ref="containerRef" class="floorplan-canvas" @contextmenu.prevent></div>
+  <div ref="containerRef" class="floorplan-canvas" @contextmenu.prevent>
+    <div class="flp-zoom-controls">
+      <button class="flp-zoom-btn" title="缩小" @click="zoomOut">−</button>
+      <span class="flp-zoom-level">{{ Math.round(zoomLevel * 100) }}%</span>
+      <button class="flp-zoom-btn" title="放大" @click="zoomIn">+</button>
+      <button class="flp-zoom-btn flp-zoom-btn--fit" title="适应屏幕" @click="fitToScreen">⊡</button>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -24,14 +31,19 @@ const emit = defineEmits<{
 }>()
 
 const containerRef = ref<HTMLDivElement>()
+const zoomLevel = ref(1)
+
 let stage: Konva.Stage | null = null
 let gridLayer: Konva.Layer | null = null
 let rackLayer: Konva.Layer | null = null
 let snapLayer: Konva.Layer | null = null
+let rulerLayer: Konva.Layer | null = null
 let resizeObserver: ResizeObserver | null = null
 let dragMoved = false
 
 const GRID = 60
+const GRID_MAJOR = 300
+const RULER_SIZE = 24
 const RACK_W = 60
 const RACK_H = 100
 
@@ -47,17 +59,147 @@ function drawGrid(layer: Konva.Layer, w: number, h: number): void {
   layer.destroyChildren()
   for (let x = 0; x <= w; x += GRID) {
     layer.add(new Konva.Line({
-      points: [x, 0, x, h], stroke: '#e0e0e0', strokeWidth: 0.5,
-      dash: [4, 4], listening: false,
+      points: [x, 0, x, h], stroke: '#eee', strokeWidth: 0.3,
+      listening: false,
     }))
   }
   for (let y = 0; y <= h; y += GRID) {
     layer.add(new Konva.Line({
-      points: [0, y, w, y], stroke: '#e0e0e0', strokeWidth: 0.5,
-      dash: [4, 4], listening: false,
+      points: [0, y, w, y], stroke: '#eee', strokeWidth: 0.3,
+      listening: false,
+    }))
+  }
+  for (let x = 0; x <= w; x += GRID_MAJOR) {
+    layer.add(new Konva.Line({
+      points: [x, 0, x, h], stroke: '#ddd', strokeWidth: 0.8,
+      listening: false,
+    }))
+  }
+  for (let y = 0; y <= h; y += GRID_MAJOR) {
+    layer.add(new Konva.Line({
+      points: [0, y, w, y], stroke: '#ddd', strokeWidth: 0.8,
+      listening: false,
     }))
   }
 }
+
+function drawRulers(layer: Konva.Layer): void {
+  if (!stage) return
+  layer.destroyChildren()
+  const scale = stage.scaleX()
+  const pos = stage.position()
+  const w = stage.width()
+  const h = stage.height()
+
+  layer.add(new Konva.Rect({
+    x: RULER_SIZE, y: 0, width: w - RULER_SIZE, height: RULER_SIZE,
+    fill: '#f0f2f5', listening: false,
+  }))
+  layer.add(new Konva.Rect({
+    x: 0, y: RULER_SIZE, width: RULER_SIZE, height: h - RULER_SIZE,
+    fill: '#f0f2f5', listening: false,
+  }))
+  layer.add(new Konva.Rect({
+    x: 0, y: 0, width: RULER_SIZE, height: RULER_SIZE,
+    fill: '#e0e0e0', listening: false,
+  }))
+
+  const majorInterval = GRID_MAJOR * scale
+  const minorInterval = GRID * scale
+  const startX = pos.x % majorInterval
+  for (let x = RULER_SIZE + startX; x < w; x += minorInterval) {
+    const isMajor = Math.abs(((x - RULER_SIZE - startX) / minorInterval) % 5) < 0.01
+    const tickH = isMajor ? 16 : 8
+    layer.add(new Konva.Line({
+      points: [x, 0, x, tickH],
+      stroke: '#999', strokeWidth: 0.5, listening: false,
+    }))
+  }
+
+  const startY = pos.y % majorInterval
+  for (let y = RULER_SIZE + startY; y < h; y += minorInterval) {
+    const isMajor = Math.abs(((y - RULER_SIZE - startY) / minorInterval) % 5) < 0.01
+    const tickW = isMajor ? 16 : 8
+    layer.add(new Konva.Line({
+      points: [0, y, tickW, y],
+      stroke: '#999', strokeWidth: 0.5, listening: false,
+    }))
+  }
+
+  layer.batchDraw()
+}
+
+function updateZoomLevel(): void {
+  if (stage) zoomLevel.value = stage.scaleX()
+}
+
+function zoomIn(): void {
+  if (!stage) return
+  const oldScale = stage.scaleX()
+  const newScale = Math.min(3, oldScale * 1.25)
+  const pointer = stage.getPointerPosition() || { x: stage.width() / 2, y: stage.height() / 2 }
+  stage.scale({ x: newScale, y: newScale })
+  stage.position({
+    x: pointer.x - (pointer.x - stage.x()) * (newScale / oldScale),
+    y: pointer.y - (pointer.y - stage.y()) * (newScale / oldScale),
+  })
+  zoomLevel.value = newScale
+  drawRulers(rulerLayer!)
+  stage.batchDraw()
+}
+
+function zoomOut(): void {
+  if (!stage) return
+  const oldScale = stage.scaleX()
+  const newScale = Math.max(0.3, oldScale / 1.25)
+  const pointer = stage.getPointerPosition() || { x: stage.width() / 2, y: stage.height() / 2 }
+  stage.scale({ x: newScale, y: newScale })
+  stage.position({
+    x: pointer.x - (pointer.x - stage.x()) * (newScale / oldScale),
+    y: pointer.y - (pointer.y - stage.y()) * (newScale / oldScale),
+  })
+  zoomLevel.value = newScale
+  drawRulers(rulerLayer!)
+  stage.batchDraw()
+}
+
+function fitToScreen(): void {
+  if (!stage || !containerRef.value) return
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+  for (const rack of props.racks) {
+    const cx = props.toCanvasX(rack.x)
+    const cy = props.toCanvasY(rack.y)
+    minX = Math.min(minX, cx); minY = Math.min(minY, cy)
+    maxX = Math.max(maxX, cx + RACK_W); maxY = Math.max(maxY, cy + RACK_H)
+  }
+  if (!isFinite(minX)) {
+    stage.scale({ x: 1, y: 1 })
+    stage.position({ x: 0, y: 0 })
+    zoomLevel.value = 1
+    drawRulers(rulerLayer!)
+    stage.batchDraw()
+    return
+  }
+
+  const padding = 80
+  const contentW = maxX - minX + padding * 2
+  const contentH = maxY - minY + padding * 2
+  const scaleX = (stage.width() - RULER_SIZE) / contentW
+  const scaleY = (stage.height() - RULER_SIZE) / contentH
+  const scale = Math.min(scaleX, scaleY, 2)
+  const cx = (minX + maxX) / 2
+  const cy = (minY + maxY) / 2
+  stage.scale({ x: scale, y: scale })
+  stage.position({
+    x: (stage.width() - RULER_SIZE) / 2 - cx * scale + RULER_SIZE,
+    y: (stage.height() - RULER_SIZE) / 2 - cy * scale + RULER_SIZE,
+  })
+  zoomLevel.value = scale
+  drawRulers(rulerLayer!)
+  stage.batchDraw()
+}
+
+defineExpose({ fitToScreen })
 
 function renderRacks(): void {
   if (!rackLayer) return
@@ -67,6 +209,9 @@ function renderRacks(): void {
     const c = occColor(rack.occupiedU, rack.heightU)
     const cx = props.toCanvasX(rack.x)
     const cy = props.toCanvasY(rack.y)
+    const capPct = rack.heightU > 0 ? (rack.occupiedU ?? 0) / rack.heightU : 0
+    const barColor = capPct > 0.8 ? '#e74c3c' : capPct >= 0.5 ? '#f0ad4e' : '#52c41a'
+    const barHeight = 4
 
     const group = new Konva.Group({
       x: cx, y: cy,
@@ -82,27 +227,57 @@ function renderRacks(): void {
     })
 
     const label = new Konva.Text({
-      text: rack.code, fontSize: 11, fontFamily: 'sans-serif',
+      text: `${rack.code}\n${rack.occupiedU ?? 0}/${rack.heightU}U`,
+      fontSize: 10, fontFamily: 'sans-serif',
       fill: '#2c3e50', align: 'center', verticalAlign: 'middle',
-      width: RACK_W, height: RACK_H, listening: false,
+      width: RACK_W, height: RACK_H - 6,
+      listening: false,
+      lineHeight: 1.3,
     })
 
-    group.add(rect, label)
+    const capBarBg = new Konva.Rect({
+      x: 0, y: RACK_H - barHeight,
+      width: RACK_W, height: barHeight,
+      fill: '#e0e0e0',
+      listening: false, name: 'capBarBg',
+    })
+    const capBarFill = new Konva.Rect({
+      x: 0, y: RACK_H - barHeight,
+      width: RACK_W * capPct, height: barHeight,
+      fill: barColor,
+      listening: false, name: 'capBarFill',
+    })
 
-    // Hover
+    const tooltip = new Konva.Label({
+      x: RACK_W + 8, y: 0,
+      visible: false, listening: false,
+      opacity: 0.92,
+    })
+    tooltip.add(new Konva.Tag({
+      fill: '#2c3e50', cornerRadius: 4,
+      pointerDirection: 'left', pointerWidth: 6, pointerHeight: 8,
+    }))
+    tooltip.add(new Konva.Text({
+      text: `${rack.code}\n${rack.roomName ?? ''}\n${rack.occupiedU ?? 0}/${rack.heightU}U (${Math.round(capPct * 100)}%)`,
+      fontSize: 11, fontFamily: 'sans-serif',
+      fill: '#fff', padding: 6, lineHeight: 1.4,
+    }))
+
+    group.add(rect, label, capBarBg, capBarFill, tooltip)
+
     group.on('mouseenter', () => {
-      if (props.mode !== 'edit') { rect.strokeWidth(3); rackLayer?.batchDraw() }
+      tooltip.visible(true)
+      rackLayer?.batchDraw()
     })
     group.on('mouseleave', () => {
-      rect.strokeWidth(1.5); rackLayer?.batchDraw()
+      tooltip.visible(false)
+      rackLayer?.batchDraw()
     })
 
-    // Click
     group.on('click', () => {
       if (!dragMoved) emit('rack-click', rack.id)
     })
 
-    // Drag
     group.on('dragstart', () => {
       dragMoved = false
       emit('rack-dragstart', rack.id)
@@ -156,7 +331,10 @@ function init(): void {
   snapLayer = new Konva.Layer({ listening: false })
   stage.add(snapLayer)
 
-  // Zoom
+  rulerLayer = new Konva.Layer({ listening: false })
+  stage.add(rulerLayer)
+  drawRulers(rulerLayer)
+
   stage.on('wheel', (e) => {
     e.evt.preventDefault()
     const oldScale = stage!.scaleX()
@@ -169,33 +347,31 @@ function init(): void {
       x: pointer.x - (pointer.x - stage!.x()) * (newScale / oldScale),
       y: pointer.y - (pointer.y - stage!.y()) * (newScale / oldScale),
     })
+    updateZoomLevel()
+    drawRulers(rulerLayer!)
     stage!.batchDraw()
   })
 
-  // Pan
   let panning = false
   stage.on('mousedown', (e) => { if (e.target === stage) panning = true })
   stage.on('mousemove', (e) => {
     if (!panning) return
     const p = stage!.position()
     stage!.position({ x: p.x + e.evt.movementX, y: p.y + e.evt.movementY })
+    drawRulers(rulerLayer!)
     stage!.batchDraw()
   })
   stage.on('mouseup', () => { panning = false })
   stage.on('mouseleave', () => { panning = false })
 }
 
-// Watch mode for draggable toggle
 watch(() => props.mode, (m) => {
   if (!rackLayer) return
   rackLayer.find('.rackGroup').forEach(g => (g as Konva.Group).draggable(m === 'edit'))
   rackLayer.batchDraw()
 })
 
-// Watch racks for undo/redo re-render
 watch(() => props.racks, () => { renderRacks() }, { deep: true })
-
-// Watch snapLines for drag alignment rendering
 watch(() => props.snapLines, () => { renderSnapLines() }, { deep: true })
 
 onMounted(() => {
@@ -212,6 +388,7 @@ onMounted(() => {
       const h = containerRef.value.clientHeight
       stage.width(w); stage.height(h)
       if (gridLayer) drawGrid(gridLayer, w * 3, h * 3)
+      if (rulerLayer) drawRulers(rulerLayer)
       stage.batchDraw()
     })
     resizeObserver.observe(containerRef.value)
@@ -226,6 +403,7 @@ onUnmounted(() => {
 
 <style scoped>
 .floorplan-canvas {
+  position: relative;
   width: 100%;
   height: 100%;
   min-height: 400px;
@@ -233,5 +411,51 @@ onUnmounted(() => {
   border: 1px solid var(--color-border, #e0e0e0);
   border-radius: var(--radius, 6px);
   overflow: hidden;
+}
+
+.flp-zoom-controls {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: var(--radius, 6px);
+  padding: 4px 8px;
+  box-shadow: var(--shadow, 0 1px 3px rgba(0, 0, 0, 0.1));
+  pointer-events: auto;
+}
+
+.flp-zoom-btn {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 4px;
+  background: var(--color-bg-card, #fff);
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text, #333);
+}
+
+.flp-zoom-btn:hover {
+  background: var(--color-bg-hover, #f0f2f5);
+}
+
+.flp-zoom-level {
+  min-width: 40px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--color-text-secondary, #888);
+}
+
+.flp-zoom-btn--fit {
+  margin-left: 4px;
+  font-size: 12px;
 }
 </style>
