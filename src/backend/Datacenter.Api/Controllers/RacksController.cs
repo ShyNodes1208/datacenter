@@ -162,17 +162,19 @@ public sealed class RacksController(AppDbContext dbContext, IAntiforgery antifor
                 position.StartU,
                 position.EndU,
                 position.ServerId,
-                ServerName = position.Server.Name
+                ServerName = position.Server.Name,
+                DeviceType = position.Server.DeviceType,
+                DeviceHeight = position.Server.DeviceHeight
             })
             .ToListAsync(cancellationToken);
 
-        var occupiedByU = new Dictionary<int, (string ServerName, Guid ServerId)>();
+        var occupiedByU = new Dictionary<int, (string ServerName, Guid ServerId, string DeviceType, int DeviceHeight)>();
 
         foreach (var occupied in occupiedPositions)
         {
             for (var u = occupied.StartU; u <= occupied.EndU; u++)
             {
-                occupiedByU[u] = (occupied.ServerName, occupied.ServerId);
+                occupiedByU[u] = (occupied.ServerName, occupied.ServerId, occupied.DeviceType, occupied.DeviceHeight);
             }
         }
 
@@ -187,7 +189,9 @@ public sealed class RacksController(AppDbContext dbContext, IAntiforgery antifor
                     uNumber = u,
                     occupied = true,
                     serverName = occupancy.ServerName,
-                    serverId = occupancy.ServerId
+                    serverId = occupancy.ServerId,
+                    deviceType = occupancy.DeviceType,
+                    deviceHeight = occupancy.DeviceHeight
                 });
             }
             else
@@ -206,6 +210,95 @@ public sealed class RacksController(AppDbContext dbContext, IAntiforgery antifor
             rackCode = rack.Code,
             heightU = rack.HeightU,
             positions
+        });
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create(CreateRackRequest request, CancellationToken cancellationToken)
+    {
+        if (!User.IsInRole(Roles.RoomAdministrator) && !User.IsInRole(Roles.Operations))
+        {
+            return StatusCode(StatusCodes.Status403Forbidden);
+        }
+
+        var antiforgeryError = await ValidateAntiforgeryAsync();
+        if (antiforgeryError is not null)
+        {
+            return antiforgeryError;
+        }
+
+        if (request.HeightU < 1)
+        {
+            return BadRequest(new { error = "高度(U)必须为正整数" });
+        }
+
+        var code = request.Code?.Trim();
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            return BadRequest(new { error = "机柜编号不能为空" });
+        }
+
+        var room = await dbContext.Rooms.AsNoTracking()
+            .Where(r => r.Id == request.RoomId)
+            .Select(r => new { r.Id, r.Status })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (room is null)
+            return BadRequest(new { error = "机房不存在" });
+
+        if (room.Status == "停用")
+            return BadRequest(new { error = "机房已停用，不能创建机柜" });
+
+        if (await dbContext.Racks.AnyAsync(
+                item => item.RoomId == request.RoomId && item.Code == code,
+                cancellationToken))
+        {
+            return Conflict(new { error = "同一机房内机柜编号已存在" });
+        }
+
+        var rack = new Rack
+        {
+            Code = code,
+            RoomId = request.RoomId,
+            HeightU = request.HeightU,
+            Brand = NullIfWhiteSpace(request.Brand),
+            Power = request.Power,
+            Notes = request.Notes,
+            X = request.X,
+            Y = request.Y,
+            Z = request.Z
+        };
+        dbContext.Racks.Add(rack);
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (IsRackUniqueConstraintViolation(exception))
+        {
+            return Conflict(new { error = "同一机房内机柜编号已存在" });
+        }
+        catch (DbUpdateException)
+        {
+            return BadRequest(new { error = "机房不存在" });
+        }
+
+        return Ok(new
+        {
+            rack.Id,
+            rack.Code,
+            rack.RoomId,
+            RoomName = await dbContext.Rooms.AsNoTracking()
+                .Where(room => room.Id == rack.RoomId)
+                .Select(room => room.Name)
+                .SingleAsync(cancellationToken),
+            rack.HeightU,
+            rack.Brand,
+            rack.Power,
+            rack.Notes,
+            rack.X,
+            rack.Y,
+            rack.Z
         });
     }
 
@@ -801,6 +894,17 @@ public sealed record ImportError(int Row, string Error);
 
 public sealed record UpdateRackRequest(
     string? Code,
+    int HeightU,
+    string? Brand,
+    double? Power,
+    string? Notes,
+    double X,
+    double Y,
+    double Z);
+
+public sealed record CreateRackRequest(
+    string? Code,
+    Guid RoomId,
     int HeightU,
     string? Brand,
     double? Power,

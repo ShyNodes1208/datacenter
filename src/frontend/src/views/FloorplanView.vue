@@ -80,9 +80,25 @@ const { request } = useApi()
 async function saveRackPosition(id: string, x: number, y: number): Promise<boolean> {
   const rack = racks.value.find(r => r.id === id)
   if (!rack) return false
+
+  const csrfResult = await request('/api/auth/csrf', { method: 'GET' })
+  if (!csrfResult.ok) return false
+  const token = csrfResult.headers.get('X-XSRF-TOKEN')
+  if (!token) return false
+
   const result = await request(`/api/racks/${encodeURIComponent(id)}`, {
     method: 'PUT',
-    body: { code: rack.code, heightU: rack.heightU, brand: rack.brand, power: rack.power, notes: rack.notes, x, y, z: rack.z },
+    body: {
+      code: rack.code,
+      heightU: rack.heightU,
+      brand: rack.brand,
+      power: rack.power,
+      notes: rack.notes,
+      x,
+      y,
+      z: rack.z,
+    },
+    csrfToken: token,
   })
   return result.ok
 }
