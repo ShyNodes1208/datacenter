@@ -189,6 +189,11 @@ position_defs = [
     ("dr-web-01", "D02", 40),
     ("dr-api-01", "D02", 38),
     ("dr-db-01", "D03", 40),
+    # 机房A — 用于平面图跨机柜线缆演示
+    ("app-web-01", "A04", 40),
+    ("app-api-01", "A05", 40),
+    ("app-web-02", "B04", 40),
+    ("db-mysql-01", "B05", 42),
 ]
 
 for server_name, rack_code, start_u in position_defs:
@@ -215,6 +220,99 @@ for server_name, rack_code, start_u in position_defs:
     print(f"Position: {server_name} -> {rack_code} U{start_u}-U{end_u} ({height}U)")
 
 
+# ── Ports ──────────────────────────────────────────────────────────────
+existing_ports = {
+    (row[0], row[1])
+    for row in conn.execute(
+        "SELECT p.ServerId, p.PortName FROM Ports p"
+    )
+}
+
+port_defs = [
+    # (server_name, port_name, port_type, speed)
+    ("app-web-01", "GE0/0/1", "RJ45", "1G"),
+    ("app-web-01", "GE0/0/2", "RJ45", "1G"),
+    ("app-web-02", "GE0/0/1", "RJ45", "1G"),
+    ("app-api-01", "GE0/0/1", "RJ45", "1G"),
+    ("app-api-01", "GE0/0/2", "RJ45", "1G"),
+    ("app-api-02", "GE0/0/1", "RJ45", "1G"),
+    ("db-mysql-01", "GE0/0/1", "SFP+", "10G"),
+    ("db-mysql-01", "GE0/0/2", "SFP+", "10G"),
+    ("net-core-sw-01", "GE0/0/1", "SFP+", "10G"),
+    ("net-core-sw-01", "GE0/0/2", "SFP+", "10G"),
+    ("net-core-sw-01", "GE0/0/3", "SFP+", "10G"),
+    ("net-agg-sw-01", "GE0/0/1", "SFP+", "10G"),
+    ("net-agg-sw-02", "GE0/0/1", "SFP+", "10G"),
+    ("dr-web-01", "GE0/0/1", "RJ45", "1G"),
+]
+
+port_ids: dict[tuple[str, str], str] = {}
+for server_name, port_name, port_type, speed in port_defs:
+    sid = server_ids.get(server_name)
+    if not sid:
+        print(f"SKIP port: {server_name}/{port_name} (missing server)")
+        continue
+    key = (sid, port_name)
+    if key in existing_ports:
+        for row in conn.execute(
+            "SELECT Id FROM Ports WHERE ServerId = ? AND PortName = ?",
+            (sid, port_name),
+        ):
+            port_ids[(server_name, port_name)] = row[0]
+        continue
+    pid = uid()
+    conn.execute(
+        """INSERT INTO Ports (Id, ServerId, PortName, PortType, Speed, Notes)
+           VALUES (?, ?, ?, ?, ?, NULL)""",
+        (pid, sid, port_name, port_type, speed),
+    )
+    port_ids[(server_name, port_name)] = pid
+    print(f"Port: {server_name}/{port_name} ({port_type} {speed})")
+
+# Load all port IDs
+for row in conn.execute(
+    """SELECT s.Name, p.PortName, p.Id FROM Ports p
+       JOIN Servers s ON s.Id = p.ServerId"""
+):
+    port_ids[(row[0], row[1])] = row[2]
+
+
+# ── Cables ─────────────────────────────────────────────────────────────
+existing_cables = {
+    (row[0], row[1])
+    for row in conn.execute(
+        "SELECT SourcePortId, TargetPortId FROM Cables"
+    )
+}
+
+cable_defs = [
+    # (source_server, source_port, target_server, target_port, cable_type, color, length)
+    ("app-web-01", "GE0/0/1", "net-core-sw-01", "GE0/0/1", "铜缆", "蓝色", "3m"),
+    ("app-api-01", "GE0/0/1", "net-core-sw-01", "GE0/0/2", "铜缆", "蓝色", "3m"),
+    ("app-api-02", "GE0/0/1", "net-core-sw-01", "GE0/0/3", "铜缆", "蓝色", "3m"),
+    ("db-mysql-01", "GE0/0/1", "net-agg-sw-01", "GE0/0/1", "光纤", "黄色", "5m"),
+    ("dr-web-01", "GE0/0/1", "net-agg-sw-02", "GE0/0/1", "光纤", "黄色", "10m"),
+    # 机房A 跨机柜
+    ("app-web-01", "GE0/0/2", "app-api-01", "GE0/0/2", "DAC", "灰色", "2m"),
+    ("app-web-02", "GE0/0/1", "db-mysql-01", "GE0/0/2", "光纤", "黄色", "5m"),
+]
+
+for src_srv, src_port, tgt_srv, tgt_port, cable_type, color, length in cable_defs:
+    src_id = port_ids.get((src_srv, src_port))
+    tgt_id = port_ids.get((tgt_srv, tgt_port))
+    if not src_id or not tgt_id:
+        print(f"SKIP cable: {src_srv}/{src_port} -> {tgt_srv}/{tgt_port} (missing port)")
+        continue
+    if (src_id, tgt_id) in existing_cables or (tgt_id, src_id) in existing_cables:
+        continue
+    conn.execute(
+        """INSERT INTO Cables (Id, SourcePortId, TargetPortId, CableType, Color, Length, Notes)
+           VALUES (?, ?, ?, ?, ?, ?, NULL)""",
+        (uid(), src_id, tgt_id, cable_type, color, length),
+    )
+    print(f"Cable: {src_srv}/{src_port} -> {tgt_srv}/{tgt_port} ({cable_type})")
+
+
 conn.commit()
 conn.close()
 
@@ -222,4 +320,5 @@ print("\n✅ Seed complete.")
 print("Rooms: 机房A, 网络机房, 灾备机房")
 print("Racks: 21 total across 3 rooms")
 print("Servers: 30 total (应用/网络/存储/未上架/已下架)")
-print("ServerPositions: 20 servers racked")
+print("ServerPositions: 20+ servers racked")
+print("Ports & Cables: seeded for cable management demo")

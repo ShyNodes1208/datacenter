@@ -19,6 +19,10 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<AuditRecord> AuditRecords => Set<AuditRecord>();
 
+    public DbSet<Port> Ports => Set<Port>();
+
+    public DbSet<Cable> Cables => Set<Cable>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         var user = modelBuilder.Entity<User>();
@@ -124,6 +128,32 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         auditRecord.HasOne(item => item.Server)
             .WithMany()
             .HasForeignKey(item => item.ServerId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        var port = modelBuilder.Entity<Port>();
+        port.ToTable("Ports");
+        port.HasKey(item => item.Id);
+        port.HasIndex(item => new { item.ServerId, item.PortName }).IsUnique();
+        port.Property(item => item.PortName).IsRequired();
+        port.Property(item => item.PortType).IsRequired();
+        port.HasOne(item => item.Server)
+            .WithMany()
+            .HasForeignKey(item => item.ServerId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        var cable = modelBuilder.Entity<Cable>();
+        cable.ToTable("Cables");
+        cable.HasKey(item => item.Id);
+        cable.HasIndex(item => item.SourcePortId).IsUnique();
+        cable.HasIndex(item => item.TargetPortId).IsUnique();
+        cable.Property(item => item.CableType).IsRequired();
+        cable.HasOne(item => item.SourcePort)
+            .WithMany()
+            .HasForeignKey(item => item.SourcePortId)
+            .OnDelete(DeleteBehavior.Restrict);
+        cable.HasOne(item => item.TargetPort)
+            .WithMany()
+            .HasForeignKey(item => item.TargetPortId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

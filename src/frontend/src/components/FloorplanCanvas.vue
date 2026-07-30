@@ -15,10 +15,18 @@ import Konva from 'konva'
 import type { RackItem } from '../composables/useFloorplan'
 import type { SnapLine } from '../composables/useFloorplanEditor'
 
+export interface CableLink {
+  source: { rackId: string; rackCode: string; x: number; y: number }
+  target: { rackId: string; rackCode: string; x: number; y: number }
+  cableCount: number
+  cableTypes: string[]
+}
+
 const props = defineProps<{
   racks: RackItem[]
   mode: 'view' | 'edit'
   snapLines: SnapLine[]
+  cableLinks?: CableLink[]
   toCanvasX: (db: number) => number
   toCanvasY: (db: number) => number
   snapPosition: (rackId: string, x: number, y: number) => { x: number; y: number }
@@ -37,6 +45,7 @@ let stage: Konva.Stage | null = null
 let gridLayer: Konva.Layer | null = null
 let rackLayer: Konva.Layer | null = null
 let snapLayer: Konva.Layer | null = null
+let cableLayer: Konva.Layer | null = null
 let rulerLayer: Konva.Layer | null = null
 let resizeObserver: ResizeObserver | null = null
 let dragMoved = false
@@ -46,6 +55,8 @@ const GRID_MAJOR = 300
 const RULER_SIZE = 24
 const RACK_W = 60
 const RACK_H = 100
+
+const CABLE_COLORS: Record<string, string> = { 铜缆: '#e67e22', 光纤: '#f1c40f', DAC: '#3498db' }
 
 function occColor(occ: number | undefined, total: number): { fill: string; stroke: string } {
   if (!occ || occ === 0) return { fill: 'transparent', stroke: '#999' }
@@ -127,6 +138,39 @@ function drawRulers(layer: Konva.Layer): void {
   }
 
   layer.batchDraw()
+}
+
+function drawCables(): void {
+  if (!cableLayer) return
+  cableLayer.destroyChildren()
+  const links = props.cableLinks ?? []
+  for (const link of links) {
+    const sx = props.toCanvasX(link.source.x) + RACK_W / 2
+    const sy = props.toCanvasY(link.source.y) + RACK_H / 2
+    const tx = props.toCanvasX(link.target.x) + RACK_W / 2
+    const ty = props.toCanvasY(link.target.y) + RACK_H / 2
+    const color = link.cableTypes.length === 1
+      ? (CABLE_COLORS[link.cableTypes[0] ?? ''] ?? '#95a5a6')
+      : '#95a5a6'
+    const line = new Konva.Line({
+      points: [sx, sy, tx, ty],
+      stroke: color, strokeWidth: 2, opacity: 0.6,
+      listening: true,
+    })
+    const tooltip = new Konva.Label({
+      x: (sx + tx) / 2, y: (sy + ty) / 2 - 12,
+      visible: false, listening: false, opacity: 0.92,
+    })
+    tooltip.add(new Konva.Tag({ fill: '#2c3e50', cornerRadius: 4 }))
+    tooltip.add(new Konva.Text({
+      text: `${link.source.rackCode} ↔ ${link.target.rackCode}\n${link.cableCount} 条线缆\n${link.cableTypes.join(', ')}`,
+      fontSize: 11, fontFamily: 'sans-serif', fill: '#fff', padding: 6, lineHeight: 1.4,
+    }))
+    line.on('mouseenter', () => { tooltip.visible(true); cableLayer?.batchDraw() })
+    line.on('mouseleave', () => { tooltip.visible(false); cableLayer?.batchDraw() })
+    cableLayer.add(line, tooltip)
+  }
+  cableLayer.batchDraw()
 }
 
 function updateZoomLevel(): void {
@@ -331,6 +375,10 @@ function init(): void {
   snapLayer = new Konva.Layer({ listening: false })
   stage.add(snapLayer)
 
+  cableLayer = new Konva.Layer()
+  drawCables()
+  stage.add(cableLayer)
+
   rulerLayer = new Konva.Layer({ listening: false })
   stage.add(rulerLayer)
   drawRulers(rulerLayer)
@@ -373,6 +421,7 @@ watch(() => props.mode, (m) => {
 
 watch(() => props.racks, () => { renderRacks() }, { deep: true })
 watch(() => props.snapLines, () => { renderSnapLines() }, { deep: true })
+watch(() => props.cableLinks, () => { drawCables() }, { deep: true })
 
 onMounted(() => {
   try {

@@ -34,6 +34,24 @@ type AuditRecordItem = {
   notes: string | null
 }
 
+type PortItem = {
+  id: string
+  serverId: string
+  portName: string
+  portType: string
+  speed: string | null
+  notes: string | null
+  connectedCableId: string | null
+  connectedToPortName: string | null
+  connectedToServerName: string | null
+  connectedToServerId: string | null
+}
+
+type ConnectPortOption = {
+  id: string
+  label: string
+}
+
 const EDIT_ROLES = ['机房管理员', '运维人员']
 
 const route = useRoute()
@@ -51,6 +69,20 @@ const canEdit = computed(() => {
 const server = ref<ServerDetail | null>(null)
 const error = ref('')
 const auditRecords = ref<AuditRecordItem[] | null>(null)
+const ports = ref<PortItem[]>([])
+const portsLoading = ref(false)
+const portFormVisible = ref(false)
+const portFormError = ref('')
+const newPortName = ref('')
+const newPortType = ref('')
+const newPortSpeed = ref('')
+
+const connectFormVisible = ref(false)
+const connectSourcePortId = ref('')
+const connectTargetPortId = ref('')
+const connectCableType = ref('铜缆')
+const connectFormError = ref('')
+const connectPortOptions = ref<ConnectPortOption[]>([])
 
 async function loadServer(): Promise<void> {
   error.value = ''
@@ -162,9 +194,189 @@ function deviceTagStyle(type: string): Record<string, string> {
   return { background: c.background, color: c.text }
 }
 
+function parseOptionalGuid(value: unknown): string | null {
+  if (typeof value !== 'string' || value === '' || value === '00000000-0000-0000-0000-000000000000') {
+    return null
+  }
+  return value
+}
+
+function parsePortItem(raw: unknown): PortItem | null {
+  if (raw === null || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  if (
+    typeof r.id !== 'string' ||
+    typeof r.serverId !== 'string' ||
+    typeof r.portName !== 'string' ||
+    typeof r.portType !== 'string'
+  ) return null
+  return {
+    id: r.id,
+    serverId: r.serverId,
+    portName: r.portName,
+    portType: r.portType,
+    speed: typeof r.speed === 'string' ? r.speed : null,
+    notes: typeof r.notes === 'string' ? r.notes : null,
+    connectedCableId: parseOptionalGuid(r.connectedCableId),
+    connectedToPortName: typeof r.connectedToPortName === 'string' ? r.connectedToPortName : null,
+    connectedToServerName: typeof r.connectedToServerName === 'string' ? r.connectedToServerName : null,
+    connectedToServerId: parseOptionalGuid(r.connectedToServerId),
+  }
+}
+
+async function getCsrfToken(): Promise<string | null> {
+  const csrfResult = await request('/api/auth/csrf', { method: 'GET' })
+  if (!csrfResult.ok) return null
+  return csrfResult.headers.get('X-XSRF-TOKEN')
+}
+
+async function loadPorts(): Promise<void> {
+  portsLoading.value = true
+  const result = await request<unknown>(`/api/servers/${serverId.value}/ports`, { method: 'GET' })
+  if (!result.ok || !Array.isArray(result.data)) {
+    ports.value = []
+    portsLoading.value = false
+    return
+  }
+  const parsed: PortItem[] = []
+  for (const item of result.data) {
+    const port = parsePortItem(item)
+    if (port) parsed.push(port)
+  }
+  ports.value = parsed
+  portsLoading.value = false
+}
+
+async function createPort(): Promise<void> {
+  portFormError.value = ''
+  if (!newPortName.value.trim()) {
+    portFormError.value = '端口名称不能为空'
+    return
+  }
+  if (!newPortType.value) {
+    portFormError.value = '请选择端口类型'
+    return
+  }
+  const token = await getCsrfToken()
+  if (!token) {
+    portFormError.value = '无法获取防伪令牌'
+    return
+  }
+  const result = await request(`/api/servers/${serverId.value}/ports`, {
+    method: 'POST',
+    body: {
+      portName: newPortName.value.trim(),
+      portType: newPortType.value,
+      speed: newPortSpeed.value.trim() || null,
+      notes: null,
+    },
+    csrfToken: token,
+  })
+  if (!result.ok) {
+    portFormError.value = result.error
+    return
+  }
+  newPortName.value = ''
+  newPortType.value = ''
+  newPortSpeed.value = ''
+  portFormVisible.value = false
+  await loadPorts()
+}
+
+async function deletePort(id: string): Promise<void> {
+  if (!confirm('确定删除此端口？')) return
+  const token = await getCsrfToken()
+  if (!token) {
+    portFormError.value = '无法获取防伪令牌'
+    return
+  }
+  const result = await request(`/api/ports/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    csrfToken: token,
+  })
+  if (!result.ok) {
+    portFormError.value = result.error
+    return
+  }
+  await loadPorts()
+}
+
+async function loadConnectPortOptions(): Promise<void> {
+  const serversResult = await request<unknown>('/api/servers', { method: 'GET' })
+  if (!serversResult.ok || !Array.isArray(serversResult.data)) return
+
+  const options: ConnectPortOption[] = []
+  for (const serverItem of serversResult.data) {
+    if (serverItem === null || typeof serverItem !== 'object') continue
+    const s = serverItem as Record<string, unknown>
+    if (typeof s.id !== 'string' || typeof s.name !== 'string') continue
+
+    const portsResult = await request<unknown>(`/api/servers/${s.id}/ports`, { method: 'GET' })
+    if (!portsResult.ok || !Array.isArray(portsResult.data)) continue
+
+    for (const port of portsResult.data) {
+      if (port === null || typeof port !== 'object') continue
+      const p = port as Record<string, unknown>
+      if (typeof p.id !== 'string' || typeof p.portName !== 'string') continue
+      if (parseOptionalGuid(p.connectedCableId)) continue
+      if (p.id === connectSourcePortId.value) continue
+      options.push({
+        id: p.id,
+        label: `${s.name} / ${p.portName}`,
+      })
+    }
+  }
+  connectPortOptions.value = options
+}
+
+function openConnect(portId: string): void {
+  connectSourcePortId.value = portId
+  connectTargetPortId.value = ''
+  connectCableType.value = '铜缆'
+  connectFormError.value = ''
+  connectFormVisible.value = true
+  void loadConnectPortOptions()
+}
+
+async function createConnection(): Promise<void> {
+  connectFormError.value = ''
+  if (!connectTargetPortId.value) {
+    connectFormError.value = '请选择目标端口'
+    return
+  }
+  const token = await getCsrfToken()
+  if (!token) {
+    connectFormError.value = '无法获取防伪令牌'
+    return
+  }
+  const result = await request('/api/cables', {
+    method: 'POST',
+    body: {
+      sourcePortId: connectSourcePortId.value,
+      targetPortId: connectTargetPortId.value,
+      cableType: connectCableType.value,
+      color: null,
+      length: null,
+    },
+    csrfToken: token,
+  })
+  if (!result.ok) {
+    connectFormError.value = result.error
+    return
+  }
+  connectFormVisible.value = false
+  await loadPorts()
+}
+
+function goToServer(id: string | null): void {
+  if (!id) return
+  router.push(`/servers/${encodeURIComponent(id)}`)
+}
+
 onMounted(() => {
   void loadServer()
   void loadAuditRecords()
+  void loadPorts()
 })
 </script>
 
@@ -240,6 +452,67 @@ onMounted(() => {
           </p>
           <p>U 位范围：{{ server.uRange ?? '-' }}</p>
         </template>
+      </section>
+
+      <section class="card">
+        <h3 class="card__title">端口与连接</h3>
+        <p v-if="portsLoading">加载中...</p>
+        <p v-else-if="ports.length === 0" class="muted">暂无端口</p>
+        <table v-else class="data-table">
+          <thead>
+            <tr>
+              <th>端口名</th><th>类型</th><th>速率</th><th>连接状态</th><th v-if="canEdit">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="port in ports" :key="port.id">
+              <td>{{ port.portName }}</td>
+              <td>{{ port.portType }}</td>
+              <td>{{ port.speed ?? '-' }}</td>
+              <td>
+                <span v-if="port.connectedToServerName" class="connected-link">
+                  → <a href="#" @click.prevent="goToServer(port.connectedToServerId)">{{ port.connectedToServerName }}</a>
+                  ({{ port.connectedToPortName }})
+                </span>
+                <span v-else class="muted">未连接</span>
+              </td>
+              <td v-if="canEdit">
+                <button v-if="!port.connectedCableId" type="button" class="btn btn--small" @click="openConnect(port.id)">连接</button>
+                <button v-if="!port.connectedCableId" type="button" class="btn btn--small btn--danger" @click="deletePort(port.id)">删除</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p v-if="portFormError" class="error">{{ portFormError }}</p>
+        <div v-if="canEdit && portFormVisible" class="port-form">
+          <input v-model="newPortName" placeholder="端口名 (如 GE0/0/1)" />
+          <select v-model="newPortType">
+            <option value="">选择类型</option>
+            <option>RJ45</option><option>SFP+</option><option>QSFP28</option><option>LC</option>
+          </select>
+          <input v-model="newPortSpeed" placeholder="速率 (如 10G)" />
+          <button type="button" class="btn btn--primary btn--small" @click="createPort">添加</button>
+          <button type="button" class="btn btn--small" @click="portFormVisible = false">取消</button>
+        </div>
+        <button v-if="canEdit && !portFormVisible" type="button" class="btn btn--small" @click="portFormVisible = true">+ 添加端口</button>
+
+        <div v-if="connectFormVisible" class="connect-form">
+          <h4>连接线缆</h4>
+          <p v-if="connectFormError" class="error">{{ connectFormError }}</p>
+          <select v-model="connectTargetPortId" class="connect-select">
+            <option value="">选择目标端口</option>
+            <option v-for="opt in connectPortOptions" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
+          </select>
+          <select v-model="connectCableType" class="connect-select">
+            <option value="铜缆">铜缆</option>
+            <option value="光纤">光纤</option>
+            <option value="DAC">DAC</option>
+          </select>
+          <div class="connect-actions">
+            <button type="button" class="btn btn--primary btn--small" @click="createConnection">创建连接</button>
+            <button type="button" class="btn btn--small" @click="connectFormVisible = false">取消</button>
+          </div>
+        </div>
       </section>
 
       <section class="card">
@@ -451,5 +724,61 @@ onMounted(() => {
   border-color: var(--color-primary);
   background: var(--color-primary);
   color: #fff;
+}
+
+.btn--small {
+  font-size: var(--font-sm);
+  padding: 2px var(--space-sm);
+}
+
+.btn--danger {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+
+.port-form,
+.connect-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+  align-items: center;
+}
+
+.port-form input,
+.port-form select,
+.connect-select {
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: var(--font-sm);
+}
+
+.connect-form {
+  flex-direction: column;
+  align-items: stretch;
+  padding: var(--space-sm);
+  background: var(--color-bg);
+  border-radius: var(--radius);
+  margin-top: var(--space-md);
+}
+
+.connect-form h4 {
+  margin: 0;
+  font-size: var(--font-md);
+}
+
+.connect-actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.connected-link a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.connected-link a:hover {
+  text-decoration: underline;
 }
 </style>

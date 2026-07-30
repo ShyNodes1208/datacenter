@@ -33,6 +33,7 @@
           :racks="racks"
           :mode="mode"
           :snap-lines="snapLines"
+          :cable-links="cableLinks"
           :to-canvas-x="toCanvasX"
           :to-canvas-y="toCanvasY"
           :snap-position="snapPosition"
@@ -69,15 +70,40 @@ import { useRoute, useRouter } from 'vue-router'
 import { useFloorplan } from '../composables/useFloorplan'
 import { useFloorplanEditor } from '../composables/useFloorplanEditor'
 import { useApi } from '../composables/useApi'
-import FloorplanCanvas from '../components/FloorplanCanvas.vue'
+import FloorplanCanvas, { type CableLink } from '../components/FloorplanCanvas.vue'
 
 const route = useRoute()
 const router = useRouter()
 const roomId = computed(() => route.params.id as string)
 const canvasRef = ref<InstanceType<typeof FloorplanCanvas>>()
+const cableLinks = ref<CableLink[]>([])
 
 const { racks, loading, error, loadRacks, toCanvasX, toCanvasY, toDbX, toDbY } = useFloorplan(roomId.value)
 const { request } = useApi()
+
+async function loadCables(): Promise<void> {
+  const result = await request<{ links: CableLink[] }>(`/api/rooms/${roomId.value}/cables`, { method: 'GET' })
+  if (result.ok && result.data && Array.isArray(result.data.links)) {
+    cableLinks.value = result.data.links.map(link => ({
+      cableCount: link.cableCount,
+      cableTypes: link.cableTypes,
+      source: {
+        rackId: String(link.source.rackId),
+        rackCode: link.source.rackCode,
+        x: link.source.x,
+        y: link.source.y,
+      },
+      target: {
+        rackId: String(link.target.rackId),
+        rackCode: link.target.rackCode,
+        x: link.target.x,
+        y: link.target.y,
+      },
+    }))
+  } else {
+    cableLinks.value = []
+  }
+}
 
 async function saveRackPosition(id: string, x: number, y: number): Promise<boolean> {
   const rack = racks.value.find(r => r.id === id)
@@ -138,6 +164,7 @@ function onKeyDown(e: KeyboardEvent): void {
 // Load data + register keyboard on mount
 onMounted(() => {
   loadRacks()
+  void loadCables()
   window.addEventListener('keydown', onKeyDown)
 })
 onUnmounted(() => {
