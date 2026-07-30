@@ -154,8 +154,9 @@ function drawCables(): void {
       : '#95a5a6'
     const line = new Konva.Line({
       points: [sx, sy, tx, ty],
-      stroke: color, strokeWidth: 2, opacity: 0.6,
+      stroke: color, strokeWidth: 3, opacity: 0.85,
       listening: true,
+      lineCap: 'round',
     })
     const tooltip = new Konva.Label({
       x: (sx + tx) / 2, y: (sy + ty) / 2 - 12,
@@ -235,8 +236,8 @@ function fitToScreen(): void {
   const cy = (minY + maxY) / 2
   stage.scale({ x: scale, y: scale })
   stage.position({
-    x: (stage.width() - RULER_SIZE) / 2 - cx * scale + RULER_SIZE,
-    y: (stage.height() - RULER_SIZE) / 2 - cy * scale + RULER_SIZE,
+    x: stage.width() / 2 - (cx + RULER_SIZE) * scale,
+    y: stage.height() / 2 - (cy + RULER_SIZE) * scale,
   })
   zoomLevel.value = scale
   drawRulers(rulerLayer!)
@@ -367,17 +368,21 @@ function init(): void {
   gridLayer = new Konva.Layer({ listening: false })
   drawGrid(gridLayer, w * 3, h * 3)
   stage.add(gridLayer)
+  gridLayer.position({ x: RULER_SIZE, y: RULER_SIZE })
 
   rackLayer = new Konva.Layer()
   renderRacks()
   stage.add(rackLayer)
+  rackLayer.position({ x: RULER_SIZE, y: RULER_SIZE })
 
   snapLayer = new Konva.Layer({ listening: false })
   stage.add(snapLayer)
+  snapLayer.position({ x: RULER_SIZE, y: RULER_SIZE })
 
   cableLayer = new Konva.Layer()
   drawCables()
   stage.add(cableLayer)
+  cableLayer.position({ x: RULER_SIZE, y: RULER_SIZE })
 
   rulerLayer = new Konva.Layer({ listening: false })
   stage.add(rulerLayer)
