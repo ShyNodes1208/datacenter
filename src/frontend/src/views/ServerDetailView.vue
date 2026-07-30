@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../composables/useApi'
 import { useAuth } from '../composables/useAuth'
+import { getDeviceColor } from '../utils/deviceColors'
 
 type ServerDetail = {
   id: string
@@ -16,7 +17,9 @@ type ServerDetail = {
   system: string | null
   owner: string | null
   notes: string | null
+  roomId?: string | null
   roomName?: string | null
+  rackId?: string | null
   rackCode?: string | null
   uRange?: string | null
 }
@@ -93,10 +96,19 @@ async function loadServer(): Promise<void> {
     system: typeof record.system === 'string' ? record.system : null,
     owner: typeof record.owner === 'string' ? record.owner : null,
     notes: typeof record.notes === 'string' ? record.notes : null,
+    roomId: parseOptionalId(record.roomId),
     roomName: typeof record.roomName === 'string' ? record.roomName : null,
+    rackId: parseOptionalId(record.rackId),
     rackCode: typeof record.rackCode === 'string' ? record.rackCode : null,
     uRange: typeof record.uRange === 'string' ? record.uRange : null,
   }
+}
+
+function parseOptionalId(value: unknown): string | null {
+  if (typeof value !== 'string' || value === '' || value === '00000000-0000-0000-0000-000000000000') {
+    return null
+  }
+  return value
 }
 
 function goToEdit(): void {
@@ -132,6 +144,24 @@ function opTypeClass(type: string): string {
   return 'tag'
 }
 
+function opStatusClass(status: string): string {
+  if (status === '正常') return 'status-tag status-tag--success'
+  if (status === '异常') return 'status-tag status-tag--danger'
+  if (status === '维护') return 'status-tag status-tag--warning'
+  return 'status-tag'
+}
+
+function posStatusClass(status: string): string {
+  if (status === '在架') return 'status-tag status-tag--success'
+  if (status === '已下架') return 'status-tag status-tag--warning'
+  return 'status-tag status-tag--muted'
+}
+
+function deviceTagStyle(type: string): Record<string, string> {
+  const c = getDeviceColor(type, 0)
+  return { background: c.background, color: c.text }
+}
+
 onMounted(() => {
   void loadServer()
   void loadAuditRecords()
@@ -156,10 +186,15 @@ onMounted(() => {
           <dt>名称</dt><dd>{{ server.name }}</dd>
           <dt>管理 IP</dt><dd>{{ server.managementIP }}</dd>
           <dt>资产编号</dt><dd>{{ server.assetNumber ?? '-' }}</dd>
-          <dt>设备类型</dt><dd>{{ server.deviceType }}</dd>
+          <dt>设备类型</dt>
+          <dd>
+            <span class="device-tag" :style="deviceTagStyle(server.deviceType)">{{ server.deviceType }}</span>
+          </dd>
           <dt>设备高度</dt><dd>{{ server.deviceHeight }}U</dd>
-          <dt>运行状态</dt><dd>{{ server.operationalStatus }}（人工维护）</dd>
-          <dt>位置状态</dt><dd>{{ server.positionStatus }}</dd>
+          <dt>运行状态</dt>
+          <dd><span :class="opStatusClass(server.operationalStatus)">{{ server.operationalStatus }}</span></dd>
+          <dt>位置状态</dt>
+          <dd><span :class="posStatusClass(server.positionStatus)">{{ server.positionStatus }}</span></dd>
           <template v-if="server.system">
             <dt>所属系统</dt><dd>{{ server.system }}</dd>
           </template>
@@ -175,11 +210,34 @@ onMounted(() => {
       <section class="card">
         <h3 class="card__title">当前位置</h3>
         <template v-if="server.positionStatus === '未上架'">
-          <p class="muted">未上架</p>
+          <p><span class="status-tag status-tag--muted">未上架</span></p>
+        </template>
+        <template v-else-if="server.positionStatus === '已下架'">
+          <p><span class="status-tag status-tag--warning">已下架</span></p>
+          <p v-if="server.roomName">原机房：{{ server.roomName }}</p>
+          <p v-if="server.rackCode">原机柜：{{ server.rackCode }}</p>
+          <p v-if="server.uRange">原 U 位：{{ server.uRange }}</p>
         </template>
         <template v-else>
-          <p>机房：{{ server.roomName ?? '-' }}</p>
-          <p>机柜：{{ server.rackCode ?? '-' }}</p>
+          <p><span class="status-tag status-tag--success">在架</span></p>
+          <p>
+            机房：
+            <a
+              v-if="server.roomId"
+              href="#"
+              @click.prevent="router.push(`/rooms/${server.roomId}/floorplan`)"
+            >{{ server.roomName }}</a>
+            <span v-else>{{ server.roomName ?? '-' }}</span>
+          </p>
+          <p>
+            机柜：
+            <a
+              v-if="server.rackId"
+              href="#"
+              @click.prevent="router.push(`/racks/${encodeURIComponent(server.rackId)}`)"
+            >{{ server.rackCode }}</a>
+            <span v-else>{{ server.rackCode ?? '-' }}</span>
+          </p>
           <p>U 位范围：{{ server.uRange ?? '-' }}</p>
         </template>
       </section>
@@ -277,6 +335,52 @@ onMounted(() => {
 
 .card p {
   margin: 0 0 var(--space-xs);
+}
+
+.card a {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.card a:hover {
+  text-decoration: underline;
+}
+
+.status-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: var(--font-sm);
+  font-weight: 500;
+}
+
+.status-tag--success {
+  background: #e6f7e6;
+  color: #2d8a2d;
+}
+
+.status-tag--danger {
+  background: #fde8e8;
+  color: #c0392b;
+}
+
+.status-tag--warning {
+  background: #fef3e0;
+  color: #b8731f;
+}
+
+.status-tag--muted {
+  background: #eef1f5;
+  color: #666;
+}
+
+.device-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-size: var(--font-sm);
+  font-weight: 500;
 }
 
 .data-table {

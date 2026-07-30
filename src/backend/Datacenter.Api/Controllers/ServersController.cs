@@ -94,7 +94,27 @@ public sealed class ServersController(AppDbContext dbContext, IAntiforgery antif
                 item.PositionStatus,
                 item.System,
                 item.Owner,
-                item.Notes
+                item.Notes,
+                RoomName = dbContext.ServerPositions
+                    .Where(sp => sp.ServerId == item.Id && sp.Status == "在架")
+                    .Select(sp => sp.Rack.Room.Name)
+                    .FirstOrDefault(),
+                RoomId = dbContext.ServerPositions
+                    .Where(sp => sp.ServerId == item.Id && sp.Status == "在架")
+                    .Select(sp => sp.Rack.RoomId)
+                    .FirstOrDefault(),
+                RackCode = dbContext.ServerPositions
+                    .Where(sp => sp.ServerId == item.Id && sp.Status == "在架")
+                    .Select(sp => sp.Rack.Code)
+                    .FirstOrDefault(),
+                RackId = dbContext.ServerPositions
+                    .Where(sp => sp.ServerId == item.Id && sp.Status == "在架")
+                    .Select(sp => sp.RackId)
+                    .FirstOrDefault(),
+                URange = dbContext.ServerPositions
+                    .Where(sp => sp.ServerId == item.Id && sp.Status == "在架")
+                    .Select(sp => sp.StartU + "-" + sp.EndU)
+                    .FirstOrDefault()
             })
             .FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
 

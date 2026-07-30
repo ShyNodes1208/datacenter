@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useApi } from '../composables/useApi'
 import { useAuth } from '../composables/useAuth'
+import { getDeviceColor } from '../utils/deviceColors'
 
 type ServerItem = {
   id: string
@@ -121,6 +122,24 @@ function goToNew(): void {
   router.push('/servers/new')
 }
 
+function opStatusClass(status: string): string {
+  if (status === '正常') return 'status-tag status-tag--success'
+  if (status === '异常') return 'status-tag status-tag--danger'
+  if (status === '维护') return 'status-tag status-tag--warning'
+  return 'status-tag'
+}
+
+function posStatusClass(status: string): string {
+  if (status === '在架') return 'status-tag status-tag--success'
+  if (status === '已下架') return 'status-tag status-tag--warning'
+  return 'status-tag status-tag--muted'
+}
+
+function deviceTagStyle(type: string): Record<string, string> {
+  const c = getDeviceColor(type, 0)
+  return { background: c.background, color: c.text }
+}
+
 onMounted(() => {
   void loadServers()
 })
@@ -187,10 +206,12 @@ onMounted(() => {
             <a href="#" @click.prevent="goToDetail(server.id)">{{ server.name }}</a>
           </td>
           <td class="ellipsis">{{ server.managementIP }}</td>
-          <td>{{ server.deviceType }}</td>
+          <td>
+            <span class="device-tag" :style="deviceTagStyle(server.deviceType)">{{ server.deviceType }}</span>
+          </td>
           <td>{{ server.deviceHeight }}U</td>
-          <td>{{ server.positionStatus }}</td>
-          <td>{{ server.operationalStatus }}（人工维护）</td>
+          <td><span :class="posStatusClass(server.positionStatus)">{{ server.positionStatus }}</span></td>
+          <td><span :class="opStatusClass(server.operationalStatus)">{{ server.operationalStatus }}</span></td>
           <td>
             <button type="button" class="btn btn--small" @click="goToDetail(server.id)">查看</button>
           </td>
@@ -313,5 +334,41 @@ onMounted(() => {
 
 .data-table a:hover {
   text-decoration: underline;
+}
+
+.status-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: var(--font-sm);
+  font-weight: 500;
+}
+
+.status-tag--success {
+  background: #e6f7e6;
+  color: #2d8a2d;
+}
+
+.status-tag--danger {
+  background: #fde8e8;
+  color: #c0392b;
+}
+
+.status-tag--warning {
+  background: #fef3e0;
+  color: #b8731f;
+}
+
+.status-tag--muted {
+  background: #eef1f5;
+  color: #666;
+}
+
+.device-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-size: var(--font-sm);
+  font-weight: 500;
 }
 </style>
