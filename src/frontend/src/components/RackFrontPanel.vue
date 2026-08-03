@@ -27,6 +27,7 @@ const emit = defineEmits<{
   (e: 'server-click', serverId: string): void
   (e: 'move-click', serverId: string, serverName: string): void
   (e: 'decommission-click', serverId: string, serverName: string): void
+  (e: 'port-view-click', serverId: string): void
 }>()
 
 const statsText = computed(() => {
@@ -107,6 +108,12 @@ function onEmptyBlockClick(block: DeviceBlock): void {
     emit('slot-click', topU, block.slot)
   }
 }
+
+function isNetworkDevice(deviceType: string | undefined): boolean {
+  if (!deviceType) return false
+  const t = deviceType.toLowerCase()
+  return ['交换', 'switch', '路由', 'router', '网络', 'network'].some(k => t.includes(k))
+}
 </script>
 
 <template>
@@ -159,6 +166,12 @@ function onEmptyBlockClick(block: DeviceBlock): void {
       >
         <template v-if="block.occupied && block.serverName && !compact">
           <div class="rfp__block-content">
+            <button
+              v-if="isNetworkDevice(block.deviceType)"
+              class="rfp__block-port-btn"
+              title="查看端口连接"
+              @click.stop="emit('port-view-click', block.serverId!)"
+            >🔌</button>
             <div class="rfp__block-name">{{ block.serverName }}</div>
             <div class="rfp__block-meta">
               <span
@@ -268,6 +281,7 @@ function onEmptyBlockClick(block: DeviceBlock): void {
 }
 
 .rfp__block {
+  position: relative;
   border-bottom: 1px solid #2c3e50;
   box-sizing: border-box;
   transition: filter 0.1s ease;
@@ -293,12 +307,31 @@ function onEmptyBlockClick(block: DeviceBlock): void {
 }
 
 .rfp__block-content {
+  position: relative;
   height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: center;
   padding: 2px 10px;
   overflow: hidden;
+}
+
+.rfp__block-port-btn {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  background: none;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  opacity: 0.7;
+  line-height: 1;
+  padding: 1px;
+  z-index: 1;
+}
+
+.rfp__block-port-btn:hover {
+  opacity: 1;
 }
 
 .rfp__block-name {
