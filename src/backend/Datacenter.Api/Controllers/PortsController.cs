@@ -58,6 +58,24 @@ public sealed class PortsController(AppDbContext dbContext, IAntiforgery antifor
                     .Where(c => c.TargetPortId == p.Id)
                     .Select(c => (Guid?)c.SourcePort.ServerId)
                     .FirstOrDefault(),
+                CableType = dbContext.Cables
+                    .Where(c => c.SourcePortId == p.Id || c.TargetPortId == p.Id)
+                    .Select(c => c.CableType)
+                    .FirstOrDefault(),
+                ConnectedToRackCode = dbContext.Cables
+                    .Where(c => c.SourcePortId == p.Id)
+                    .Select(c => dbContext.ServerPositions
+                        .Where(sp => sp.ServerId == c.TargetPort.ServerId && sp.Status == "在架")
+                        .Select(sp => sp.Rack.Code)
+                        .FirstOrDefault())
+                    .FirstOrDefault()
+                    ?? dbContext.Cables
+                    .Where(c => c.TargetPortId == p.Id)
+                    .Select(c => dbContext.ServerPositions
+                        .Where(sp => sp.ServerId == c.SourcePort.ServerId && sp.Status == "在架")
+                        .Select(sp => sp.Rack.Code)
+                        .FirstOrDefault())
+                    .FirstOrDefault(),
             })
             .ToListAsync(cancellationToken);
 
