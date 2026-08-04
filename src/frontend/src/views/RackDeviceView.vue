@@ -6,7 +6,9 @@ import { useAuth } from '../composables/useAuth'
 import { useRackDetail } from '../composables/useRackDetail'
 import RackFrontPanel from '../components/RackFrontPanel.vue'
 import RackOperationDrawer from '../components/RackOperationDrawer.vue'
+import SwitchPortDrawer from '../components/SwitchPortDrawer.vue'
 import type { USlot } from '../components/RackFrontPanel.vue'
+import type { SwitchPortItem } from '../components/SwitchPortDrawer.vue'
 
 type ImportPreviewPosition = {
   uNumber: number
@@ -119,6 +121,13 @@ const decommissioningServerName = ref('')
 const deleteRackSubmitting = ref(false)
 const deleteRackError = ref('')
 
+const switchDrawerVisible = ref(false)
+const switchDrawerDeviceName = ref('')
+const switchDrawerDeviceId = ref('')
+const switchPorts = ref<SwitchPortItem[]>([])
+const switchPortsLoading = ref(false)
+const switchPortsError = ref('')
+
 onMounted(() => {
   void loadData()
 })
@@ -145,6 +154,52 @@ function onEmptySlotClick(uNumber: number, _slot: USlot): void {
 }
 
 function onServerClick(serverId: string): void {
+  router.push(`/servers/${encodeURIComponent(serverId)}`)
+}
+
+function parseSwitchPortItem(raw: unknown): SwitchPortItem | null {
+  if (raw === null || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  if (typeof r.id !== 'string' || typeof r.portName !== 'string' || typeof r.portType !== 'string') return null
+  return {
+    id: r.id,
+    portName: r.portName,
+    portType: r.portType,
+    speed: typeof r.speed === 'string' ? r.speed : null,
+    cableType: typeof r.cableType === 'string' ? r.cableType : null,
+    connectedToServerName: typeof r.connectedToServerName === 'string' ? r.connectedToServerName : null,
+    connectedToServerId: typeof r.connectedToServerId === 'string' ? r.connectedToServerId : null,
+    connectedToPortName: typeof r.connectedToPortName === 'string' ? r.connectedToPortName : null,
+    connectedToRackCode: typeof r.connectedToRackCode === 'string' ? r.connectedToRackCode : null,
+  }
+}
+
+async function openSwitchDrawer(serverId: string): Promise<void> {
+  switchDrawerVisible.value = true
+  switchDrawerDeviceId.value = serverId
+  switchPortsLoading.value = true
+  switchPortsError.value = ''
+  switchPorts.value = []
+
+  const slot = uSlots.value.find(s => s.serverId === serverId)
+  switchDrawerDeviceName.value = slot?.serverName ?? ''
+
+  const result = await request<unknown>(`/api/servers/${serverId}/ports`, { method: 'GET' })
+  switchPortsLoading.value = false
+
+  if (!result.ok) {
+    switchPortsError.value = result.error
+    return
+  }
+  if (!Array.isArray(result.data)) {
+    switchPortsError.value = 'Request failed.'
+    return
+  }
+  switchPorts.value = result.data.map(parseSwitchPortItem).filter(Boolean) as SwitchPortItem[]
+}
+
+function handleNavigate(serverId: string): void {
+  switchDrawerVisible.value = false
   router.push(`/servers/${encodeURIComponent(serverId)}`)
 }
 
@@ -637,6 +692,7 @@ async function deleteRack(): Promise<void> {
             @server-click="onServerClick"
             @move-click="openMove"
             @decommission-click="openDecommission"
+            @port-view-click="openSwitchDrawer"
           />
         </div>
         <div class="usage-section">
@@ -868,6 +924,17 @@ async function deleteRack(): Promise<void> {
           </button>
         </div>
       </RackOperationDrawer>
+
+      <SwitchPortDrawer
+        :visible="switchDrawerVisible"
+        :device-name="switchDrawerDeviceName"
+        :device-id="switchDrawerDeviceId"
+        :ports="switchPorts"
+        :loading="switchPortsLoading"
+        :error="switchPortsError"
+        @close="switchDrawerVisible = false"
+        @navigate="handleNavigate"
+      />
     </template>
   </div>
 </template>
