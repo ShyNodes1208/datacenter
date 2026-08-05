@@ -60,6 +60,71 @@ const filterRoomId = ref('')
 const filterCableType = ref('')
 const drawerVisible = ref(false)
 
+const importLoading = ref(false)
+const importResult = ref<{ totalRows: number; successCount: number; errorCount: number; errors: { row: number; error: string }[] | null } | null>(null)
+const fileInput = ref<HTMLInputElement | null>(null)
+
+function triggerImport(): void {
+  fileInput.value?.click()
+}
+
+async function handleImport(e: Event): Promise<void> {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  importLoading.value = true
+  importResult.value = null
+
+  const token = await getCsrfToken()
+  if (!token) {
+    importResult.value = { totalRows: 0, successCount: 0, errorCount: 1, errors: [{ row: 0, error: '无法获取防伪令牌' }] }
+    importLoading.value = false
+    input.value = ''
+    return
+  }
+
+  const formData = new FormData()
+  formData.append('file', file)
+
+  try {
+    const headers = new Headers()
+    headers.set('X-XSRF-TOKEN', token)
+
+    const response = await fetch('/api/cables/import', {
+      method: 'POST',
+      credentials: 'include',
+      headers,
+      body: formData,
+    })
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}))
+      const errMsg = (body as Record<string, unknown>).error
+      importResult.value = {
+        totalRows: 0,
+        successCount: 0,
+        errorCount: 1,
+        errors: [{ row: 0, error: typeof errMsg === 'string' ? errMsg : '导入失败' }],
+      }
+    } else {
+      const data = await response.json() as Record<string, unknown>
+      importResult.value = {
+        totalRows: (data.totalRows as number) ?? 0,
+        successCount: (data.successCount as number) ?? 0,
+        errorCount: (data.errorCount as number) ?? 0,
+        errors: Array.isArray(data.errors) ? (data.errors as Array<{ row: number; error: string }>) : null,
+      }
+      await loadCables()
+    }
+  } catch {
+    importResult.value = { totalRows: 0, successCount: 0, errorCount: 1, errors: [{ row: 0, error: '网络错误' }] }
+  } finally {
+    importLoading.value = false
+    input.value = ''
+  }
+}
+
 const newSourcePortId = ref('')
 const newTargetPortId = ref('')
 const newCableType = ref('铜缆')
@@ -295,6 +360,39 @@ onMounted(() => {
       </select>
       <button type="button" class="btn btn--small" @click="doSearch">筛选</button>
       <button type="button" class="btn btn--small btn--muted" @click="clearFilters">重置</button>
+      <input
+        ref="fileInput"
+        type="file"
+        accept=".xlsx"
+        style="display: none"
+        @change="handleImport"
+      />
+      <button
+        v-if="canEdit"
+        type="button"
+        class="btn btn--small"
+        :disabled="importLoading"
+        @click="triggerImport"
+      >
+        {{ importLoading ? '导入中...' : '📥 导入 Excel' }}
+      </button>
+    </div>
+
+    <div v-if="importResult" class="import-result" :class="importResult.errorCount > 0 ? 'import-result--partial' : 'import-result--success'">
+      <template v-if="importResult.errorCount === 0">
+        ✅ 导入完成：{{ importResult.totalRows }} 行全部成功
+      </template>
+      <template v-else>
+        ⚠ 导入完成：{{ importResult.successCount }}/{{ importResult.totalRows }} 行成功，{{ importResult.errorCount }} 行失败
+        <details v-if="importResult.errors && importResult.errors.length > 0" class="import-errors">
+          <summary>查看失败详情</summary>
+          <ul>
+            <li v-for="(e, i) in importResult.errors" :key="i">
+              第 {{ e.row }} 行：{{ e.error }}
+            </li>
+          </ul>
+        </details>
+      </template>
     </div>
 
     <div v-if="error" class="error" role="alert">{{ error }}</div>
@@ -530,5 +628,44 @@ onMounted(() => {
   display: flex;
   gap: var(--space-sm);
   margin-top: var(--space-md);
+}
+
+.import-result {
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius);
+  font-size: var(--font-sm);
+  margin-bottom: var(--space-md);
+}
+
+.import-result--success {
+  background: #e6f7e6;
+  color: #2d8a2d;
+  border: 1px solid #b7e4b7;
+}
+
+.import-result--partial {
+  background: #fef3e0;
+  color: #b8731f;
+  border: 1px solid #f5d698;
+}
+
+.import-errors {
+  margin-top: var(--space-sm);
+  font-size: var(--font-sm);
+}
+
+.import-errors summary {
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.import-errors ul {
+  margin: var(--space-xs) 0 0;
+  padding-left: var(--space-md);
+  list-style: disc;
+}
+
+.import-errors li {
+  margin-bottom: 2px;
 }
 </style>
