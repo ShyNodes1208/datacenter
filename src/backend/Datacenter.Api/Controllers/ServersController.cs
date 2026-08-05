@@ -70,7 +70,11 @@ public sealed class ServersController(AppDbContext dbContext, IAntiforgery antif
                 server.PositionStatus,
                 server.System,
                 server.Owner,
-                server.Notes
+                server.Notes,
+                RackCode = dbContext.ServerPositions
+                    .Where(sp => sp.ServerId == server.Id && sp.Status == "在架")
+                    .Select(sp => sp.Rack.Code)
+                    .FirstOrDefault()
             })
             .ToListAsync(cancellationToken);
 

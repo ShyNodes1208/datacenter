@@ -6,6 +6,7 @@
         <h2 class="toolbar-title" v-if="!loading">{{ roomName }}</h2>
       </div>
       <div class="toolbar-center">
+        <button type="button" class="btn btn--small btn--muted" @click="networkPathVisible = true">连接路径查询</button>
         <div class="mode-toggle">
           <button
             :class="['btn btn--small', mode === 'view' ? 'btn--primary' : 'btn--muted']"
@@ -34,6 +35,7 @@
           :mode="mode"
           :snap-lines="snapLines"
           :cable-links="cableLinks"
+          :highlighted-rack-ids="highlightedRackIds"
           :to-canvas-x="toCanvasX"
           :to-canvas-y="toCanvasY"
           :snap-position="snapPosition"
@@ -61,6 +63,15 @@
         </div>
       </aside>
     </div>
+
+    <NetworkPathDrawer
+      :visible="networkPathVisible"
+      :loading="networkPathLoading"
+      :error="networkPathError"
+      :path-result="networkPathResult"
+      @close="networkPathVisible = false; highlightedRackIds = []"
+      @search="handleNetworkPathSearch"
+    />
   </div>
 </template>
 
@@ -71,12 +82,18 @@ import { useFloorplan } from '../composables/useFloorplan'
 import { useFloorplanEditor } from '../composables/useFloorplanEditor'
 import { useApi } from '../composables/useApi'
 import FloorplanCanvas, { type CableLink } from '../components/FloorplanCanvas.vue'
+import NetworkPathDrawer, { type NetworkPathResult } from '../components/NetworkPathDrawer.vue'
 
 const route = useRoute()
 const router = useRouter()
 const roomId = computed(() => route.params.id as string)
 const canvasRef = ref<InstanceType<typeof FloorplanCanvas>>()
 const cableLinks = ref<CableLink[]>([])
+const networkPathVisible = ref(false)
+const networkPathLoading = ref(false)
+const networkPathError = ref('')
+const networkPathResult = ref<NetworkPathResult | null>(null)
+const highlightedRackIds = ref<string[]>([])
 
 const { racks, loading, error, loadRacks, toCanvasX, toCanvasY, toDbX, toDbY } = useFloorplan(roomId.value)
 const { request } = useApi()
@@ -151,6 +168,33 @@ function setEditMode(): void { if (mode.value !== 'edit') toggleMode() }
 function goBack(): void { router.push('/') }
 function goToRack(rackId: string): void { router.push(`/racks/${encodeURIComponent(rackId)}`) }
 function onDragEnd(rackId: string, x: number, y: number): void { handleDragEnd(rackId, x, y) }
+
+async function handleNetworkPathSearch(sourceId: string, targetId: string): Promise<void> {
+  networkPathLoading.value = true
+  networkPathError.value = ''
+  networkPathResult.value = null
+  highlightedRackIds.value = []
+  const result = await request<NetworkPathResult>(
+    `/api/network-path?sourceId=${sourceId}&targetId=${targetId}`,
+    { method: 'GET' },
+  )
+  networkPathLoading.value = false
+  if (!result.ok) {
+    networkPathError.value = result.error
+    return
+  }
+  networkPathResult.value = result.data
+  if (result.data?.pathFound && result.data?.devices) {
+    const ids: string[] = []
+    for (const d of result.data.devices) {
+      if (d.rackCode) {
+        const rack = racks.value.find(r => r.code === d.rackCode)
+        if (rack && !ids.includes(rack.id)) ids.push(rack.id)
+      }
+    }
+    highlightedRackIds.value = ids
+  }
+}
 
 // Keyboard shortcuts
 function onKeyDown(e: KeyboardEvent): void {

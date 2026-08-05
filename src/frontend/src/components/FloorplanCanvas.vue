@@ -27,6 +27,7 @@ const props = defineProps<{
   mode: 'view' | 'edit'
   snapLines: SnapLine[]
   cableLinks?: CableLink[]
+  highlightedRackIds?: string[]
   toCanvasX: (db: number) => number
   toCanvasY: (db: number) => number
   snapPosition: (rackId: string, x: number, y: number) => { x: number; y: number }
@@ -158,6 +159,12 @@ function drawCables(): void {
       listening: true,
       lineCap: 'round',
     })
+    const highlightIds = props.highlightedRackIds ?? []
+    if (highlightIds.length > 0 && highlightIds.includes(link.source.rackId) && highlightIds.includes(link.target.rackId)) {
+      line.stroke('#e74c3c')
+      line.strokeWidth(5)
+      line.opacity(0.6)
+    }
     const tooltip = new Konva.Label({
       x: (sx + tx) / 2, y: (sy + ty) / 2 - 12,
       visible: false, listening: false, opacity: 0.92,
@@ -270,6 +277,15 @@ function renderRacks(): void {
       fill: c.fill, stroke: c.stroke, strokeWidth: 1.5,
       cornerRadius: 3, name: 'rackRect',
     })
+
+    const isHighlighted = (props.highlightedRackIds ?? []).includes(rack.id)
+    if (isHighlighted) {
+      rect.stroke('#e74c3c')
+      rect.strokeWidth(3)
+      rect.shadowColor('#e74c3c')
+      rect.shadowBlur(8)
+      rect.shadowEnabled(true)
+    }
 
     const label = new Konva.Text({
       text: `${rack.code}\n${rack.occupiedU ?? 0}/${rack.heightU}U`,
@@ -427,6 +443,10 @@ watch(() => props.mode, (m) => {
 watch(() => props.racks, () => { renderRacks() }, { deep: true })
 watch(() => props.snapLines, () => { renderSnapLines() }, { deep: true })
 watch(() => props.cableLinks, () => { drawCables() }, { deep: true })
+watch(() => props.highlightedRackIds, () => {
+  renderRacks()
+  drawCables()
+})
 
 onMounted(() => {
   try {

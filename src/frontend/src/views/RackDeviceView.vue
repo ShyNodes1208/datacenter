@@ -7,6 +7,7 @@ import { useRackDetail } from '../composables/useRackDetail'
 import RackFrontPanel from '../components/RackFrontPanel.vue'
 import RackOperationDrawer from '../components/RackOperationDrawer.vue'
 import SwitchPortDrawer from '../components/SwitchPortDrawer.vue'
+import NetworkPathDrawer, { type NetworkPathResult } from '../components/NetworkPathDrawer.vue'
 import type { USlot } from '../components/RackFrontPanel.vue'
 import type { SwitchPortItem } from '../components/SwitchPortDrawer.vue'
 
@@ -128,6 +129,11 @@ const switchPorts = ref<SwitchPortItem[]>([])
 const switchPortsLoading = ref(false)
 const switchPortsError = ref('')
 
+const networkPathVisible = ref(false)
+const networkPathLoading = ref(false)
+const networkPathError = ref('')
+const networkPathResult = ref<NetworkPathResult | null>(null)
+
 onMounted(() => {
   void loadData()
 })
@@ -201,6 +207,22 @@ async function openSwitchDrawer(serverId: string): Promise<void> {
 function handleNavigate(serverId: string): void {
   switchDrawerVisible.value = false
   router.push(`/servers/${encodeURIComponent(serverId)}`)
+}
+
+async function handleNetworkPathSearch(sourceId: string, targetId: string): Promise<void> {
+  networkPathLoading.value = true
+  networkPathError.value = ''
+  networkPathResult.value = null
+  const result = await request<NetworkPathResult>(
+    `/api/network-path?sourceId=${sourceId}&targetId=${targetId}`,
+    { method: 'GET' },
+  )
+  networkPathLoading.value = false
+  if (!result.ok) {
+    networkPathError.value = result.error
+    return
+  }
+  networkPathResult.value = result.data
 }
 
 function openImport(): void {
@@ -664,6 +686,7 @@ async function deleteRack(): Promise<void> {
           </p>
         </div>
         <div class="toolbar__actions">
+          <button type="button" class="btn" @click="networkPathVisible = true">连接路径查询</button>
           <button type="button" class="btn" @click="openImport">导入设备</button>
           <button v-if="canEdit" type="button" class="btn btn--primary" @click="openRack()">上架服务器</button>
           <button
@@ -934,6 +957,15 @@ async function deleteRack(): Promise<void> {
         :error="switchPortsError"
         @close="switchDrawerVisible = false"
         @navigate="handleNavigate"
+      />
+
+      <NetworkPathDrawer
+        :visible="networkPathVisible"
+        :loading="networkPathLoading"
+        :error="networkPathError"
+        :path-result="networkPathResult"
+        @close="networkPathVisible = false"
+        @search="handleNetworkPathSearch"
       />
     </template>
   </div>
