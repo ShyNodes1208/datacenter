@@ -82,6 +82,28 @@ public sealed class PortsController(AppDbContext dbContext, IAntiforgery antifor
         return Ok(ports);
     }
 
+    [HttpGet("ports/available")]
+    public async Task<IActionResult> Available(CancellationToken cancellationToken)
+    {
+        var ports = await dbContext.Ports
+            .AsNoTracking()
+            .Where(p => !dbContext.Cables.Any(c => c.SourcePortId == p.Id || c.TargetPortId == p.Id))
+            .Select(p => new
+            {
+                p.Id,
+                p.PortName,
+                ServerName = p.Server.Name,
+                p.Server.DeviceType,
+                RackCode = dbContext.ServerPositions
+                    .Where(sp => sp.ServerId == p.ServerId && sp.Status == "在架")
+                    .Select(sp => sp.Rack.Code)
+                    .FirstOrDefault()
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(ports);
+    }
+
     public sealed record CreatePortRequest(string PortName, string PortType, string? Speed, string? Notes);
 
     [HttpPost("servers/{serverId:guid}/ports")]

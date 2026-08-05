@@ -83,6 +83,7 @@ const connectTargetPortId = ref('')
 const connectCableType = ref('铜缆')
 const connectFormError = ref('')
 const connectPortOptions = ref<ConnectPortOption[]>([])
+const connectPortsLoading = ref(false)
 
 async function loadServer(): Promise<void> {
   error.value = ''
@@ -302,31 +303,27 @@ async function deletePort(id: string): Promise<void> {
 }
 
 async function loadConnectPortOptions(): Promise<void> {
-  const serversResult = await request<unknown>('/api/servers', { method: 'GET' })
-  if (!serversResult.ok || !Array.isArray(serversResult.data)) return
+  try {
+    const result = await request<unknown>('/api/ports/available', { method: 'GET' })
+    if (!result.ok || !Array.isArray(result.data)) return
 
-  const options: ConnectPortOption[] = []
-  for (const serverItem of serversResult.data) {
-    if (serverItem === null || typeof serverItem !== 'object') continue
-    const s = serverItem as Record<string, unknown>
-    if (typeof s.id !== 'string' || typeof s.name !== 'string') continue
-
-    const portsResult = await request<unknown>(`/api/servers/${s.id}/ports`, { method: 'GET' })
-    if (!portsResult.ok || !Array.isArray(portsResult.data)) continue
-
-    for (const port of portsResult.data) {
-      if (port === null || typeof port !== 'object') continue
-      const p = port as Record<string, unknown>
-      if (typeof p.id !== 'string' || typeof p.portName !== 'string') continue
-      if (parseOptionalGuid(p.connectedCableId)) continue
+    const options: ConnectPortOption[] = []
+    for (const item of result.data) {
+      if (item === null || typeof item !== 'object') continue
+      const p = item as Record<string, unknown>
+      if (typeof p.id !== 'string' || typeof p.portName !== 'string' || typeof p.serverName !== 'string') continue
       if (p.id === connectSourcePortId.value) continue
+      const rack = typeof p.rackCode === 'string' ? p.rackCode : null
+      const rackHint = rack ? ` [${rack}]` : ''
       options.push({
         id: p.id,
-        label: `${s.name} / ${p.portName}`,
+        label: `${p.serverName} / ${p.portName}${rackHint}`,
       })
     }
+    connectPortOptions.value = options
+  } finally {
+    connectPortsLoading.value = false
   }
-  connectPortOptions.value = options
 }
 
 function openConnect(portId: string): void {
@@ -334,6 +331,8 @@ function openConnect(portId: string): void {
   connectTargetPortId.value = ''
   connectCableType.value = '铜缆'
   connectFormError.value = ''
+  connectPortOptions.value = []
+  connectPortsLoading.value = true
   connectFormVisible.value = true
   void loadConnectPortOptions()
 }
@@ -499,8 +498,14 @@ onMounted(() => {
         <div v-if="connectFormVisible" class="connect-form">
           <h4>连接线缆</h4>
           <p v-if="connectFormError" class="error">{{ connectFormError }}</p>
-          <select v-model="connectTargetPortId" class="connect-select">
-            <option value="">选择目标端口</option>
+          <select
+            v-model="connectTargetPortId"
+            class="connect-select"
+            :disabled="connectPortsLoading"
+          >
+            <option value="">
+              {{ connectPortsLoading ? '加载中...' : connectPortOptions.length === 0 ? '无可用端口' : '选择目标端口' }}
+            </option>
             <option v-for="opt in connectPortOptions" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
           </select>
           <select v-model="connectCableType" class="connect-select">
