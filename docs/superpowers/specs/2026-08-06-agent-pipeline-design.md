@@ -293,8 +293,11 @@ docs/superpowers/plans/   # 实现计划
 6. 直接执行 BACKEND:
    a. 检查 status = aborted? → 跳到步骤 13
    b. 检查 retryCount > 2 → phase = PAUSED，跳到步骤 12
-   c. 如果是 REVIEW 驳回后回退 → 重置 status=pending, _invoked=false, retryCount=0, 清空旧数据,
-      追加 history (done→pending), 更新 updated
+   c. 如果是 REVIEW 驳回后回退或 PAUSED 恢复:
+      - 重置 status=pending, _invoked=false, retryCount=0, 清空旧 commit/filesChanged/testResults/handoffNote
+      - 追加 history (当前status→pending), 更新 updated
+      - **级联重置**: fullstack 模式下同时重置 phases.frontend 为 pending, 清空旧数据
+        (后端变更可能影响前端, Cursor 需验证兼容性)
    d. 生成 Codex Task 文件:
       - 首次执行：包含 planning.handoffNote
       - 重试执行：额外包含 errors[] 中最近一次失败详情
@@ -321,28 +324,35 @@ docs/superpowers/plans/   # 实现计划
 
 8. FRONTEND 阶段:
    a. 检查 status = aborted? → 跳到步骤 13
-   b. 如果是 REVIEW 驳回后回退:
+   b. 如果是 REVIEW 驳回后回退或 PAUSED 恢复:
       - 停止 Monitor (kill watch.pid)
       - 重置 status=pending, 清空旧 commit/filesChanged/testResults/handoffNote
-      - 追加 history (done→pending), 更新 updated
+      - 追加 history (当前status→pending), 更新 updated
       - 重新启动 Monitor
    c. 通知用户打开 Cursor，粘贴 Cursor Prompt Template
       (驳回场景：额外粘贴 review.issues 中 frontend 的 blocking 问题)
-   d. Monitor 等待 FRONTEND:done
-   e. 检测到 done → 停止 Monitor → 验证 ALL required fields:
+   d. 检查 Monitor 存活 (kill -0 $(cat watch.pid) 2>/dev/null):
+      - 已死 → 清理 PID, 重新启动 Monitor
+      - 存活 → 继续
+   e. Monitor 等待 FRONTEND:done 或 PIPELINE:aborted
+   f. 检测到 done → 停止 Monitor:
+      - 如果是 PIPELINE:aborted → 跳到步骤 13
+      - 如果是 FRONTEND:done → 验证 ALL required fields:
       - commit 非空
       - filesChanged 非空数组
       - testResults 对象存在
       - handoffNote 非空
       任一缺失 → phase=PAUSED, error="Cursor 未完整填写 state.json"
-   f. 追加 history (in-progress→done), 更新 updated
-   g. phase = REVIEW
+   g. 追加 history (in-progress→done), 更新 updated
+   h. 释放前端模块锁
+   i. phase = REVIEW
 
 9. 直接执行 REVIEW:
    a. 检查 status = aborted? → 跳到步骤 13
    b. 检查 retryCount > 2 → phase = PAUSED，跳到步骤 12
-   c. 如果是重新执行: 重置 status=pending, _invoked=false, 清空旧数据,
-      追加 history (done→pending), 更新 updated
+   c. 如果是重新执行 (retry 或驳回后重入):
+      - 重置 status=pending, _invoked=false, 清空旧 verdict/issues
+      - 追加 history (当前status→pending), 更新 updated
    d. 生成 review task 文件:
       - 包含 phases.backend.handoffNote
       - 包含 phases.frontend.handoffNote (非 skipped 时)
@@ -455,12 +465,18 @@ STATE_FILE="$SCRIPT_DIR/state.json"
 echo $$ > "$PID_FILE"
 trap "rm -f '$PID_FILE'" EXIT
 
-PREV=""
+PREV_FRONTEND=""
 while true; do
+  # 同时监听顶层 status (abort 检测) 和 frontend.status
+  PIPELINE_STATUS=$(jq -r '.status' "$STATE_FILE" 2>/dev/null || echo "N/A")
+  if [ "$PIPELINE_STATUS" = "aborted" ]; then
+    echo "PIPELINE:aborted"
+    break
+  fi
   CUR=$(jq -r '.phases.frontend.status' "$STATE_FILE" 2>/dev/null || echo "N/A")
-  if [ "$CUR" != "$PREV" ] && [ "$CUR" != "N/A" ]; then
+  if [ "$CUR" != "$PREV_FRONTEND" ] && [ "$CUR" != "N/A" ]; then
     echo "FRONTEND:$CUR"
-    PREV="$CUR"
+    PREV_FRONTEND="$CUR"
   fi
   sleep 1
 done
@@ -474,6 +490,7 @@ done
 |------|------------|
 | `FRONTEND:done` | 验证所有 required fields → 停止 Monitor → phase = REVIEW |
 | `FRONTEND:failed` | phase = PAUSED, 通知用户 |
+| `PIPELINE:aborted` | 停止 Monitor → 跳到步骤 13 (ABORT 清理) |
 | `FRONTEND:pending` / `FRONTEND:in-progress` | 忽略 (正常过渡状态，restart 时会短暂出现) |
 
 Cursor 的 Prompt Template 要求**一次性写入所有字段**（status + commit + filesChanged + testResults + handoffNote），避免 Monitor 在部分写入时触发。
