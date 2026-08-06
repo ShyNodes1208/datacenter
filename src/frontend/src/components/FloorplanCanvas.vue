@@ -1,7 +1,8 @@
 <template>
   <div ref="containerRef" class="floorplan-canvas" @contextmenu.prevent>
+    <div ref="konvaContainer" class="konva-stage"></div>
     <div
-      v-if="cableScene"
+      v-if="false"
       class="cable-scene-overlay"
       :style="stageOverlayStyle"
     >
@@ -12,7 +13,7 @@
       />
     </div>
 
-    <div v-if="cableScene" class="cable-ui-chrome">
+    <div v-if="false" class="cable-ui-chrome">
       <CableBreadcrumb
         :items="cableScene.breadcrumbs"
         @navigate="onNavigate"
@@ -75,9 +76,17 @@ const props = defineProps<{
 
 const { request } = useApi()
 
+const EMPTY_CABLE_SCENE: CableScene = {
+  bundles: [],
+  highlightedPath: null,
+  legend: [],
+  detailRows: [],
+  breadcrumbs: [],
+}
+
 const cableFocus = ref<CableFocus>({ level: 'room', roomId: '' })
 const animationEnabled = ref(true)
-const cableScene = ref<CableScene | null>(null)
+const cableScene = ref<CableScene>({ ...EMPTY_CABLE_SCENE })
 const cableSnapshot = ref<CableSnapshot | null>(null)
 const cableFilters = ref({ purposes: [] as string[], cableTypes: [] as string[] })
 
@@ -110,6 +119,7 @@ function rebuildCableScene(): void {
 }
 
 async function loadCableScene(): Promise<void> {
+  return // 临时禁用
   if (!props.roomId) return
   cableFocus.value = { level: 'room', roomId: props.roomId }
   const result = await request<unknown>(`/api/rooms/${props.roomId}/cable-scene`, { method: 'GET' })
@@ -165,6 +175,7 @@ const emit = defineEmits<{
 }>()
 
 const containerRef = ref<HTMLDivElement>()
+const konvaContainer = ref<HTMLDivElement>()
 const zoomLevel = ref(1)
 
 let stage: Konva.Stage | null = null
@@ -270,6 +281,7 @@ function drawRulers(layer: Konva.Layer): void {
 }
 
 function drawCables(): void {
+  return // 临时禁用
   if (!cableLayer) return
   cableLayer.destroyChildren()
   const links = props.cableLinks ?? []
@@ -522,11 +534,11 @@ function renderSnapLines(): void {
 }
 
 function init(): void {
-  if (!containerRef.value) return
-  const w = containerRef.value.clientWidth
-  const h = containerRef.value.clientHeight
+  if (!konvaContainer.value) return
+  const w = konvaContainer.value.clientWidth
+  const h = konvaContainer.value.clientHeight
 
-  stage = new Konva.Stage({ container: containerRef.value, width: w, height: h })
+  stage = new Konva.Stage({ container: konvaContainer.value, width: w, height: h })
   stage.container().style.background = '#0d1117'
 
   gridLayer = new Konva.Layer({ listening: false })
@@ -627,18 +639,20 @@ onMounted(() => {
     return
   }
   document.addEventListener('keydown', handleKeydown)
-  if (containerRef.value) {
+  if (konvaContainer.value) {
     resizeObserver = new ResizeObserver(() => {
-      if (!stage || !containerRef.value) return
-      const w = containerRef.value.clientWidth
-      const h = containerRef.value.clientHeight
-      stage.width(w); stage.height(h)
-      if (gridLayer) drawGrid(gridLayer, w * 3, h * 3)
-      if (rulerLayer) drawRulers(rulerLayer)
-      syncStageOverlay()
-      stage.batchDraw()
+      requestAnimationFrame(() => {
+        if (!stage || !konvaContainer.value) return
+        const w = konvaContainer.value.clientWidth
+        const h = konvaContainer.value.clientHeight
+        stage.width(w); stage.height(h)
+        if (gridLayer) drawGrid(gridLayer, w * 3, h * 3)
+        if (rulerLayer) drawRulers(rulerLayer)
+        syncStageOverlay()
+        stage.batchDraw()
+      })
     })
-    resizeObserver.observe(containerRef.value)
+    resizeObserver.observe(konvaContainer.value)
   }
 })
 
@@ -659,6 +673,11 @@ onUnmounted(() => {
   border: 1px solid var(--color-border, #21262d);
   border-radius: var(--radius, 6px);
   overflow: hidden;
+}
+
+.konva-stage {
+  position: absolute;
+  inset: 0;
 }
 
 .flp-zoom-controls {
