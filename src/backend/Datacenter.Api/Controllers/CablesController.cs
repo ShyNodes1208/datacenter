@@ -19,6 +19,7 @@ public sealed class CablesController(AppDbContext dbContext, IAntiforgery antifo
         [FromQuery] Guid? targetRackId,
         [FromQuery] Guid? roomId,
         [FromQuery] string? cableType,
+        [FromQuery] string? purpose,
         CancellationToken cancellationToken)
     {
         var query = dbContext.Cables.AsNoTracking();
@@ -43,6 +44,10 @@ public sealed class CablesController(AppDbContext dbContext, IAntiforgery antifo
         if (!string.IsNullOrWhiteSpace(cableType))
         {
             query = query.Where(c => c.CableType == cableType);
+        }
+        if (!string.IsNullOrWhiteSpace(purpose))
+        {
+            query = query.Where(c => c.Purpose == purpose);
         }
 
         var cables = await query
@@ -84,7 +89,8 @@ public sealed class CablesController(AppDbContext dbContext, IAntiforgery antifo
                 c.CableType,
                 c.Color,
                 c.Length,
-                c.Notes
+                c.Notes,
+                c.Purpose
             })
             .ToListAsync(cancellationToken);
 
@@ -92,7 +98,7 @@ public sealed class CablesController(AppDbContext dbContext, IAntiforgery antifo
     }
 
     public sealed record CreateCableRequest(
-        Guid SourcePortId, Guid TargetPortId, string CableType, string? Color, string? Length);
+        Guid SourcePortId, Guid TargetPortId, string CableType, string? Color, string? Length, string? Purpose);
 
     [HttpPost("cables")]
     public async Task<IActionResult> Create(CreateCableRequest request, CancellationToken cancellationToken)
@@ -130,7 +136,8 @@ public sealed class CablesController(AppDbContext dbContext, IAntiforgery antifo
             TargetPortId = request.TargetPortId,
             CableType = request.CableType.Trim(),
             Color = request.Color?.Trim(),
-            Length = request.Length?.Trim()
+            Length = request.Length?.Trim(),
+            Purpose = string.IsNullOrWhiteSpace(request.Purpose) ? "正常" : request.Purpose.Trim()
         };
         dbContext.Cables.Add(cable);
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -249,6 +256,7 @@ public sealed class CablesController(AppDbContext dbContext, IAntiforgery antifo
                 var cableType = RowCell(worksheet, row, headerMap, "线缆类型");
                 var color = RowCell(worksheet, row, headerMap, "颜色");
                 var length = RowCell(worksheet, row, headerMap, "长度");
+                var purpose = RowCell(worksheet, row, headerMap, "线路用途") ?? "正常";
 
                 // 必填校验
                 if (string.IsNullOrWhiteSpace(srcDevice))
@@ -336,7 +344,8 @@ public sealed class CablesController(AppDbContext dbContext, IAntiforgery antifo
                         TargetPortId = tgtPort.Id,
                         CableType = cableType,
                         Color = string.IsNullOrWhiteSpace(color) ? null : color,
-                        Length = string.IsNullOrWhiteSpace(length) ? null : length
+                        Length = string.IsNullOrWhiteSpace(length) ? null : length,
+                        Purpose = purpose
                     };
                     dbContext.Cables.Add(cable);
                     await dbContext.SaveChangesAsync(cancellationToken);
