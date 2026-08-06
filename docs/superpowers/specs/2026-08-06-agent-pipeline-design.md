@@ -278,12 +278,15 @@ Claude 自动执行。
 4. 初始化 state.json (phase: PLANNING, status: running)
 5. 完成 planning → set phase = BACKEND
 6. 直接执行 BACKEND:
-   a. 读 state.json → 读 phases.backend.handoffNote（首次为空）
-   b. 设 _invoked = true
-   c. Bash: codex exec -p "$(cat tasks/...-task.md)"  (同步等待)
-   d. 检查退出码 + git log 验证
-   e. 设 _invoked = false, status = done, 填充 commit/filesChanged/testResults
-   f. 写 handoffNote
+   a. 检查 retryCount >= 2 → phase = PAUSED，跳到步骤 12
+   b. 读 state.json → 读 phases.backend.handoffNote（首次为空）
+   c. 设 _invoked = true, status = in-progress
+   d. Bash: codex exec -p "$(cat tasks/...-task.md)"  (同步等待，超时 30min)
+   e. 检查退出码:
+      - 0 + git log 有新 commit → 继续 f
+      - 非 0 或超时 → 设 _invoked = false, status = failed, retryCount++, 写 error 到 errors[], 回到 a
+   f. 设 _invoked = false, status = done, 填充 commit/filesChanged/testResults
+   g. 写 handoffNote
 7. 判断 type:
    - backend-only → 跳过 FRONTEND，phase = REVIEW
    - fullstack/frontend-only → phase = FRONTEND，启动 Monitor
@@ -292,24 +295,33 @@ Claude 自动执行。
    b. Monitor 等待 FRONTEND:done
    c. 检测到 done → 停止 Monitor → 验证 phases.frontend.commit 非空 → phase = REVIEW
 9. 直接执行 REVIEW:
-   a. 生成 review task 文件（包含 backend + frontend 的 handoffNote + diff 范围）
-   b. 设 _invoked = true
-   c. Bash: codex exec -p "$(cat tasks/...-review-task.md)"  (同步等待)
-   d. 读 tasks/active/review-output.json → 校验 JSON Schema → 合并到 state.json
-   e. 判断 verdict:
+   a. 检查 retryCount >= 2 → phase = PAUSED，跳到步骤 12
+   b. 生成 review task 文件（包含 backend + frontend 的 handoffNote + diff 范围）
+   c. 设 _invoked = true, status = in-progress
+   d. Bash: codex exec -p "$(cat tasks/...-review-task.md)"  (同步等待，超时 15min)
+   e. 检查退出码:
+      - 0 → 继续 f
+      - 非 0 或超时 → 设 _invoked = false, status = failed, retryCount++, 写 error, 回到 a
+   f. 读 tasks/active/review-output.json → 校验 JSON → 合并到 state.json
+   g. 判断 verdict:
       - approved / approved_with_issues → phase = VERIFY
-      - rejected + retryCount < 2 → 回退到受影响阶段（retryCount++）
-      - rejected + retryCount >= 2 → phase = PAUSED，通知用户
+      - rejected → retryCount++, 按 affectedPhase 回退到步骤 6 或 8（retryCount < 2 时重试，>= 2 时到步骤 12 PAUSED）
 10. 直接执行 VERIFY:
     a. dotnet build + dotnet test
     b. npm run build + npx vitest run + npx vue-tsc
     c. git diff 校验
     d. 全部通过 → phase = DONE
-    e. 任一失败 → phase = PAUSED
+    e. 任一失败 → phase = PAUSED，跳到步骤 12
 11. DONE:
     a. 释放模块锁
     b. 移动 state.json + watch.sh + watch.pid → tasks/completed/
     c. 交付报告给用户
+12. PAUSED 等待恢复:
+    a. 通知用户：流水线暂停，原因见 errors 数组
+    b. 进入轮询：每 2 秒读 state.json 的 phase 字段
+    c. 用户修复后手动改 phase（如 BACKEND、FRONTEND、VERIFY）和 status = running
+    d. 检测到 phase != PAUSED → 重置目标阶段的 retryCount = 0，从对应步骤（6/8/10）继续执行
+    e. 检测到 status = aborted → 退出流水线
 ```
 
 ## Crash Recovery
@@ -503,7 +515,7 @@ backend-only: BACKEND → REVIEW (跳过 FRONTEND)
 ## 验收标准
 
 - [ ] AC-01：用户提需求后，Claude 生成 task + state.json，phase 从 PLANNING 开始
-- [ ] AC-02：BLANNING 完成后，Claude 直接执行 BACKEND（Bash 调用 Codex，同步等待）
+- [ ] AC-02：PLANNING 完成后，Claude 直接执行 BACKEND（Bash 调用 Codex，同步等待）
 - [ ] AC-03：Codex 完成后按 task 文件指令更新 state.json（commit/testResults/handoffNote）
 - [ ] AC-04：FRONTEND 阶段，Monitor 检测到 `frontend.status = done` 后 Claude 推进到 REVIEW
 - [ ] AC-05：REVIEW 阶段，Codex 输出 review-output.json，blocking 时按 affectedPhase 回退
