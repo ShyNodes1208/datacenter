@@ -159,7 +159,6 @@
             :height-u="selectedRack.heightU"
             :u-slots="inspectorSlots"
             :room-id="roomId"
-            compact
             @server-click="goToServer"
           />
 
@@ -387,7 +386,10 @@ function formatOperatedAt(iso: string): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
 }
 
+let inspectorSeq = 0
+
 async function loadInspectorData(rackId: string): Promise<void> {
+  const seq = ++inspectorSeq
   inspectorLoading.value = true
   inspectorSlots.value = []
 
@@ -401,6 +403,8 @@ async function loadInspectorData(rackId: string): Promise<void> {
     `/api/racks/${encodeURIComponent(rackId)}/availability`,
     { method: 'GET' },
   )
+
+  if (seq !== inspectorSeq) return
 
   if (availResult.ok && availResult.data) {
     const map = new Map<number, { serverName: string; serverId?: string; deviceType: string; deviceHeight: number }>()
@@ -417,6 +421,7 @@ async function loadInspectorData(rackId: string): Promise<void> {
     inspectorSlots.value = buildUSlotsFromOccupancy(map, rack.heightU)
   }
 
+  if (seq !== inspectorSeq) return
   inspectorLoading.value = false
 }
 

@@ -310,16 +310,17 @@ function isNetworkDevice(deviceType: string | undefined): boolean {
   position: relative;
   height: 100%;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding: 2px 10px;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 12px;
   overflow: hidden;
 }
 
 .rfp__block-port-btn {
   position: absolute;
-  top: 2px;
-  right: 4px;
+  top: 4px;
+  right: 6px;
   background: none;
   border: none;
   font-size: 13px;
@@ -337,6 +338,7 @@ function isNetworkDevice(deviceType: string | undefined): boolean {
 .rfp__block-name {
   font-size: 13px;
   font-weight: 600;
+  line-height: 1.3;
   color: #fff;
   white-space: nowrap;
   overflow: hidden;
@@ -354,20 +356,20 @@ function isNetworkDevice(deviceType: string | undefined): boolean {
 .rfp__block-meta {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 6px;
-  margin-top: 1px;
 }
 
 .rfp__block-tag {
-  font-size: 10px;
-  padding: 0px 5px;
+  font-size: 11px;
+  padding: 0px 6px;
   border-radius: 3px;
   white-space: nowrap;
-  line-height: 16px;
+  line-height: 18px;
 }
 
 .rfp__block-u {
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(255,255,255,0.6);
   white-space: nowrap;
 }
