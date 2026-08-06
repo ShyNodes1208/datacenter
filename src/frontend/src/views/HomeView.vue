@@ -46,7 +46,7 @@ const { stats, rooms, error: dashboardError, loadStats, loadRooms: loadRoomsFrom
 /** null = not finished loading; empty array = loaded empty list */
 const roomsError = ref('')
 
-const expandedRoomId = ref<string | null>(null)
+const expandedRoomIds = ref<Set<string>>(new Set())
 
 interface RackSummaryItem {
   id: string
@@ -215,8 +215,8 @@ async function deleteRoom(room: RoomItem): Promise<void> {
     return
   }
 
-  if (expandedRoomId.value === room.id) {
-    expandedRoomId.value = null
+  if (expandedRoomIds.value.has(room.id)) {
+    expandedRoomIds.value.delete(room.id)
   }
   if (editingRoomId.value === room.id) {
     cancelEdit()
@@ -224,6 +224,7 @@ async function deleteRoom(room: RoomItem): Promise<void> {
   deleteErrorRoomId.value = null
   deleteSubmitting.value = false
   await refreshDashboard()
+  expandedRoomIds.value.clear()
 }
 
 async function fetchCreateCsrfToken(): Promise<string | null> {
@@ -277,11 +278,11 @@ async function onCreateRoom(): Promise<void> {
 }
 
 async function toggleRoom(roomId: string): Promise<void> {
-  if (expandedRoomId.value === roomId) {
-    expandedRoomId.value = null
+  if (expandedRoomIds.value.has(roomId)) {
+    expandedRoomIds.value.delete(roomId)
     return
   }
-  expandedRoomId.value = roomId
+  expandedRoomIds.value.add(roomId)
 
   if (!roomRackSummaries.value.has(roomId)) {
     summaryLoading.value.add(roomId)
@@ -760,7 +761,7 @@ async function handleServerFileChange(event: Event): Promise<void> {
       <div v-else-if="rooms !== null" class="room-cards">
         <div v-for="room in rooms" :key="room.id" class="room-card">
           <div class="room-card__header" @click="toggleRoom(room.id)">
-            <span class="room-card__arrow">{{ expandedRoomId === room.id ? '▼' : '▶' }}</span>
+            <span class="room-card__arrow">{{ expandedRoomIds.has(room.id) ? '▼' : '▶' }}</span>
             <span class="room-card__name">{{ room.name }}</span>
             <span class="room-card__status" :class="room.status === '启用' ? 'is-on' : 'is-off'">{{ room.status }}</span>
             <button class="btn btn--small btn--muted" @click.stop="router.push(`/rooms/${room.id}/floorplan`)">平面图</button>
@@ -808,7 +809,7 @@ async function handleServerFileChange(event: Event): Promise<void> {
             <div v-if="editError" class="error" role="alert" aria-live="polite">{{ editError }}</div>
           </div>
 
-          <div v-if="expandedRoomId === room.id" class="room-rack-grid">
+          <div v-if="expandedRoomIds.has(room.id)" class="room-rack-grid">
             <div v-if="summaryLoading.has(room.id)">加载中...</div>
             <div v-else-if="!roomRackSummaries.has(room.id)" class="muted">加载失败</div>
             <div v-else-if="roomRackSummaries.get(room.id)!.racks.length === 0" class="muted">
