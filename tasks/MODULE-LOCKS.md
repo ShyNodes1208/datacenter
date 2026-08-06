@@ -299,6 +299,11 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 - 规格锁及 CR 临时锁：三项 TASK-0007 规格锁和全部 CR 临时文档锁继续保持 RELEASED，未重新认领
 - 后续限制：不得继续修改 TASK-0007 实施路径；下一步只能进入独立合并门禁或分支合并流程
 
+| TASK-0021 | src/frontend/src/views/FloorplanView.vue | Cursor Frontend | 2026-08-06 +08:00 | CLAIMED | Reviewer：Codex Reviewer；TASK-0021 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0021 | src/frontend/src/components/FloorplanCanvas.vue | Cursor Frontend | 2026-08-06 +08:00 | CLAIMED | Reviewer：Codex Reviewer；TASK-0021 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0021 | src/frontend/src/components/CableLayer.vue | Cursor Frontend | 2026-08-06 +08:00 | CLAIMED | Reviewer：Codex Reviewer；TASK-0021 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0021 | src/frontend/src/components/CableLegend.vue | Cursor Frontend | 2026-08-06 +08:00 | CLAIMED | Reviewer：Codex Reviewer；TASK-0021 COMPLETED 或 CANCELLED 时释放 | |
+
 ## 冲突处理示例
 
 若 TASK-1001 已以 `CLAIMED` 占用 `src/backend/Assets/`，TASK-1002 申请 `src/backend/Assets/Racks/` 时属于子路径重叠。TASK-1002 不得认领或修改，必须转为 `BLOCKED` 并记录 TASK-1001；待 TASK-1001 释放后重新检查并认领。

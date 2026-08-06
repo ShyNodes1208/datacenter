@@ -1,5 +1,30 @@
 <template>
   <div ref="containerRef" class="floorplan-canvas" @contextmenu.prevent>
+    <div
+      v-if="cableScene"
+      class="cable-scene-overlay"
+      :style="stageOverlayStyle"
+    >
+      <CableLayer
+        :scene="cableScene"
+        :animation-enabled="animationEnabled"
+        @bundle-click="onBundleClick"
+      />
+    </div>
+
+    <div v-if="cableScene" class="cable-ui-chrome">
+      <CableBreadcrumb
+        :items="cableScene.breadcrumbs"
+        @navigate="onNavigate"
+      />
+      <CableLegend
+        :legend="cableScene.legend"
+        :detail-rows="cableScene.detailRows"
+        :animation-enabled="animationEnabled"
+        @toggle-animation="animationEnabled = !animationEnabled"
+      />
+    </div>
+
     <div class="flp-zoom-controls">
       <button class="flp-zoom-btn" title="缩小" @click="zoomOut">−</button>
       <span class="flp-zoom-level">{{ Math.round(zoomLevel * 100) }}%</span>
@@ -10,10 +35,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import Konva from 'konva'
 import type { RackItem } from '../composables/useFloorplan'
 import type { SnapLine } from '../composables/useFloorplanEditor'
+import { useApi } from '../composables/useApi'
+import {
+  buildCableScene,
+  mapSnapshotToFloorplan,
+  parseCableSnapshot,
+  type CableFocus,
+  type CableScene,
+  type CableSnapshot,
+} from '../composables/useCableScene'
+import CableLayer from './CableLayer.vue'
+import CableBreadcrumb from './CableBreadcrumb.vue'
+import CableLegend from './CableLegend.vue'
 
 export interface CableLink {
   source: { rackId: string; rackCode: string; x: number; y: number }
@@ -23,15 +60,103 @@ export interface CableLink {
 }
 
 const props = defineProps<{
+  roomId: string
   racks: RackItem[]
   mode: 'view' | 'edit'
   snapLines: SnapLine[]
   cableLinks?: CableLink[]
+  selectedRackId?: string | null
+  searchHighlightIds?: string[]
   highlightedRackIds?: string[]
   toCanvasX: (db: number) => number
   toCanvasY: (db: number) => number
   snapPosition: (rackId: string, x: number, y: number) => { x: number; y: number }
 }>()
+
+const { request } = useApi()
+
+const cableFocus = ref<CableFocus>({ level: 'room', roomId: '' })
+const animationEnabled = ref(true)
+const cableScene = ref<CableScene | null>(null)
+const cableSnapshot = ref<CableSnapshot | null>(null)
+const cableFilters = ref({ purposes: [] as string[], cableTypes: [] as string[] })
+
+const stagePos = ref({ x: 0, y: 0 })
+const stageScale = ref(1)
+const stageSize = ref({ w: 0, h: 0 })
+
+const stageOverlayStyle = computed(() => ({
+  transform: `translate(${stagePos.value.x}px, ${stagePos.value.y}px) scale(${stageScale.value})`,
+  transformOrigin: '0 0',
+  width: `${stageSize.value.w}px`,
+  height: `${stageSize.value.h}px`,
+}))
+
+function syncStageOverlay(): void {
+  if (!stage || !containerRef.value) return
+  stagePos.value = { x: stage.x(), y: stage.y() }
+  stageScale.value = stage.scaleX()
+  stageSize.value = { w: stage.width(), h: stage.height() }
+}
+
+function rebuildCableScene(): void {
+  if (!cableSnapshot.value || !props.roomId) return
+  const mapped = mapSnapshotToFloorplan(cableSnapshot.value, props.toCanvasX, props.toCanvasY, {
+    rulerSize: RULER_SIZE,
+    rackWidth: RACK_W,
+    rackHeight: RACK_H,
+  })
+  cableScene.value = buildCableScene(mapped, cableFocus.value, cableFilters.value, props.roomId)
+}
+
+async function loadCableScene(): Promise<void> {
+  if (!props.roomId) return
+  cableFocus.value = { level: 'room', roomId: props.roomId }
+  const result = await request<unknown>(`/api/rooms/${props.roomId}/cable-scene`, { method: 'GET' })
+  if (!result.ok || !result.data) return
+  const parsed = parseCableSnapshot(result.data)
+  if (!parsed) return
+  cableSnapshot.value = parsed
+  rebuildCableScene()
+}
+
+function onBundleClick(bundleId: string): void {
+  const parts = bundleId.split('|')
+  if (parts[0] !== '__none__') {
+    cableFocus.value = { level: 'rack', rackId: parts[0] }
+    rebuildCableScene()
+  }
+}
+
+function onBackgroundClick(): void {
+  if (!props.roomId) return
+  cableFocus.value = { level: 'room', roomId: props.roomId }
+  rebuildCableScene()
+}
+
+function onNavigate(level: CableFocus['level'], id: string): void {
+  switch (level) {
+    case 'room':
+      cableFocus.value = { level: 'room', roomId: id || props.roomId }
+      break
+    case 'rack':
+      cableFocus.value = { level: 'rack', rackId: id }
+      break
+    case 'device':
+      cableFocus.value = { level: 'device', deviceId: id }
+      break
+    case 'port':
+      cableFocus.value = { level: 'port', portId: id }
+      break
+  }
+  rebuildCableScene()
+}
+
+function handleKeydown(e: KeyboardEvent): void {
+  if (e.key === 'Escape' && cableFocus.value.level !== 'room') {
+    onBackgroundClick()
+  }
+}
 
 const emit = defineEmits<{
   'rack-click': [rackId: string]
@@ -59,37 +184,40 @@ const RACK_H = 100
 
 const CABLE_COLORS: Record<string, string> = { 铜缆: '#e67e22', 光纤: '#f1c40f', DAC: '#3498db' }
 
+const ACCENT = '#39d2c0'
+const PATH_HIGHLIGHT = '#f85149'
+
 function occColor(occ: number | undefined, total: number): { fill: string; stroke: string } {
-  if (!occ || occ === 0) return { fill: 'transparent', stroke: '#999' }
+  if (!occ || occ === 0) return { fill: '#161b22', stroke: '#30363d' }
   const pct = occ / total
-  if (pct > 0.8) return { fill: '#fce4e4', stroke: '#e74c3c' }
-  if (pct >= 0.5) return { fill: '#fef3e0', stroke: '#f0ad4e' }
-  return { fill: '#e8f8e8', stroke: '#52c41a' }
+  if (pct > 0.8) return { fill: '#3d1f1f', stroke: '#f85149' }
+  if (pct >= 0.5) return { fill: '#3d3520', stroke: '#d29922' }
+  return { fill: '#1a3a5c', stroke: '#58a6ff' }
 }
 
 function drawGrid(layer: Konva.Layer, w: number, h: number): void {
   layer.destroyChildren()
   for (let x = 0; x <= w; x += GRID) {
     layer.add(new Konva.Line({
-      points: [x, 0, x, h], stroke: '#eee', strokeWidth: 0.3,
+      points: [x, 0, x, h], stroke: '#1c2533', strokeWidth: 0.3,
       listening: false,
     }))
   }
   for (let y = 0; y <= h; y += GRID) {
     layer.add(new Konva.Line({
-      points: [0, y, w, y], stroke: '#eee', strokeWidth: 0.3,
+      points: [0, y, w, y], stroke: '#1c2533', strokeWidth: 0.3,
       listening: false,
     }))
   }
   for (let x = 0; x <= w; x += GRID_MAJOR) {
     layer.add(new Konva.Line({
-      points: [x, 0, x, h], stroke: '#ddd', strokeWidth: 0.8,
+      points: [x, 0, x, h], stroke: '#21262d', strokeWidth: 0.8,
       listening: false,
     }))
   }
   for (let y = 0; y <= h; y += GRID_MAJOR) {
     layer.add(new Konva.Line({
-      points: [0, y, w, y], stroke: '#ddd', strokeWidth: 0.8,
+      points: [0, y, w, y], stroke: '#21262d', strokeWidth: 0.8,
       listening: false,
     }))
   }
@@ -105,15 +233,15 @@ function drawRulers(layer: Konva.Layer): void {
 
   layer.add(new Konva.Rect({
     x: RULER_SIZE, y: 0, width: w - RULER_SIZE, height: RULER_SIZE,
-    fill: '#f0f2f5', listening: false,
+    fill: '#161b22', listening: false,
   }))
   layer.add(new Konva.Rect({
     x: 0, y: RULER_SIZE, width: RULER_SIZE, height: h - RULER_SIZE,
-    fill: '#f0f2f5', listening: false,
+    fill: '#161b22', listening: false,
   }))
   layer.add(new Konva.Rect({
     x: 0, y: 0, width: RULER_SIZE, height: RULER_SIZE,
-    fill: '#e0e0e0', listening: false,
+    fill: '#21262d', listening: false,
   }))
 
   const majorInterval = GRID_MAJOR * scale
@@ -124,7 +252,7 @@ function drawRulers(layer: Konva.Layer): void {
     const tickH = isMajor ? 16 : 8
     layer.add(new Konva.Line({
       points: [x, 0, x, tickH],
-      stroke: '#999', strokeWidth: 0.5, listening: false,
+      stroke: '#484f58', strokeWidth: 0.5, listening: false,
     }))
   }
 
@@ -134,7 +262,7 @@ function drawRulers(layer: Konva.Layer): void {
     const tickW = isMajor ? 16 : 8
     layer.add(new Konva.Line({
       points: [0, y, tickW, y],
-      stroke: '#999', strokeWidth: 0.5, listening: false,
+      stroke: '#484f58', strokeWidth: 0.5, listening: false,
     }))
   }
 
@@ -197,6 +325,7 @@ function zoomIn(): void {
   })
   zoomLevel.value = newScale
   drawRulers(rulerLayer!)
+  syncStageOverlay()
   stage.batchDraw()
 }
 
@@ -212,6 +341,7 @@ function zoomOut(): void {
   })
   zoomLevel.value = newScale
   drawRulers(rulerLayer!)
+  syncStageOverlay()
   stage.batchDraw()
 }
 
@@ -229,6 +359,7 @@ function fitToScreen(): void {
     stage.position({ x: 0, y: 0 })
     zoomLevel.value = 1
     drawRulers(rulerLayer!)
+    syncStageOverlay()
     stage.batchDraw()
     return
   }
@@ -248,6 +379,7 @@ function fitToScreen(): void {
   })
   zoomLevel.value = scale
   drawRulers(rulerLayer!)
+  syncStageOverlay()
   stage.batchDraw()
 }
 
@@ -262,7 +394,7 @@ function renderRacks(): void {
     const cx = props.toCanvasX(rack.x)
     const cy = props.toCanvasY(rack.y)
     const capPct = rack.heightU > 0 ? (rack.occupiedU ?? 0) / rack.heightU : 0
-    const barColor = capPct > 0.8 ? '#e74c3c' : capPct >= 0.5 ? '#f0ad4e' : '#52c41a'
+    const barColor = capPct > 0.8 ? '#f85149' : capPct >= 0.5 ? '#d29922' : '#3fb950'
     const barHeight = 4
 
     const group = new Konva.Group({
@@ -278,11 +410,26 @@ function renderRacks(): void {
       cornerRadius: 3, name: 'rackRect',
     })
 
-    const isHighlighted = (props.highlightedRackIds ?? []).includes(rack.id)
-    if (isHighlighted) {
-      rect.stroke('#e74c3c')
+    const isSelected = props.selectedRackId === rack.id
+    const isSearchHit = (props.searchHighlightIds ?? []).includes(rack.id)
+    const isPathHit = (props.highlightedRackIds ?? []).includes(rack.id)
+
+    if (isSelected) {
+      rect.stroke(ACCENT)
       rect.strokeWidth(3)
-      rect.shadowColor('#e74c3c')
+      rect.shadowColor(ACCENT)
+      rect.shadowBlur(10)
+      rect.shadowEnabled(true)
+    } else if (isSearchHit) {
+      rect.stroke(ACCENT)
+      rect.strokeWidth(2.5)
+      rect.shadowColor(ACCENT)
+      rect.shadowBlur(6)
+      rect.shadowEnabled(true)
+    } else if (isPathHit) {
+      rect.stroke(PATH_HIGHLIGHT)
+      rect.strokeWidth(3)
+      rect.shadowColor(PATH_HIGHLIGHT)
       rect.shadowBlur(8)
       rect.shadowEnabled(true)
     }
@@ -290,7 +437,7 @@ function renderRacks(): void {
     const label = new Konva.Text({
       text: `${rack.code}\n${rack.occupiedU ?? 0}/${rack.heightU}U`,
       fontSize: 10, fontFamily: 'sans-serif',
-      fill: '#2c3e50', align: 'center', verticalAlign: 'middle',
+      fill: '#c9d1d9', align: 'center', verticalAlign: 'middle',
       width: RACK_W, height: RACK_H - 6,
       listening: false,
       lineHeight: 1.3,
@@ -299,7 +446,7 @@ function renderRacks(): void {
     const capBarBg = new Konva.Rect({
       x: 0, y: RACK_H - barHeight,
       width: RACK_W, height: barHeight,
-      fill: '#e0e0e0',
+      fill: '#30363d',
       listening: false, name: 'capBarBg',
     })
     const capBarFill = new Konva.Rect({
@@ -315,7 +462,7 @@ function renderRacks(): void {
       opacity: 0.92,
     })
     tooltip.add(new Konva.Tag({
-      fill: '#2c3e50', cornerRadius: 4,
+      fill: '#21262d', cornerRadius: 4,
       pointerDirection: 'left', pointerWidth: 6, pointerHeight: 8,
     }))
     tooltip.add(new Konva.Text({
@@ -380,6 +527,7 @@ function init(): void {
   const h = containerRef.value.clientHeight
 
   stage = new Konva.Stage({ container: containerRef.value, width: w, height: h })
+  stage.container().style.background = '#0d1117'
 
   gridLayer = new Konva.Layer({ listening: false })
   drawGrid(gridLayer, w * 3, h * 3)
@@ -418,20 +566,36 @@ function init(): void {
     })
     updateZoomLevel()
     drawRulers(rulerLayer!)
+    syncStageOverlay()
     stage!.batchDraw()
   })
 
   let panning = false
-  stage.on('mousedown', (e) => { if (e.target === stage) panning = true })
+  let panMoved = false
+  stage.on('mousedown', (e) => {
+    if (e.target === stage) {
+      panning = true
+      panMoved = false
+    }
+  })
   stage.on('mousemove', (e) => {
     if (!panning) return
+    panMoved = true
     const p = stage!.position()
     stage!.position({ x: p.x + e.evt.movementX, y: p.y + e.evt.movementY })
     drawRulers(rulerLayer!)
+    syncStageOverlay()
     stage!.batchDraw()
   })
-  stage.on('mouseup', () => { panning = false })
+  stage.on('mouseup', () => {
+    if (panning && !panMoved && !dragMoved) {
+      onBackgroundClick()
+    }
+    panning = false
+  })
   stage.on('mouseleave', () => { panning = false })
+
+  syncStageOverlay()
 }
 
 watch(() => props.mode, (m) => {
@@ -443,10 +607,17 @@ watch(() => props.mode, (m) => {
 watch(() => props.racks, () => { renderRacks() }, { deep: true })
 watch(() => props.snapLines, () => { renderSnapLines() }, { deep: true })
 watch(() => props.cableLinks, () => { drawCables() }, { deep: true })
-watch(() => props.highlightedRackIds, () => {
-  renderRacks()
-  drawCables()
-})
+watch(
+  () => [props.highlightedRackIds, props.searchHighlightIds, props.selectedRackId],
+  () => {
+    renderRacks()
+    drawCables()
+  },
+)
+
+watch(() => props.roomId, (id) => {
+  if (id) void loadCableScene()
+}, { immediate: true })
 
 onMounted(() => {
   try {
@@ -455,6 +626,7 @@ onMounted(() => {
     console.error('FloorplanCanvas init failed:', err)
     return
   }
+  document.addEventListener('keydown', handleKeydown)
   if (containerRef.value) {
     resizeObserver = new ResizeObserver(() => {
       if (!stage || !containerRef.value) return
@@ -463,6 +635,7 @@ onMounted(() => {
       stage.width(w); stage.height(h)
       if (gridLayer) drawGrid(gridLayer, w * 3, h * 3)
       if (rulerLayer) drawRulers(rulerLayer)
+      syncStageOverlay()
       stage.batchDraw()
     })
     resizeObserver.observe(containerRef.value)
@@ -470,6 +643,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  document.removeEventListener('keydown', handleKeydown)
   resizeObserver?.disconnect()
   stage?.destroy()
 })
@@ -481,8 +655,8 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   min-height: 400px;
-  background: var(--color-bg, #f5f7fa);
-  border: 1px solid var(--color-border, #e0e0e0);
+  background: var(--color-bg, #0d1117);
+  border: 1px solid var(--color-border, #21262d);
   border-radius: var(--radius, 6px);
   overflow: hidden;
 }
@@ -495,8 +669,8 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid var(--color-border, #e0e0e0);
+  background: rgba(22, 27, 34, 0.92);
+  border: 1px solid var(--color-border, #21262d);
   border-radius: var(--radius, 6px);
   padding: 4px 8px;
   box-shadow: var(--shadow, 0 1px 3px rgba(0, 0, 0, 0.1));
@@ -508,13 +682,13 @@ onUnmounted(() => {
   height: 24px;
   border: 1px solid var(--color-border, #e0e0e0);
   border-radius: 4px;
-  background: var(--color-bg-card, #fff);
+  background: var(--color-bg-card, #161b22);
   cursor: pointer;
   font-size: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-text, #333);
+  color: var(--color-text, #c9d1d9);
 }
 
 .flp-zoom-btn:hover {
@@ -531,5 +705,32 @@ onUnmounted(() => {
 .flp-zoom-btn--fit {
   margin-left: 4px;
   font-size: 12px;
+}
+
+.cable-scene-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 11;
+  overflow: visible;
+}
+
+.cable-scene-overlay :deep(.cable-layer) {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.cable-ui-chrome {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  max-width: min(360px, 40vw);
+  pointer-events: auto;
 }
 </style>
