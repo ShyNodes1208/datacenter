@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../composables/useApi'
 import { useAuth } from '../composables/useAuth'
@@ -8,6 +8,16 @@ import RackFrontPanel from '../components/RackFrontPanel.vue'
 import RackOperationDrawer from '../components/RackOperationDrawer.vue'
 import SwitchPortDrawer from '../components/SwitchPortDrawer.vue'
 import NetworkPathDrawer, { type NetworkPathResult } from '../components/NetworkPathDrawer.vue'
+import CableLayer from '../components/CableLayer.vue'
+import {
+  buildCableScene,
+  formatPortId,
+  mapSnapshotRelativeToRack,
+  parseCableSnapshot,
+  type CableFocus,
+  type CableScene,
+  type CableSnapshot,
+} from '../composables/useCableScene'
 import type { USlot } from '../components/RackFrontPanel.vue'
 import type { SwitchPortItem } from '../components/SwitchPortDrawer.vue'
 
@@ -134,8 +144,69 @@ const networkPathLoading = ref(false)
 const networkPathError = ref('')
 const networkPathResult = ref<NetworkPathResult | null>(null)
 
+const cableSnapshotCache = ref<CableSnapshot | null>(null)
+const cableSceneLoaded = ref(false)
+const deviceCableFocus = ref<CableFocus | null>(null)
+const deviceCableScene = ref<CableScene | null>(null)
+
+async function ensureCableSceneLoaded(): Promise<void> {
+  if (cableSceneLoaded.value || !rack.value?.roomId) return
+  const result = await request<unknown>(`/api/rooms/${rack.value.roomId}/cable-scene`, { method: 'GET' })
+  if (!result.ok || !result.data) return
+  const parsed = parseCableSnapshot(result.data)
+  if (!parsed) return
+  cableSnapshotCache.value = parsed
+  cableSceneLoaded.value = true
+}
+
+function rebuildDeviceCableScene(): void {
+  if (!cableSnapshotCache.value || !deviceCableFocus.value || !rack.value) return
+  const mapped = mapSnapshotRelativeToRack(cableSnapshotCache.value, rack.value.id, {
+    rackWidth: 60,
+    rackHeight: 100,
+    offsetX: 80,
+    offsetY: 40,
+  })
+  deviceCableScene.value = buildCableScene(
+    mapped,
+    deviceCableFocus.value,
+    { purposes: [], cableTypes: [] },
+    rack.value.roomId,
+  )
+}
+
+function showDeviceCables(deviceId: string): void {
+  deviceCableFocus.value = { level: 'device', deviceId }
+  rebuildDeviceCableScene()
+}
+
+function showPortPath(deviceId: string, portName: string): void {
+  deviceCableFocus.value = { level: 'port', portId: formatPortId(deviceId, portName) }
+  rebuildDeviceCableScene()
+}
+
+function clearDeviceCables(): void {
+  deviceCableScene.value = null
+  deviceCableFocus.value = null
+}
+
+function handlePortTrace(portName: string): void {
+  showPortPath(switchDrawerDeviceId.value, portName)
+}
+
+function handleCableKeydown(e: KeyboardEvent): void {
+  if (e.key === 'Escape' && deviceCableScene.value) {
+    clearDeviceCables()
+  }
+}
+
 onMounted(() => {
   void loadData()
+  document.addEventListener('keydown', handleCableKeydown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleCableKeydown)
 })
 
 const usagePercent = computed(() => {
@@ -202,6 +273,9 @@ async function openSwitchDrawer(serverId: string): Promise<void> {
     return
   }
   switchPorts.value = result.data.map(parseSwitchPortItem).filter(Boolean) as SwitchPortItem[]
+
+  await ensureCableSceneLoaded()
+  showDeviceCables(serverId)
 }
 
 function handleNavigate(serverId: string): void {
@@ -731,6 +805,19 @@ async function deleteRack(): Promise<void> {
         </div>
       </div>
 
+      <div v-if="deviceCableScene" class="cable-viz-panel">
+        <div class="cable-viz-header">
+          <span>线路视图</span>
+          <button type="button" class="btn btn--small" @click="clearDeviceCables">关闭</button>
+        </div>
+        <div class="cable-viz-canvas">
+          <CableLayer
+            :scene="deviceCableScene"
+            :animation-enabled="true"
+          />
+        </div>
+      </div>
+
       <RackOperationDrawer
         :visible="importVisible"
         title="导入设备"
@@ -957,6 +1044,7 @@ async function deleteRack(): Promise<void> {
         :error="switchPortsError"
         @close="switchDrawerVisible = false"
         @navigate="handleNavigate"
+        @port-trace="handlePortTrace"
       />
 
       <NetworkPathDrawer
@@ -1138,5 +1226,29 @@ async function deleteRack(): Promise<void> {
   font-size: var(--font-sm);
   font-weight: 600;
   color: var(--color-primary);
+}
+
+.cable-viz-panel {
+  margin-top: var(--space-md);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg-card);
+  overflow: hidden;
+}
+
+.cable-viz-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-xs) var(--space-sm);
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--font-sm);
+  font-weight: 600;
+}
+
+.cable-viz-canvas {
+  position: relative;
+  height: 360px;
+  background: var(--color-bg, #f5f7fa);
 }
 </style>

@@ -26,6 +26,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'close'): void
   (e: 'navigate', serverId: string): void
+  (e: 'port-trace', portName: string): void
 }>()
 
 const CABLE_COLORS: Record<string, string> = {
@@ -73,8 +74,19 @@ const isEmpty = computed(() => !props.loading && !props.error && props.ports.len
             </tr>
           </thead>
           <tbody>
-            <tr v-for="port in ports" :key="port.id">
-              <td>{{ port.portName }}</td>
+            <tr v-for="port in ports" :key="port.id" :class="{ 'port-row--connected': !!port.connectedToServerId }">
+              <td>
+                <button
+                  v-if="port.connectedToServerId"
+                  type="button"
+                  class="port-trace-btn"
+                  title="追踪连接路径"
+                  @click="emit('port-trace', port.portName)"
+                >
+                  🔗 {{ port.portName }}
+                </button>
+                <span v-else>{{ port.portName }}</span>
+              </td>
               <td>{{ port.portType }}</td>
               <td>{{ port.speed ?? '—' }}</td>
               <td>
@@ -259,6 +271,24 @@ const isEmpty = computed(() => !props.loading && !props.error && props.ports.len
 
 .link-btn:hover {
   color: var(--color-primary-dark, #357abd);
+}
+
+.port-row--connected {
+  background: rgba(59, 130, 246, 0.04);
+}
+
+.port-trace-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-primary, #4a90d9);
+  cursor: pointer;
+  font-size: inherit;
+  font-weight: 500;
+}
+
+.port-trace-btn:hover {
+  text-decoration: underline;
 }
 
 .btn {
