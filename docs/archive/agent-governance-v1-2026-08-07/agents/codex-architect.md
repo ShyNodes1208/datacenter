@@ -1,5 +1,7 @@
 ﻿# Codex Architect
 
+> 归档快照：2026-08-07 起不再作为活动规则；请以项目根目录的 AGENTS.md 与 docs/architecture/AGENT-WORKFLOW.md 为准。
+
 ## 角色定位
 
 担任项目首席技术架构师，负责总体技术方案、模块边界和技术任务拆分。

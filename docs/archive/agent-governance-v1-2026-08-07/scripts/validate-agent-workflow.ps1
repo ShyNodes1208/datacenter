@@ -1,3 +1,5 @@
+> 归档快照：来自 2026-08-07 重建前 Git 基线；本文件不再具有活动规则效力。
+
 ﻿# Compatible with Windows PowerShell 5.1 and PowerShell 7.
 [CmdletBinding()]
 param()
@@ -34,9 +36,11 @@ function Test-ContainsAll {
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $requiredFiles = @(
     "AGENTS.md",
-    "agents/codex-coordinator.md",
-    "agents/cursor-developer.md",
+    "agents/claude-product-manager.md",
+    "agents/codex-architect.md",
+    "agents/codex-backend.md",
     "agents/codex-reviewer.md",
+    "agents/cursor-frontend.md",
     "docs/architecture/AGENT-WORKFLOW.md",
     "tasks/TASK-TEMPLATE.md",
     "tasks/current-task.md",
@@ -120,16 +124,16 @@ Write-Check 8 (Test-ContainsAll $workflow $moduleTokens) "权威工作流包含�
 
 $changeTokens = @(
     "Change Request ID", "发现者", "原任务", "变更原因", "产品范围影响",
-    "技术影响", "文件影响", "测试影响", "风险", "Codex Coordinator 裁决",
-    "用户裁决", "更新后的 Requirement Source", "批准状态"
+    "技术影响", "文件影响", "测试影响", "风险", "Claude 裁决",
+    "Architect 裁决", "更新后的 Requirement Source", "批准状态"
 )
 Write-Check 9 (Test-ContainsAll $workflow $changeTokens) "权威工作流包含完整 Change Request 规则"
 
 $reviewTokens = @(
-    "独立会话或主体",
-    "不得作为 Owner、编码者或修复者",
-    "不得修改被审核的业务代码",
-    "PASS", "CHANGES_REQUESTED", "用户"
+    "Owner 与最终 Reviewer 必须是不同主体",
+    "Reviewer 不得直接修改被审核代码或文档",
+    "任何修复者不得担任最终 Reviewer",
+    "hangyu", "补偿性复审", "进入 READY 前必须校验"
 )
 Write-Check 10 (Test-ContainsAll $workflow $reviewTokens) "权威工作流包含 Reviewer 独立性与例外规则"
 
@@ -138,23 +142,11 @@ Write-Check 12 ($template.IndexOf("明确不实现范围", [System.StringCompari
 Write-Check 13 ($template.IndexOf("复杂度预算", [System.StringComparison]::Ordinal) -ge 0) "TASK-TEMPLATE.md 包含复杂度预算"
 Write-Check 14 ($template.IndexOf("需求追踪矩阵", [System.StringComparison]::Ordinal) -ge 0) "TASK-TEMPLATE.md 包含需求追踪矩阵"
 Write-Check 15 ($template.IndexOf("防过度开发检查", [System.StringComparison]::Ordinal) -ge 0) "TASK-TEMPLATE.md 包含防过度开发检查"
-Write-Check 16 ($workflow.IndexOf("防过度规划、设计和开发门禁", [System.StringComparison]::Ordinal) -ge 0) "权威工作流包含防过度开发门禁章节"
-Write-Check 17 ($workflow.IndexOf("如果删除某项仍能满足全部验收标准，应优先删除", [System.StringComparison]::Ordinal) -ge 0) "权威工作流包含最小方案原则"
-Write-Check 18 (Test-ContainsAll $workflow @("新增依赖", "停止相关工作", "Change Request")) "权威工作流包含未批准依赖停止规则"
-Write-Check 19 ($workflow.IndexOf("Reviewer 至少检查", [System.StringComparison]::Ordinal) -ge 0) "权威工作流包含 Reviewer 专项检查"
-Write-Check 20 ($workflow.IndexOf("最终完成条件", [System.StringComparison]::Ordinal) -ge 0) "权威工作流包含最终完成门禁"
-
-$legacyActiveFiles = @(
-    "agents/claude-product-manager.md",
-    "agents/codex-architect.md",
-    "agents/codex-backend.md",
-    "agents/cursor-frontend.md"
-)
-$legacyPresent = @($legacyActiveFiles | Where-Object {
-    Test-Path -LiteralPath (Join-Path $repoRoot $_) -PathType Leaf
-})
-Write-Check 21 ($legacyPresent.Count -eq 0) "旧版活动角色入口已归档"
-Write-Check 22 (Test-Path -LiteralPath (Join-Path $repoRoot "docs/archive/agent-governance-v1-2026-08-07/README.md") -PathType Leaf) "日期归档说明存在"
+Write-Check 16 ($workflow.IndexOf("防过度规划、过度设计和过度开发门禁", [System.StringComparison]::Ordinal) -ge 0) "权威工作流包含防过度开发门禁章节"
+Write-Check 17 ($workflow.IndexOf("最简单可行方案", [System.StringComparison]::Ordinal) -ge 0) "权威工作流包含最简单可行方案原则"
+Write-Check 18 (Test-ContainsAll $workflow @("新增未批准依赖", "必须停止相关工作", "Change Request")) "权威工作流包含未批准依赖停止规则"
+Write-Check 19 ($workflow.IndexOf("Reviewer 专项检查", [System.StringComparison]::Ordinal) -ge 0) "权威工作流包含 Reviewer 专项检查"
+Write-Check 20 ($workflow.IndexOf("防过度开发完成门禁", [System.StringComparison]::Ordinal) -ge 0) "权威工作流包含防过度开发完成门禁"
 
 Write-Host ("SUMMARY PASS={0} FAIL={1} TOTAL={2}" -f
     $script:PassCount, $script:FailCount, ($script:PassCount + $script:FailCount))

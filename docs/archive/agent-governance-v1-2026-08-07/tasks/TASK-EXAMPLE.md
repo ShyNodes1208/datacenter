@@ -1,3 +1,5 @@
+> 归档快照：来自 2026-08-07 重建前 Git 基线；本文件不再具有活动规则效力。
+
 # TASK-EXAMPLE：机柜标签查询示例（说明文件）
 
 > 本文件仅说明如何填写任务，不是当前活动任务。示例遵守 [Agent 工作流规范](../docs/architecture/AGENT-WORKFLOW.md)，其中提交与时间为虚构证据。
@@ -7,27 +9,18 @@
 - Task ID：TASK-EXAMPLE
 - Task Name：按机柜标签查询只读详情
 - Status：COMPLETED
-- Owner：Cursor Developer
+- Owner：Codex Backend
 - Reviewer：Codex Reviewer
 - Branch：feature/example-rack-label-query
 - Requirement Source：docs/product/PRD.md#rack-label-query-rev2
-- Product Baseline：PB-EXAMPLE-001，Codex Coordinator 于 2026-07-10 整理并批准
+- Product Baseline：PB-EXAMPLE-001，Claude 于 2026-07-10 批准
 - Architecture Reference：docs/contracts/RACKS.md#find-by-label
 - Module Lock：`src/backend/Racks/`，详见本文件模块占用记录
 
-## 产品结果
-
-- 用户真正要解决的问题：通过唯一标签快速找到机柜详情。
-- 实际使用者：机房运维人员。
-- 使用场景：现场核对机柜时输入标签进行只读查询。
-- 最终可见或可用结果：有效标签返回机柜详情，未知标签给出明确未找到结果。
-- 当前 MVP：精确标签查询、权限沿用、查询计数和自动化测试。
-- 明确非目标：模糊查询、批量查询和新的监控平台。
-
 ## Reviewer 独立性检查
 
-- Owner 与 Reviewer 不同：是，Cursor Developer 与 Codex Reviewer 为不同主体
-- 修复者与最终 Reviewer 不同：是，修复者为 Cursor Developer
+- Owner 与 Reviewer 不同：是，Codex Backend 与 Codex Reviewer 为不同主体
+- 修复者与最终 Reviewer 不同：是，修复者为 Codex Backend
 - 例外原因：N/A：未使用独立性例外
 - hangyu 批准记录：N/A：未使用独立性例外
 - 补偿性复审方式：N/A：未使用独立性例外
@@ -96,8 +89,8 @@ dotnet test .\tests\DatacenterLayout.Backend.Tests.csproj --filter RackLabel
 
 | Task ID | Module or Path | Owner | Claimed At | Status | Release Condition | Released At |
 |---|---|---|---|---|---|---|
-| TASK-EXAMPLE | src/backend/Racks/ | Cursor Developer | 2026-07-11T09:00:00+08:00 | RELEASED | 状态进入 COMPLETED 或 CANCELLED | 2026-07-12T16:30:00+08:00 |
-| TASK-EXAMPLE | tests/backend/Racks/ | Cursor Developer | 2026-07-11T09:00:00+08:00 | RELEASED | 状态进入 COMPLETED 或 CANCELLED | 2026-07-12T16:30:00+08:00 |
+| TASK-EXAMPLE | src/backend/Racks/ | Codex Backend | 2026-07-11T09:00:00+08:00 | RELEASED | 状态进入 COMPLETED 或 CANCELLED | 2026-07-12T16:30:00+08:00 |
+| TASK-EXAMPLE | tests/backend/Racks/ | Codex Backend | 2026-07-11T09:00:00+08:00 | RELEASED | 状态进入 COMPLETED 或 CANCELLED | 2026-07-12T16:30:00+08:00 |
 
 冲突检查示例：若 TASK-EXAMPLE-2 同时申请 `src/backend/Racks/Queries/`，它与本任务的父路径占用重叠，必须转 `BLOCKED`；不能仅因位于另一工作区而继续。
 
@@ -112,15 +105,15 @@ dotnet test .\tests\DatacenterLayout.Backend.Tests.csproj --filter RackLabel
 
 | 时间 | 发起者 | 原状态 | 新状态 | 接收者 | 证据/说明 |
 |---|---|---|---|---|---|
-| 2026-07-10 09:00 | Codex Coordinator | DRAFT | READY | Cursor Developer | 产品基线、契约、范围、验收、Owner/Reviewer 分离均齐备 |
-| 2026-07-11 09:00 | Cursor Developer | READY | IN_PROGRESS | Cursor Developer | 父子路径无冲突，锁登记为 CLAIMED |
-| 2026-07-11 11:00 | Cursor Developer | IN_PROGRESS | BLOCKED | Codex Coordinator | 发现监控指标新增需求，提交 CR-EXAMPLE-001 并停止相关开发 |
-| 2026-07-11 14:00 | Codex Coordinator | BLOCKED | IN_PROGRESS | Cursor Developer | CR 已批准，Requirement Source、任务和 AC 已更新 |
-| 2026-07-11 17:00 | Cursor Developer | IN_PROGRESS | READY_FOR_REVIEW | Codex Reviewer | 构建测试通过，锁改为 HANDED_OFF |
-| 2026-07-12 10:00 | Codex Reviewer | READY_FOR_REVIEW | CHANGES_REQUESTED | Cursor Developer | EX-DEFECT-01：404 响应缺少契约错误码 |
-| 2026-07-12 11:00 | Cursor Developer | CHANGES_REQUESTED | IN_FIX | Cursor Developer | 重新检查并将锁改为 CLAIMED；Reviewer 未参与修复 |
-| 2026-07-12 14:00 | Cursor Developer | IN_FIX | READY_FOR_RETEST | Codex Reviewer | 修复与回归通过，锁改为 HANDED_OFF |
-| 2026-07-12 16:30 | Codex Coordinator | READY_FOR_RETEST | COMPLETED | 项目归档 | Reviewer PASS，最终复核、Git 推送完成，锁已 RELEASED |
+| 2026-07-10 09:00 | Architect | DRAFT | READY | Codex Backend | 产品基线、契约、范围、验收、Owner/Reviewer 分离均齐备 |
+| 2026-07-11 09:00 | Codex Backend | READY | IN_PROGRESS | Codex Backend | 父子路径无冲突，锁登记为 CLAIMED |
+| 2026-07-11 11:00 | Codex Backend | IN_PROGRESS | BLOCKED | Claude/Architect | 发现监控指标新增需求，提交 CR-EXAMPLE-001 并停止相关开发 |
+| 2026-07-11 14:00 | Architect | BLOCKED | IN_PROGRESS | Codex Backend | CR 已批准，Requirement Source、任务和 AC 已更新 |
+| 2026-07-11 17:00 | Codex Backend | IN_PROGRESS | READY_FOR_REVIEW | Codex Reviewer | 构建测试通过，锁改为 HANDED_OFF |
+| 2026-07-12 10:00 | Codex Reviewer | READY_FOR_REVIEW | CHANGES_REQUESTED | Codex Backend | EX-DEFECT-01：404 响应缺少契约错误码 |
+| 2026-07-12 11:00 | Codex Backend | CHANGES_REQUESTED | IN_FIX | Codex Backend | 重新检查并将锁改为 CLAIMED；Reviewer 未参与修复 |
+| 2026-07-12 14:00 | Codex Backend | IN_FIX | READY_FOR_RETEST | Codex Reviewer | 修复与回归通过，锁改为 HANDED_OFF |
+| 2026-07-12 16:30 | Codex Reviewer | READY_FOR_RETEST | COMPLETED | 项目归档 | 复审通过、Git 证据一致、锁已 RELEASED |
 
 ## 审核结论
 
@@ -138,7 +131,7 @@ dotnet test .\tests\DatacenterLayout.Backend.Tests.csproj --filter RackLabel
 
 | 缺陷 ID | 修复者 | 修改说明 | 回归证据 | 提交 |
 |---|---|---|---|---|
-| EX-DEFECT-01 | Cursor Developer | 使用既有错误响应工厂返回 `RACK_NOT_FOUND` | 5/5 tests passed（含指标断言），Reviewer 独立重跑通过 | `1111111111111111111111111111111111111111` |
+| EX-DEFECT-01 | Codex Backend | 使用既有错误响应工厂返回 `RACK_NOT_FOUND` | 5/5 tests passed（含指标断言），Reviewer 独立重跑通过 | `1111111111111111111111111111111111111111` |
 
 ## 复审结果
 
@@ -149,7 +142,7 @@ dotnet test .\tests\DatacenterLayout.Backend.Tests.csproj --filter RackLabel
 ## Change Request
 
 - Change Request ID：CR-EXAMPLE-001
-- 发现者：Cursor Developer
+- 发现者：Codex Backend
 - 原任务：TASK-EXAMPLE
 - 变更原因：批准的验收标准要求记录查询计数，但原技术设计未指定既有指标名称
 - 产品范围影响：不改变用户功能；确认查询计数属于产品验收范围
@@ -157,8 +150,8 @@ dotnet test .\tests\DatacenterLayout.Backend.Tests.csproj --filter RackLabel
 - 文件影响：仍限于 `src/backend/Racks/` 和对应测试
 - 测试影响：增加一次既有指标增量断言
 - 风险：低；指标基数保持固定
-- Codex Coordinator 裁决：APPROVED；保持原产品范围，复用既有指标接口并补充验收标准文字
-- 用户裁决：N/A：不改变可见效果、重大范围、成本或风险
+- Claude 裁决：APPROVED；保持原产品范围并补充验收标准文字
+- Architect 裁决：APPROVED；复用既有指标接口，禁止新增依赖
 - 更新后的 Requirement Source：docs/product/PRD.md#rack-label-query-rev2
 - 批准状态：APPROVED
 
@@ -183,6 +176,6 @@ dotnet test .\tests\DatacenterLayout.Backend.Tests.csproj --filter RackLabel
 - [x] 工作流校验和 `git diff --check` 通过
 - [x] 模块锁已释放
 - [x] 已提交并推送
-- [x] 任务拥有的改动已全部提交，任务前既有无关文件保持不变
+- [x] 工作区干净
 - [x] 本地与远端哈希一致
 - [x] 状态由 Reviewer 转为 `COMPLETED`

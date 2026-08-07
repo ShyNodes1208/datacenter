@@ -1,3 +1,5 @@
+> 归档快照：来自 2026-08-07 重建前 Git 基线；本文件不再具有活动规则效力。
+
 # Task Template
 
 > 必须遵守 [Agent 工作流规范](../docs/architecture/AGENT-WORKFLOW.md)。所有字段都必须填写；不适用时填写 `N/A：具体理由`，不得静默留空。
@@ -14,15 +16,6 @@
 - Product Baseline：
 - Architecture Reference：
 - Module Lock：
-
-## 产品结果
-
-- 用户真正要解决的问题：
-- 实际使用者：
-- 使用场景：
-- 最终可见或可用结果：
-- 当前 MVP：
-- 明确非目标：
 
 ## Reviewer 独立性检查
 
@@ -166,8 +159,8 @@
 - 文件影响：
 - 测试影响：
 - 风险：
-- Codex Coordinator 裁决：
-- 用户裁决：
+- Claude 裁决：
+- Architect 裁决：
 - 更新后的 Requirement Source：
 - 批准状态：
 
@@ -192,7 +185,7 @@
 - [ ] 工作流校验和 `git diff --check` 通过
 - [ ] 模块锁已释放
 - [ ] 已提交并推送
-- [ ] 任务拥有的改动已全部提交，任务前既有无关文件保持不变
+- [ ] 工作区干净
 - [ ] 本地与远端哈希一致
 - [ ] Reviewer 的防过度开发专项检查通过
-- [ ] Reviewer 已给出 PASS，状态由 Codex Coordinator 在最终复核后转为 COMPLETED
+- [ ] 状态由 Reviewer 转为 `COMPLETED`

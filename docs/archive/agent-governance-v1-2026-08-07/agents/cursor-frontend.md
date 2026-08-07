@@ -1,5 +1,7 @@
 ﻿# Cursor Frontend Developer
 
+> 归档快照：2026-08-07 起不再作为活动角色说明。
+
 ## 角色定位
 
 负责 Vue 3 前端、2D 机房布局、Grid Plan 适配和局部 Three.js 机柜展示。
