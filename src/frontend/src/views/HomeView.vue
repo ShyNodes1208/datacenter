@@ -5,7 +5,9 @@ import { useApi } from '../composables/useApi'
 import { useAuth } from '../composables/useAuth'
 import { useDashboard, type RoomItem } from '../composables/useDashboard'
 import { buildUSlotsFromSummaryPositions } from '../composables/useRackDetail'
-import DashboardStats from '../components/DashboardStats.vue'
+import DashboardSummaryCards, {
+  type DashboardSummary,
+} from '../components/DashboardSummaryCards.vue'
 import RackFrontPanel from '../components/RackFrontPanel.vue'
 import RackOperationDrawer from '../components/RackOperationDrawer.vue'
 import type { USlot } from '../components/RackFrontPanel.vue'
@@ -41,7 +43,11 @@ const ROOM_ADMIN_ROLE = '机房管理员'
 const router = useRouter()
 const { user } = useAuth()
 const { request } = useApi()
-const { stats, rooms, error: dashboardError, loadStats, loadRooms: loadRoomsFromDashboard } = useDashboard()
+const { rooms, error: dashboardError, loadRooms: loadRoomsFromDashboard } = useDashboard()
+
+const summaryLoading = ref(true)
+const summaryError = ref('')
+const summary = ref<DashboardSummary | null>(null)
 
 /** null = not finished loading; empty array = loaded empty list */
 const roomsError = ref('')
@@ -58,7 +64,7 @@ interface RackSummaryItem {
 }
 
 const roomRackSummaries = ref<Map<string, { racks: RackSummaryItem[] }>>(new Map())
-const summaryLoading = ref<Set<string>>(new Set())
+const rackSummaryLoading = ref<Set<string>>(new Set())
 
 const createFormVisible = ref(false)
 const roomName = ref('')
@@ -103,9 +109,33 @@ async function loadRooms(): Promise<void> {
   }
 }
 
+async function loadSummary(): Promise<void> {
+  summaryLoading.value = true
+  summaryError.value = ''
+  const result = await request<DashboardSummary>('/api/dashboard/summary', { method: 'GET' })
+  summaryLoading.value = false
+  if (!result.ok) {
+    summaryError.value = result.error
+    summary.value = null
+    return
+  }
+  const data = result.data
+  if (
+    data &&
+    typeof data.totalServers === 'number' &&
+    typeof data.totalRacks === 'number' &&
+    typeof data.totalCables === 'number'
+  ) {
+    summary.value = data
+  } else {
+    summary.value = null
+    summaryError.value = 'Request failed.'
+  }
+}
+
 async function refreshDashboard(): Promise<void> {
   roomRackSummaries.value = new Map()
-  await Promise.all([loadStats(), loadRooms()])
+  await Promise.all([loadSummary(), loadRooms()])
 }
 
 function openCreateForm(): void {
@@ -179,7 +209,7 @@ async function saveEdit(room: RoomItem): Promise<void> {
   editStatus.value = '启用'
   editError.value = ''
   await loadRooms()
-  await loadStats()
+  await loadSummary()
   editSubmitting.value = false
 }
 
@@ -285,7 +315,7 @@ async function toggleRoom(roomId: string): Promise<void> {
   expandedRoomIds.value.add(roomId)
 
   if (!roomRackSummaries.value.has(roomId)) {
-    summaryLoading.value.add(roomId)
+    rackSummaryLoading.value.add(roomId)
 
     const result = await request<{
       racks: Array<{
@@ -313,7 +343,7 @@ async function toggleRoom(roomId: string): Promise<void> {
       roomRackSummaries.value = map
     }
 
-    summaryLoading.value.delete(roomId)
+    rackSummaryLoading.value.delete(roomId)
   }
 }
 
@@ -615,7 +645,11 @@ async function handleServerFileChange(event: Event): Promise<void> {
 
 <template>
   <div class="home-page">
-    <DashboardStats v-if="stats" :stats="stats" />
+    <DashboardSummaryCards
+      :loading="summaryLoading"
+      :error="summaryError"
+      :summary="summary"
+    />
 
     <div class="toolbar">
       <button type="button" class="btn btn--icon-import" @click="openImport">Excel 导入机柜</button>
@@ -784,7 +818,7 @@ async function handleServerFileChange(event: Event): Promise<void> {
             >
               删除
             </button>
-            <span v-if="summaryLoading.has(room.id)" class="muted">加载中...</span>
+            <span v-if="rackSummaryLoading.has(room.id)" class="muted">加载中...</span>
           </div>
 
           <div
@@ -810,7 +844,7 @@ async function handleServerFileChange(event: Event): Promise<void> {
           </div>
 
           <div v-if="expandedRoomIds.has(room.id)" class="room-rack-grid">
-            <div v-if="summaryLoading.has(room.id)">加载中...</div>
+            <div v-if="rackSummaryLoading.has(room.id)">加载中...</div>
             <div v-else-if="!roomRackSummaries.has(room.id)" class="muted">加载失败</div>
             <div v-else-if="roomRackSummaries.get(room.id)!.racks.length === 0" class="muted">
               暂无导入的机柜
