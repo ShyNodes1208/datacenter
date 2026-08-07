@@ -1,0 +1,237 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://datacenter-layout/tasks/active/state.schema.json",
+  "title": "Agent Pipeline State",
+  "description": "Validates state.json for the multi-agent automated development pipeline.",
+  "type": "object",
+  "required": ["version", "pipeline", "type", "status", "phase", "created", "updated", "task", "phases", "errors", "history"],
+  "properties": {
+    "version": { "type": "string", "const": "1.0" },
+    "pipeline": {
+      "type": "string",
+      "pattern": "^TASK-\\d{4}$",
+      "description": "Pipeline ID, e.g. TASK-0022"
+    },
+    "type": {
+      "type": "string",
+      "enum": ["fullstack", "backend-only", "frontend-only"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["running", "paused", "aborted"]
+    },
+    "phase": {
+      "type": "string",
+      "enum": ["PLANNING", "BACKEND", "FRONTEND", "REVIEW", "VERIFY", "DONE", "PAUSED"]
+    },
+    "created": { "type": "string", "format": "date-time" },
+    "updated": { "type": "string", "format": "date-time" },
+    "task": {
+      "type": "object",
+      "required": ["id", "title", "requirement"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^TASK-\\d{4}$" },
+        "title": { "type": "string", "minLength": 1 },
+        "plan": { "type": "string" },
+        "spec": { "type": "string" },
+        "requirement": { "type": "string", "minLength": 1 }
+      }
+    },
+    "phases": {
+      "type": "object",
+      "required": ["planning", "backend", "frontend", "review", "verify"],
+      "properties": {
+        "planning": {
+          "type": "object",
+          "required": ["status", "owner"],
+          "properties": {
+            "status": { "type": "string", "enum": ["pending", "in-progress", "done", "failed"] },
+            "owner": { "type": "string", "const": "claude" },
+            "started": { "type": "string", "format": "date-time" },
+            "completed": { "type": "string", "format": "date-time" },
+            "taskFile": { "type": "string" },
+            "planFile": { "type": "string" },
+            "specFile": { "type": "string" },
+            "modules": {
+              "type": "object",
+              "properties": {
+                "backend": { "type": "array", "items": { "type": "string" } },
+                "frontend": { "type": "array", "items": { "type": "string" } }
+              }
+            },
+            "branch": { "type": "string" },
+            "commit": { "type": "string" },
+            "summary": { "type": "string" },
+            "handoffNote": { "type": "string" }
+          }
+        },
+        "backend": {
+          "type": "object",
+          "required": ["status", "owner", "retryCount", "_invoked"],
+          "properties": {
+            "status": { "type": "string", "enum": ["pending", "in-progress", "done", "failed"] },
+            "owner": { "type": "string", "const": "codex" },
+            "retryCount": { "type": "integer", "minimum": 0, "maximum": 3 },
+            "timeout": { "type": "string" },
+            "_invoked": { "type": "boolean" },
+            "started": { "type": "string", "format": "date-time" },
+            "completed": { "type": "string", "format": "date-time" },
+            "commit": { "type": "string" },
+            "commitMsg": { "type": "string" },
+            "filesChanged": { "type": "array", "items": { "type": "string" } },
+            "testResults": {
+              "type": "object",
+              "properties": {
+                "total": { "type": "integer", "minimum": 0 },
+                "passed": { "type": "integer", "minimum": 0 },
+                "failed": { "type": "integer", "minimum": 0 }
+              }
+            },
+            "cliCommand": { "type": "string" },
+            "handoffNote": { "type": "string" }
+          }
+        },
+        "frontend": {
+          "type": "object",
+          "required": ["status", "owner"],
+          "properties": {
+            "status": { "type": "string", "enum": ["pending", "in-progress", "done", "failed", "skipped"] },
+            "owner": { "type": "string", "const": "cursor" },
+            "started": { "type": "string", "format": "date-time" },
+            "completed": { "type": "string", "format": "date-time" },
+            "commit": { "type": "string" },
+            "commitMsg": { "type": "string" },
+            "filesChanged": { "type": "array", "items": { "type": "string" } },
+            "testResults": {
+              "type": "object",
+              "properties": {
+                "total": { "type": "integer", "minimum": 0 },
+                "passed": { "type": "integer", "minimum": 0 },
+                "failed": { "type": "integer", "minimum": 0 },
+                "failures": { "type": "array", "items": { "type": "string" } }
+              }
+            },
+            "handoffNote": { "type": "string" }
+          }
+        },
+        "review": {
+          "type": "object",
+          "required": ["status", "owner", "retryCount", "_invoked"],
+          "properties": {
+            "status": { "type": "string", "enum": ["pending", "in-progress", "done", "failed", "rejected"] },
+            "owner": { "type": "string", "const": "codex" },
+            "retryCount": { "type": "integer", "minimum": 0, "maximum": 3 },
+            "timeout": { "type": "string" },
+            "_invoked": { "type": "boolean" },
+            "started": { "type": "string", "format": "date-time" },
+            "completed": { "type": "string", "format": "date-time" },
+            "scope": {
+              "type": "object",
+              "properties": {
+                "backendCommit": { "type": "string" },
+                "frontendCommit": { "type": ["string", "null"] }
+              }
+            },
+            "verdict": { "type": "string", "enum": ["approved", "approved_with_issues", "rejected"] },
+            "issues": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id", "severity", "affectedPhase", "summary"],
+                "properties": {
+                  "id": { "type": "string", "pattern": "^RV-\\d{3}$" },
+                  "severity": { "type": "string", "enum": ["blocking", "major", "minor", "info"] },
+                  "affectedPhase": { "type": "string", "enum": ["backend", "frontend"] },
+                  "file": { "type": "string" },
+                  "line": { "type": "integer" },
+                  "summary": { "type": "string" },
+                  "recommendation": { "type": "string" }
+                }
+              }
+            },
+            "cliCommand": { "type": "string" },
+            "handoffNote": { "type": "string" }
+          }
+        },
+        "verify": {
+          "type": "object",
+          "required": ["status", "owner"],
+          "properties": {
+            "status": { "type": "string", "enum": ["pending", "in-progress", "done", "failed"] },
+            "owner": { "type": "string", "const": "claude" },
+            "started": { "type": "string", "format": "date-time" },
+            "completed": { "type": "string", "format": "date-time" },
+            "checks": {
+              "type": "object",
+              "properties": {
+                "backendBuild": { "$ref": "#/$defs/checkResult" },
+                "backendTest": { "$ref": "#/$defs/checkResult" },
+                "frontendBuild": { "$ref": "#/$defs/checkResult" },
+                "frontendTest": { "$ref": "#/$defs/checkResult" },
+                "typeCheck": { "$ref": "#/$defs/checkResult" },
+                "diffCheck": { "$ref": "#/$defs/checkResult" },
+                "gitStatus": { "$ref": "#/$defs/checkResult" }
+              }
+            },
+            "verdict": { "type": "string", "enum": ["ready", "failed"] },
+            "handoffNote": { "type": "string" }
+          }
+        }
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/errorItem" }
+    },
+    "history": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/historyItem" }
+    }
+  },
+  "$defs": {
+    "checkResult": {
+      "type": "object",
+      "properties": {
+        "passed": { "type": "boolean" },
+        "skipped": { "type": "boolean" },
+        "command": { "type": "string" },
+        "exitCode": { "type": "integer" },
+        "total": { "type": "integer" },
+        "failed": { "type": "integer" },
+        "expectedFiles": { "type": "array", "items": { "type": "string" } },
+        "actualFiles": { "type": "array", "items": { "type": "string" } },
+        "extra": { "type": "array", "items": { "type": "string" } },
+        "missing": { "type": "array", "items": { "type": "string" } },
+        "clean": { "type": "boolean" }
+      }
+    },
+    "errorItem": {
+      "type": "object",
+      "required": ["id", "phase", "time", "type", "detail"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^ERR-\\d{3}$" },
+        "phase": { "type": "string", "enum": ["planning", "backend", "frontend", "review", "verify"] },
+        "time": { "type": "string", "format": "date-time" },
+        "type": {
+          "type": "string",
+          "enum": ["build_failed", "test_failed", "review_rejected", "timeout", "codex_error", "verify_failed"]
+        },
+        "detail": { "type": "string" },
+        "action": { "type": "string" },
+        "resolved": { "type": "boolean" },
+        "resolvedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "historyItem": {
+      "type": "object",
+      "required": ["time", "phase", "from", "to", "by"],
+      "properties": {
+        "time": { "type": "string", "format": "date-time" },
+        "phase": { "type": "string" },
+        "from": { "type": "string" },
+        "to": { "type": "string" },
+        "by": { "type": "string" }
+      }
+    }
+  }
+}
