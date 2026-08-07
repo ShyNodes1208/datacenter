@@ -26,26 +26,19 @@ backend API details, and module lock information.
 
 ## When Done
 
-Update `tasks/active/state.json` with ALL of these fields in ONE write:
+Update `tasks/active/state.json` **atomically** (read full doc, merge, write back):
 
-```json
-{
-  "phases": {
-    "frontend": {
-      "status": "done",
-      "commit": "<run: git rev-parse HEAD>",
-      "commitMsg": "<your commit message>",
-      "filesChanged": <run: git diff --name-only HEAD~1 | jq -R -s 'split("\n") | map(select(length>0))'>,
-      "testResults": {
-        "total": <N>,
-        "passed": <N>,
-        "failed": <N>,
-        "failures": ["<test name if failed>"]
-      },
-      "handoffNote": "<what the reviewer needs to know: design decisions, known issues, testing notes>"
-    }
-  }
-}
+```bash
+jq '.phases.frontend.status = "done" |
+    .phases.frontend.commit = "'"$(git rev-parse HEAD)"'" |
+    .phases.frontend.commitMsg = "<your commit message>" |
+    .phases.frontend.filesChanged = $files |
+    .phases.frontend.testResults = { "total": <N>, "passed": <N>, "failed": <N>, "failures": ["<test name if failed>"] } |
+    .phases.frontend.handoffNote = "<handoff note>" |
+    .updated = "<ISO8601 now>" |
+    .history += [{ "time": "<ISO8601 now>", "phase": "frontend", "from": "in-progress", "to": "done", "by": "cursor" }]' \
+    tasks/active/state.json > tasks/active/state.json.tmp \
+    && mv tasks/active/state.json.tmp tasks/active/state.json
 ```
 
 **Checklist before writing state.json:**

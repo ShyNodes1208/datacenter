@@ -31,14 +31,18 @@ Follow it exactly. Key principles:
 4. **Monitor only for Cursor.** The Monitor script (`tasks/active/watch.sh`)
    watches `phases.frontend.status`. You drive everything else directly.
 5. **retryCount > 2 → PAUSED.** Never retry more than 3 total attempts.
+6. **DONE cleanup preserves tooling.** When archiving a completed pipeline (DONE
+   step 11), delete ONLY runtime artifacts: `watch.pid`, `state.json` (move to
+   completed/), and temp files. NEVER delete `watch.sh` or `state.schema.json` —
+   they are checked-in source files reused by every pipeline run.
 
 ## State File Locations
 
 | File | Purpose |
 |------|---------|
 | `tasks/active/state.json` | Single source of truth |
-| `tasks/active/state.schema.json` | JSON Schema for validation |
-| `tasks/active/watch.sh` | Monitor script (run in background) |
+| `tasks/active/state.schema.json` | JSON Schema (**persistent** — never deleted) |
+| `tasks/active/watch.sh` | Monitor script (**persistent** — never deleted) |
 | `tasks/active/watch.pid` | Monitor PID (auto-managed) |
 | `tasks/active/review-output.json` | Codex review output |
 | `tasks/completed/TASK-XXXX-state.json` | Archived completed pipelines |
@@ -59,8 +63,8 @@ Replace all `<placeholders>` with actual values from state.json and the current 
 # Fast gate: does state.json have basic structure?
 jq -e '.phase and .status' tasks/active/state.json
 
-# Full schema validation:
-npx ajv validate -s tasks/active/state.schema.json -d tasks/active/state.json
+# Full schema validation (auto-fallback to Python jsonschema):
+bash tasks/active/validate.sh
 
 # Check Monitor health:
 kill -0 $(cat tasks/active/watch.pid) 2>/dev/null && echo "alive" || echo "dead"

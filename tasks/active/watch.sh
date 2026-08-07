@@ -18,6 +18,8 @@ echo $$ > "$PID_FILE"
 # Cleanup on exit (normal, signal, or abort)
 cleanup() {
   rm -f "$PID_FILE"
+  # SIGTERM/SIGINT must exit explicitly — trap returns to the loop otherwise
+  exit 0
 }
 trap cleanup EXIT SIGTERM SIGINT
 

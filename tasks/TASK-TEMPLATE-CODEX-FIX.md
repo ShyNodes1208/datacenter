@@ -19,27 +19,24 @@ other phases may have been updated (especially if the other phase was also re-do
 
 ## Completion Checklist
 
-Same as the original dev task — update `state.json` atomically:
+Same as the original dev task — update `state.json` **atomically** by reading
+the full document, modifying only your phase, and writing the complete result:
 
-```json
-{
-  "phases": {
-    "<phase>": {
-      "status": "done",
-      "_invoked": false,
-      "completed": "<ISO8601 now>",
-      "commit": "<run: git rev-parse HEAD>",
-      "commitMsg": "fix: <describe what was fixed>",
-      "filesChanged": <run: git diff --name-only HEAD~1 | jq -R -s 'split("\n") | map(select(length>0))'>,
-      "testResults": {
-        "total": <N>,
-        "passed": <N>,
-        "failed": <N>
-      },
-      "handoffNote": "<updated handoff — note what changed from the rejected version>"
-    }
-  }
-}
+```bash
+# Read current state, merge your changes, write back in one step:
+jq '.phases.<phase>.status = "done" |
+    .phases.<phase>._invoked = false |
+    .phases.<phase>.completed = "<ISO8601 now>" |
+    .phases.<phase>.commit = "'"$(git rev-parse HEAD)"'" |
+    .phases.<phase>.commitMsg = "fix: <describe what was fixed>" |
+    .phases.<phase>.filesChanged = $files |
+    .phases.<phase>.testResults = { "total": <N>, "passed": <N>, "failed": <N> } |
+    .phases.<phase>.handoffNote = "<updated handoff — note what changed from the rejected version>" |
+    .updated = "<ISO8601 now>" |
+    .history += [{ "time": "<ISO8601 now>", "phase": "<phase>", "from": "in-progress", "to": "done", "by": "codex" }]' \
+    tasks/active/state.json > tasks/active/state.json.tmp \
+    && mv tasks/active/state.json.tmp tasks/active/state.json
 ```
 
 **IMPORTANT:** Reference the issue IDs (e.g., RV-001, RV-003) in your commit message.
+- The `.updated` timestamp and `.history` entry are REQUIRED — do not skip them

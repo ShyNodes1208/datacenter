@@ -59,17 +59,15 @@ Write your findings to `tasks/active/review-output.json`:
 
 ## After Writing review-output.json
 
-Update `tasks/active/state.json`:
+Update `tasks/active/state.json` **atomically** (read full doc, merge, write back):
 
-```json
-{
-  "phases": {
-    "review": {
-      "_invoked": false,
-      "status": "done",
-      "completed": "<ISO8601 now>",
-      "handoffNote": "<key findings for VERIFY phase>"
-    }
-  }
-}
+```bash
+jq '.phases.review._invoked = false |
+    .phases.review.status = "done" |
+    .phases.review.completed = "<ISO8601 now>" |
+    .phases.review.handoffNote = "<key findings for VERIFY phase>" |
+    .updated = "<ISO8601 now>" |
+    .history += [{ "time": "<ISO8601 now>", "phase": "review", "from": "in-progress", "to": "done", "by": "codex" }]' \
+    tasks/active/state.json > tasks/active/state.json.tmp \
+    && mv tasks/active/state.json.tmp tasks/active/state.json
 ```
