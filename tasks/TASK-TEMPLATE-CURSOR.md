@@ -29,16 +29,20 @@ backend API details, and module lock information.
 Update `tasks/active/state.json` **atomically** (read full doc, merge, write back):
 
 ```bash
-jq '.phases.frontend.status = "done" |
-    .phases.frontend.commit = "'"$(git rev-parse HEAD)"'" |
-    .phases.frontend.commitMsg = "<your commit message>" |
-    .phases.frontend.filesChanged = $files |
-    .phases.frontend.testResults = { "total": <N>, "passed": <N>, "failed": <N>, "failures": ["<test name if failed>"] } |
-    .phases.frontend.handoffNote = "<handoff note>" |
-    .updated = "<ISO8601 now>" |
-    .history += [{ "time": "<ISO8601 now>", "phase": "frontend", "from": "in-progress", "to": "done", "by": "cursor" }]' \
-    tasks/active/state.json > tasks/active/state.json.tmp \
-    && mv tasks/active/state.json.tmp tasks/active/state.json
+# Build files array from git diff
+FILES_JSON=$(git diff --name-only HEAD~1 | jq -R -s 'split("\n") | map(select(length>0))')
+
+jq --argjson files "$FILES_JSON" \
+  '.phases.frontend.status = "done" |
+   .phases.frontend.commit = "'"$(git rev-parse HEAD)"'" |
+   .phases.frontend.commitMsg = "<your commit message>" |
+   .phases.frontend.filesChanged = $files |
+   .phases.frontend.testResults = { "total": <N>, "passed": <N>, "failed": <N>, "failures": ["<test name if failed>"] } |
+   .phases.frontend.handoffNote = "<handoff note>" |
+   .updated = "<ISO8601 now>" |
+   .history += [{ "time": "<ISO8601 now>", "phase": "frontend", "from": "in-progress", "to": "done", "by": "cursor" }]' \
+  tasks/active/state.json > tasks/active/state.json.tmp \
+  && mv tasks/active/state.json.tmp tasks/active/state.json
 ```
 
 **Checklist before writing state.json:**

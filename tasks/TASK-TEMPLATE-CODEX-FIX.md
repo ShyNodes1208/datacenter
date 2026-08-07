@@ -23,19 +23,23 @@ Same as the original dev task — update `state.json` **atomically** by reading
 the full document, modifying only your phase, and writing the complete result:
 
 ```bash
+# Build files array from git diff
+FILES_JSON=$(git diff --name-only HEAD~1 | jq -R -s 'split("\n") | map(select(length>0))')
+
 # Read current state, merge your changes, write back in one step:
-jq '.phases.<phase>.status = "done" |
-    .phases.<phase>._invoked = false |
-    .phases.<phase>.completed = "<ISO8601 now>" |
-    .phases.<phase>.commit = "'"$(git rev-parse HEAD)"'" |
-    .phases.<phase>.commitMsg = "fix: <describe what was fixed>" |
-    .phases.<phase>.filesChanged = $files |
-    .phases.<phase>.testResults = { "total": <N>, "passed": <N>, "failed": <N> } |
-    .phases.<phase>.handoffNote = "<updated handoff — note what changed from the rejected version>" |
-    .updated = "<ISO8601 now>" |
-    .history += [{ "time": "<ISO8601 now>", "phase": "<phase>", "from": "in-progress", "to": "done", "by": "codex" }]' \
-    tasks/active/state.json > tasks/active/state.json.tmp \
-    && mv tasks/active/state.json.tmp tasks/active/state.json
+jq --argjson files "$FILES_JSON" \
+  '.phases.<phase>.status = "done" |
+   .phases.<phase>._invoked = false |
+   .phases.<phase>.completed = "<ISO8601 now>" |
+   .phases.<phase>.commit = "'"$(git rev-parse HEAD)"'" |
+   .phases.<phase>.commitMsg = "fix: <describe what was fixed>" |
+   .phases.<phase>.filesChanged = $files |
+   .phases.<phase>.testResults = { "total": <N>, "passed": <N>, "failed": <N> } |
+   .phases.<phase>.handoffNote = "<updated handoff — note what changed from the rejected version>" |
+   .updated = "<ISO8601 now>" |
+   .history += [{ "time": "<ISO8601 now>", "phase": "<phase>", "from": "in-progress", "to": "done", "by": "codex" }]' \
+  tasks/active/state.json > tasks/active/state.json.tmp \
+  && mv tasks/active/state.json.tmp tasks/active/state.json
 ```
 
 **IMPORTANT:** Reference the issue IDs (e.g., RV-001, RV-003) in your commit message.

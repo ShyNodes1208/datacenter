@@ -21,6 +21,13 @@ fi
 
 # Fall back to Python jsonschema
 if command -v python3 &>/dev/null; then
+  # Check if jsonschema is importable first
+  if ! python3 -c "import jsonschema" 2>/dev/null; then
+    echo "SKIP: python3 available but jsonschema not installed (pip install jsonschema)"
+    echo "ERROR: no validator available (install ajv-cli or pip install jsonschema)"
+    exit 2
+  fi
+
   if python3 -c "
 import json, jsonschema
 with open('$SCHEMA') as sf: schema = json.load(sf)
