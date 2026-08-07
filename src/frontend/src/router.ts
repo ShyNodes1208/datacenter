@@ -6,6 +6,7 @@ import RackDeviceView from './views/RackDeviceView.vue'
 import ServerListView from './views/ServerListView.vue'
 import ServerDetailView from './views/ServerDetailView.vue'
 import ServerFormView from './views/ServerFormView.vue'
+import VisualReferenceView from './views/VisualReferenceView.vue'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -25,6 +26,7 @@ export const router = createRouter({
     { path: '/servers/:id', component: ServerDetailView, meta: { requiresAuth: true } },
     { path: '/cables', component: () => import('./views/CableListView.vue'), meta: { requiresAuth: true } },
     { path: '/rooms/:id/floorplan', component: () => import('./views/FloorplanView.vue'), meta: { requiresAuth: true } },
+    { path: '/visual-reference', component: VisualReferenceView, meta: { requiresAuth: true } },
   ],
 })
 

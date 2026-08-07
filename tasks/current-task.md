@@ -2,6 +2,18 @@
 
 ## 当前活动任务
 
+- Task ID：TASK-0052
+- Task Name：机房与线缆视觉参考融合
+- Status：COMPLETED
+- Branch：codex/room-cable-visual-integration
+- Owner：Cursor Developer
+- Reviewer：Codex Reviewer（独立会话或主体）
+- Task File：tasks/TASK-0052-VISUAL-REFERENCE-INTEGRATION.md
+
+Plan: standalone /visual-reference route; does not touch active HomeView/Floorplan/Cable locks.
+
+## TASK-0051 完成快照
+
 - Task ID：TASK-0051
 - Task Name：Agent 角色与工作流重建
 - Status：COMPLETED

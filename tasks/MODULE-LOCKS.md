@@ -324,4 +324,18 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 若 TASK-1001 已以 `CLAIMED` 占用 `src/backend/Assets/`，TASK-1002 申请 `src/backend/Assets/Racks/` 时属于子路径重叠。TASK-1002 不得认领或修改，必须转为 `BLOCKED` 并记录 TASK-1001；待 TASK-1001 释放后重新检查并认领。
 
 ## TASK-0051 释放记录
+
+## TASK-0052 Visual reference integration locks
+
+| Task ID | Module or Path | Owner | Branch | Status | Claimed At | Release Condition | Notes | Released At |
+|---|---|---|---|---|---|---|---|---|
+| TASK-0052 | src/frontend/public/visual-reference/room-overview.png | Cursor Developer | codex/room-cable-visual-integration | RELEASED | 2026-08-07 +08:00 | Reviewer PASS; TASK-0052 COMPLETED | Exact V2 image without hot/cold aisles | 2026-08-07 +08:00 |
+| TASK-0052 | src/frontend/public/visual-reference/cable-connection-strategy.html | Cursor Developer | codex/room-cable-visual-integration | RELEASED | 2026-08-07 +08:00 | Reviewer PASS; TASK-0052 COMPLETED | Exact untrusted cable visualization HTML | 2026-08-07 +08:00 |
+| TASK-0052 | src/frontend/src/components/VisualReferencePanel.vue | Cursor Developer | codex/room-cable-visual-integration | RELEASED | 2026-08-07 +08:00 | Reviewer PASS; TASK-0052 COMPLETED | New reference panel | 2026-08-07 +08:00 |
+| TASK-0052 | src/frontend/src/components/__tests__/VisualReferencePanel.test.ts | Cursor Developer | codex/room-cable-visual-integration | RELEASED | 2026-08-07 +08:00 | Reviewer PASS; TASK-0052 COMPLETED | Component tests | 2026-08-07 +08:00 |
+| TASK-0052 | src/frontend/src/views/VisualReferenceView.vue | Cursor Developer | codex/room-cable-visual-integration | RELEASED | Reviewer PASS; TASK-0052 COMPLETED | Standalone authenticated view | 2026-08-07 +08:00 |
+| TASK-0052 | src/frontend/src/router.ts | Cursor Developer | codex/room-cable-visual-integration | RELEASED | Reviewer PASS; TASK-0052 COMPLETED | Add /visual-reference route | 2026-08-07 +08:00 |
+| TASK-0052 | tasks/TASK-0052-VISUAL-REFERENCE-INTEGRATION.md | Codex Coordinator | codex/room-cable-visual-integration | RELEASED | Reviewer PASS; TASK-0052 COMPLETED | Task specification | 2026-08-07 +08:00 |
+| TASK-0052 | tasks/current-task.md | Codex Coordinator | codex/room-cable-visual-integration | RELEASED | Reviewer PASS; TASK-0052 COMPLETED | Current task pointer | 2026-08-07 +08:00 |
+| TASK-0052 | tasks/MODULE-LOCKS.md | Codex Coordinator | codex/room-cable-visual-integration | RELEASED | Reviewer PASS; TASK-0052 COMPLETED | Lock registry | 2026-08-07 +08:00 |
 - 2026-08-07：Reviewer PASS；提交 766997d 已推送，TASK-0051 锁全部 RELEASED。
