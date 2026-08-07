@@ -223,4 +223,4 @@ git diff --check
 - Reviewer：Codex Reviewer（独立会话/主体）— PASS；报告：reviews/tasks/TASK-0051-AGENT-GOVERNANCE-REVIEW.md
 - validator 22/22；git diff --check PASS；src/tests tracked diff 为空。
 - 提交：766997d；已推送 origin/codex/agent-workflow-realignment。
-- 11 项 TASK-0051 模块锁已释放。
+- 10 项 TASK-0051 模块锁已释放。
