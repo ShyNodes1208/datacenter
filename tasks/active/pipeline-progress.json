@@ -40,10 +40,10 @@
       ]
     },
     "TASK-0038": {
-      "status": "pending",
+      "status": "done",
       "owner": "cursor",
-      "commit": null,
-      "completed": null,
+      "commit": "cdb6db39e07d5dd561b48d05172224694a65ceb9",
+      "completed": "2026-08-07T02:17:57Z",
       "dependsOn": [
         "TASK-0037"
       ]
