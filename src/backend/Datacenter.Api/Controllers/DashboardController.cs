@@ -1,4 +1,5 @@
 using Datacenter.Api.Data;
+using Datacenter.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -7,9 +8,17 @@ namespace Datacenter.Api.Controllers;
 
 [ApiController]
 [Authorize]
-[Route("api/dashboard")]
-public sealed class DashboardController(AppDbContext dbContext) : ControllerBase
+[Route("api/[controller]")]
+public sealed class DashboardController(
+    AppDbContext dbContext,
+    IDashboardService dashboardService) : ControllerBase
 {
+    [HttpGet("summary")]
+    public async Task<ActionResult<DashboardSummary>> GetSummary(CancellationToken cancellationToken)
+    {
+        return Ok(await dashboardService.GetSummaryAsync(cancellationToken));
+    }
+
     [HttpGet("stats")]
     public async Task<IActionResult> GetStats(CancellationToken cancellationToken)
     {
