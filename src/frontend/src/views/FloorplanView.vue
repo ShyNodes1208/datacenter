@@ -93,84 +93,15 @@
             :to-canvas-x="toCanvasX"
             :to-canvas-y="toCanvasY"
             :snap-position="snapPosition"
-            @rack-click="onRackClick"
+            @select-rack="onRackClick"
+            @background-click="selectRack(null)"
             @rack-dragstart="handleDragStart"
             @rack-dragend="onDragEnd"
           />
         </div>
-
-        <section
-          v-if="selectedRackId && recentChanges.length > 0"
-          id="recent"
-          class="recent-changes"
-        >
-          <h4>最近位置变更</h4>
-          <table class="recent-table">
-            <thead>
-              <tr>
-                <th>设备</th>
-                <th>操作</th>
-                <th>操作人</th>
-                <th>时间</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in recentChanges" :key="item.id">
-                <td>{{ item.serverName }}</td>
-                <td>{{ item.operationType }}</td>
-                <td>{{ item.operatorUsername }}</td>
-                <td>{{ formatOperatedAt(item.operatedAt) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </section>
       </main>
 
-      <aside class="floorplan-inspector">
-        <template v-if="!selectedRack">
-          <div class="inspector-empty">
-            <p>点击机柜查看详情</p>
-            <span class="inspector-hint">在平面图中选择机柜，右侧将显示 U 位与设备信息</span>
-          </div>
-        </template>
-        <template v-else>
-          <div class="inspector-header">
-            <div>
-              <h3>{{ selectedRack.code }}</h3>
-              <span class="inspector-meta">{{ selectedRack.roomName }} · {{ selectedRack.heightU }}U</span>
-            </div>
-            <button class="btn btn--tiny btn--muted" type="button" @click="selectRack(null)">✕</button>
-          </div>
-
-          <div class="capacity-bar-wrap">
-            <div class="capacity-bar-label">
-              <span>容量</span>
-              <span>{{ selectedRack.occupiedU ?? 0 }}/{{ selectedRack.heightU }}U ({{ occPct }}%)</span>
-            </div>
-            <div class="capacity-bar">
-              <div class="capacity-bar-fill" :style="{ width: occPct + '%' }" />
-            </div>
-          </div>
-
-          <div v-if="inspectorLoading" class="inspector-loading">加载 U 位…</div>
-          <RackFrontPanel
-            v-else
-            :rack-code="selectedRack.code"
-            :height-u="selectedRack.heightU"
-            :u-slots="inspectorSlots"
-            :room-id="roomId"
-            @server-click="goToServer"
-          />
-
-          <div class="inspector-actions">
-            <button
-              type="button"
-              class="btn btn--small btn--primary"
-              @click="goToRack(selectedRack.id)"
-            >查看机柜详情</button>
-          </div>
-        </template>
-      </aside>
+      <RackDetailPanel :rack-id="selectedRackId" @close="selectRack(null)" />
     </div>
 
     <NetworkPathDrawer
@@ -186,15 +117,14 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useFloorplan } from '../composables/useFloorplan'
 import { useFloorplanEditor } from '../composables/useFloorplanEditor'
 import { useApi } from '../composables/useApi'
 import { useAuth } from '../composables/useAuth'
-import { buildUSlotsFromOccupancy } from '../composables/useRackDetail'
 import FloorplanCanvas, { type CableLink } from '../components/FloorplanCanvas.vue'
 import NetworkPathDrawer, { type NetworkPathResult } from '../components/NetworkPathDrawer.vue'
-import RackFrontPanel, { type USlot } from '../components/RackFrontPanel.vue'
+import RackDetailPanel from '../components/RackDetailPanel.vue'
 
 type RoomServer = {
   id: string
@@ -204,31 +134,7 @@ type RoomServer = {
   rackCode: string | null
 }
 
-type AuditRecordItem = {
-  id: string
-  operationType: string
-  fromPosition: string | null
-  toPosition: string | null
-  operatorUsername: string
-  operatedAt: string
-  notes: string | null
-}
-
-type RecentChange = AuditRecordItem & { serverName: string }
-
-type AvailabilityResponse = {
-  positions: Array<{
-    uNumber: number
-    occupied: boolean
-    serverName?: string
-    serverId?: string
-    deviceType?: string
-    deviceHeight?: number
-  }>
-}
-
 const route = useRoute()
-const router = useRouter()
 const { user } = useAuth()
 const roomId = computed(() => route.params.id as string)
 const canvasRef = ref<InstanceType<typeof FloorplanCanvas>>()
@@ -242,9 +148,6 @@ const networkPathHighlightIds = ref<string[]>([])
 
 const searchQuery = ref('')
 const roomServers = ref<RoomServer[]>([])
-const inspectorSlots = ref<USlot[]>([])
-const inspectorLoading = ref(false)
-const recentChanges = ref<RecentChange[]>([])
 
 const { racks, loading, error, loadRacks, toCanvasX, toCanvasY, toDbX, toDbY } = useFloorplan(roomId.value)
 const { request } = useApi()
@@ -330,11 +233,6 @@ const { mode, selectedRackId, snapLines, toggleMode, selectRack, snapPosition, h
 
 const roomName = computed(() => racks.value[0]?.roomName ?? '机房平面图')
 
-const selectedRack = computed(() => {
-  if (!selectedRackId.value) return null
-  return racks.value.find(r => r.id === selectedRackId.value) ?? null
-})
-
 const capacityStats = computed(() => {
   const count = racks.value.length
   const totalU = racks.value.reduce((sum, r) => sum + r.heightU, 0)
@@ -366,107 +264,6 @@ const searchHighlightIds = computed(() => {
   }
 
   return [...ids]
-})
-
-const occPct = computed(() => {
-  if (!selectedRack.value || !selectedRack.value.heightU) return 0
-  return Math.round(((selectedRack.value.occupiedU ?? 0) / selectedRack.value.heightU) * 100)
-})
-
-function setViewMode(): void { if (mode.value !== 'view') toggleMode() }
-function setEditMode(): void { if (mode.value !== 'edit') toggleMode() }
-function onRackClick(rackId: string): void { selectRack(rackId) }
-function goToRack(rackId: string): void { router.push(`/racks/${encodeURIComponent(rackId)}`) }
-function goToServer(serverId: string): void { router.push(`/servers/${encodeURIComponent(serverId)}`) }
-function onDragEnd(rackId: string, x: number, y: number): void { handleDragEnd(rackId, x, y) }
-
-function formatOperatedAt(iso: string): string {
-  const date = new Date(iso)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`
-}
-
-let inspectorSeq = 0
-
-async function loadInspectorData(rackId: string): Promise<void> {
-  const seq = ++inspectorSeq
-  inspectorLoading.value = true
-  inspectorSlots.value = []
-
-  const rack = racks.value.find(r => r.id === rackId)
-  if (!rack) {
-    inspectorLoading.value = false
-    return
-  }
-
-  const availResult = await request<AvailabilityResponse>(
-    `/api/racks/${encodeURIComponent(rackId)}/availability`,
-    { method: 'GET' },
-  )
-
-  if (seq !== inspectorSeq) return
-
-  if (availResult.ok && availResult.data) {
-    const map = new Map<number, { serverName: string; serverId?: string; deviceType: string; deviceHeight: number }>()
-    for (const pos of availResult.data.positions) {
-      if (pos.occupied && pos.serverName) {
-        map.set(pos.uNumber, {
-          serverName: pos.serverName,
-          serverId: pos.serverId,
-          deviceType: pos.deviceType ?? '未知',
-          deviceHeight: pos.deviceHeight ?? 1,
-        })
-      }
-    }
-    inspectorSlots.value = buildUSlotsFromOccupancy(map, rack.heightU)
-  }
-
-  if (seq !== inspectorSeq) return
-  inspectorLoading.value = false
-}
-
-async function loadRecentChanges(rackId: string): Promise<void> {
-  recentChanges.value = []
-
-  const availResult = await request<AvailabilityResponse>(
-    `/api/racks/${encodeURIComponent(rackId)}/availability`,
-    { method: 'GET' },
-  )
-  if (!availResult.ok || !availResult.data) return
-
-  const serverMap = new Map<string, string>()
-  for (const pos of availResult.data.positions) {
-    if (pos.occupied && pos.serverId && pos.serverName) {
-      serverMap.set(pos.serverId, pos.serverName)
-    }
-  }
-  if (serverMap.size === 0) return
-
-  const results = await Promise.all(
-    [...serverMap.entries()].map(async ([serverId, serverName]) => {
-      const result = await request<AuditRecordItem[]>(
-        `/api/servers/${encodeURIComponent(serverId)}/audit-records`,
-        { method: 'GET' },
-      )
-      if (!result.ok || !Array.isArray(result.data)) return [] as RecentChange[]
-      return result.data.map(record => ({ ...record, serverName }))
-    }),
-  )
-
-  recentChanges.value = results
-    .flat()
-    .sort((a, b) => new Date(b.operatedAt).getTime() - new Date(a.operatedAt).getTime())
-    .slice(0, 5)
-}
-
-watch(selectedRackId, (rackId) => {
-  if (!rackId) {
-    inspectorSlots.value = []
-    recentChanges.value = []
-    return
-  }
-  void loadInspectorData(rackId)
-  void loadRecentChanges(rackId)
 })
 
 watch(racks, () => {
@@ -649,6 +446,7 @@ onUnmounted(() => {
   display: flex;
   flex: 1;
   overflow: hidden;
+  position: relative;
 }
 
 .floorplan-sidebar {

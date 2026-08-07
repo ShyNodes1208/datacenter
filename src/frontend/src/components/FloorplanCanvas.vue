@@ -142,6 +142,7 @@ function onBackgroundClick(): void {
   if (!props.roomId) return
   cableFocus.value = { level: 'room', roomId: props.roomId }
   rebuildCableScene()
+  emit('background-click')
 }
 
 function onNavigate(level: CableFocus['level'], id: string): void {
@@ -170,6 +171,8 @@ function handleKeydown(e: KeyboardEvent): void {
 
 const emit = defineEmits<{
   'rack-click': [rackId: string]
+  'select-rack': [rackId: string]
+  'background-click': []
   'rack-dragstart': [rackId: string]
   'rack-dragend': [rackId: string, x: number, y: number]
 }>()
@@ -406,7 +409,6 @@ function renderRacks(): void {
     const cx = props.toCanvasX(rack.x)
     const cy = props.toCanvasY(rack.y)
     const capPct = rack.heightU > 0 ? (rack.occupiedU ?? 0) / rack.heightU : 0
-    const barColor = capPct > 0.8 ? '#f85149' : capPct >= 0.5 ? '#d29922' : '#3fb950'
     const barHeight = 4
 
     const group = new Konva.Group({
@@ -428,9 +430,9 @@ function renderRacks(): void {
 
     if (isSelected) {
       rect.stroke(ACCENT)
-      rect.strokeWidth(3)
+      rect.strokeWidth(2)
       rect.shadowColor(ACCENT)
-      rect.shadowBlur(10)
+      rect.shadowBlur(8)
       rect.shadowEnabled(true)
     } else if (isSearchHit) {
       rect.stroke(ACCENT)
@@ -450,21 +452,22 @@ function renderRacks(): void {
       text: `${rack.code}\n${rack.occupiedU ?? 0}/${rack.heightU}U`,
       fontSize: 10, fontFamily: 'sans-serif',
       fill: '#c9d1d9', align: 'center', verticalAlign: 'middle',
-      width: RACK_W, height: RACK_H - 6,
+      width: RACK_W, height: RACK_H - barHeight - 6,
+      y: barHeight + 2,
       listening: false,
       lineHeight: 1.3,
     })
 
     const capBarBg = new Konva.Rect({
-      x: 0, y: RACK_H - barHeight,
+      x: 0, y: 0,
       width: RACK_W, height: barHeight,
-      fill: '#30363d',
+      fill: '#0d1117',
       listening: false, name: 'capBarBg',
     })
     const capBarFill = new Konva.Rect({
-      x: 0, y: RACK_H - barHeight,
+      x: 0, y: 0,
       width: RACK_W * capPct, height: barHeight,
-      fill: barColor,
+      fill: ACCENT,
       listening: false, name: 'capBarFill',
     })
 
@@ -495,7 +498,10 @@ function renderRacks(): void {
     })
 
     group.on('click', () => {
-      if (!dragMoved) emit('rack-click', rack.id)
+      if (!dragMoved) {
+        emit('rack-click', rack.id)
+        emit('select-rack', rack.id)
+      }
     })
 
     group.on('dragstart', () => {

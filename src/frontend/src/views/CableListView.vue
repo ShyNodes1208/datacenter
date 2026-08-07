@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useApi } from '../composables/useApi'
 import { useAuth } from '../composables/useAuth'
+import CableConnectionStrategy from '../components/CableConnectionStrategy.vue'
 
 type CableItem = {
   id: string
@@ -378,6 +379,15 @@ onMounted(() => {
       </button>
     </div>
 
+    <section class="cable-connection-card" aria-labelledby="connection-strategy-heading">
+      <h2 id="connection-strategy-heading">连接策略</h2>
+      <p class="cable-connection-card__hint">展示当前筛选条件下的线缆起点与终点关系，仅供连接规划参考。</p>
+      <CableConnectionStrategy
+        :room-id="filterRoomId || undefined"
+        :cable-type="filterCableType || undefined"
+      />
+    </section>
+
     <div v-if="importResult" class="import-result" :class="importResult.errorCount > 0 ? 'import-result--partial' : 'import-result--success'">
       <template v-if="importResult.errorCount === 0">
         ✅ 导入完成：{{ importResult.totalRows }} 行全部成功
@@ -505,6 +515,25 @@ onMounted(() => {
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
   font-size: var(--font-sm);
+}
+
+.cable-connection-card {
+  margin-bottom: var(--space-md);
+  padding: 16px;
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+}
+
+.cable-connection-card h2 {
+  margin: 0 0 0.5rem;
+  font-size: var(--font-lg);
+}
+
+.cable-connection-card__hint {
+  margin: 0 0 1rem;
+  font-size: var(--font-sm);
+  color: var(--color-text-secondary);
 }
 
 .data-table {
