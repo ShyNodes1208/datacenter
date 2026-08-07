@@ -1,76 +1,60 @@
 {
-  "pipeline": "Agent Pipeline Tooling",
-  "plan": "docs/superpowers/plans/2026-08-06-agent-pipeline-implementation.md",
+  "pipeline": "Pipeline Toolkit Generalization",
+  "plan": "/home/shy/.claude/plans/unified-gathering-moler.md",
   "started": "2026-08-07",
   "tasks": {
-    "TASK-0033": {
+    "TASK-0044": {
       "status": "done",
       "owner": "cursor",
-      "commit": "1c72b95c17267bf91fe395191df6eecce992b37c",
-      "completed": "2026-08-07T01:36:10Z"
+      "commit": "a8e9370",
+      "completed": "2026-08-07T03:30:00Z"
     },
-    "TASK-0034": {
+    "TASK-0045": {
       "status": "done",
       "owner": "cursor",
-      "commit": "c1f415399e824e5e1cf6644029d319138f1f47b5",
-      "completed": "2026-08-07T01:44:25Z"
-    },
-    "TASK-0035": {
-      "status": "done",
-      "owner": "cursor",
-      "commit": "5a8c6686f5db8468c024d12a0ddecebdf77a50af",
-      "completed": "2026-08-07T01:37:13Z"
-    },
-    "TASK-0036": {
-      "status": "done",
-      "owner": "cursor",
-      "commit": "9e3b7f2c693cfb86c229ef34ad08fb6b893bd687",
-      "completed": "2026-08-07T01:37:28Z"
-    },
-    "TASK-0037": {
-      "status": "done",
-      "owner": "cursor",
-      "commit": "81b8c0eed5743d780ab506de69bd1c5f2074677a",
-      "completed": "2026-08-07T02:22:03Z",
+      "commit": "a8e9370",
+      "completed": "2026-08-07T03:30:00Z",
       "dependsOn": [
-        "TASK-0033",
-        "TASK-0034",
-        "TASK-0035",
-        "TASK-0036"
+        "TASK-0044"
       ]
     },
-    "TASK-0038": {
+    "TASK-0046": {
       "status": "done",
       "owner": "cursor",
-      "commit": "bb496c3276f64438ccb5feb89e22c317109ab083",
-      "completed": "2026-08-07T02:22:58Z",
+      "commit": "a8e9370",
+      "completed": "2026-08-07T03:30:00Z",
       "dependsOn": [
-        "TASK-0037"
+        "TASK-0044"
       ]
     },
-    "TASK-0039": {
+    "TASK-0047": {
       "status": "done",
       "owner": "cursor",
-      "commit": "8a2dc912a32a28d082555c665d6a901736c919ae",
-      "completed": "2026-08-07T01:38:21Z"
+      "commit": "a8e9370",
+      "completed": "2026-08-07T03:30:00Z",
+      "dependsOn": [
+        "TASK-0044"
+      ]
     },
-    "TASK-0040": {
+    "TASK-0048": {
       "status": "done",
       "owner": "cursor",
-      "commit": "c6ddd738329bdcd9460bf661540be527639e89dd",
-      "completed": "2026-08-07T02:06:52Z"
+      "commit": "a8e9370",
+      "completed": "2026-08-07T03:30:00Z",
+      "dependsOn": [
+        "TASK-0045",
+        "TASK-0046",
+        "TASK-0047"
+      ]
     },
-    "TASK-0041": {
+    "TASK-0049": {
       "status": "done",
       "owner": "cursor",
-      "commit": "7955f72c9a1c0c40da8bc74d9c40193592a1ae54",
-      "completed": "2026-08-07T02:21:25Z"
-    },
-    "TASK-0043": {
-      "status": "done",
-      "owner": "cursor",
-      "commit": "fc10044c33ed864be1a7c14b1b003d058dc4fb4b",
-      "completed": "2026-08-07T02:52:11Z"
+      "commit": "a8e9370",
+      "completed": "2026-08-07T03:30:00Z",
+      "dependsOn": [
+        "TASK-0048"
+      ]
     }
   }
 }

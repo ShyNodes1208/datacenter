@@ -1,0 +1,249 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pipeline-toolkit/schemas/pipeline-config.schema.json",
+  "title": "Pipeline Config",
+  "description": "Validates pipeline-config.json for the generic agent pipeline toolkit.",
+  "type": "object",
+  "required": [
+    "dirs",
+    "agents",
+    "phases",
+    "types",
+    "commands",
+    "discovery",
+    "timeouts",
+    "retry",
+    "verify"
+  ],
+  "properties": {
+    "dirs": {
+      "type": "object",
+      "required": [
+        "active",
+        "completed"
+      ],
+      "properties": {
+        "active": {
+          "type": "string",
+          "default": "tasks/active"
+        },
+        "completed": {
+          "type": "string",
+          "default": "tasks/completed"
+        }
+      }
+    },
+    "agents": {
+      "type": "object",
+      "required": [
+        "orchestrator",
+        "backend",
+        "frontend",
+        "reviewer"
+      ],
+      "properties": {
+        "orchestrator": {
+          "type": "string",
+          "default": "claude"
+        },
+        "backend": {
+          "type": "string",
+          "default": "codex"
+        },
+        "frontend": {
+          "type": "string",
+          "default": "cursor"
+        },
+        "reviewer": {
+          "type": "string",
+          "default": "codex"
+        }
+      }
+    },
+    "phases": {
+      "type": "object",
+      "required": [
+        "planning",
+        "backend",
+        "frontend",
+        "review",
+        "verify",
+        "done",
+        "paused"
+      ],
+      "properties": {
+        "planning": {
+          "type": "string",
+          "default": "PLANNING"
+        },
+        "backend": {
+          "type": "string",
+          "default": "BACKEND"
+        },
+        "frontend": {
+          "type": "string",
+          "default": "FRONTEND"
+        },
+        "review": {
+          "type": "string",
+          "default": "REVIEW"
+        },
+        "verify": {
+          "type": "string",
+          "default": "VERIFY"
+        },
+        "done": {
+          "type": "string",
+          "default": "DONE"
+        },
+        "paused": {
+          "type": "string",
+          "default": "PAUSED"
+        }
+      }
+    },
+    "types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [
+        "fullstack",
+        "backend-only",
+        "frontend-only"
+      ]
+    },
+    "commands": {
+      "type": "object",
+      "required": [
+        "backend",
+        "frontend"
+      ],
+      "properties": {
+        "backend": {
+          "type": "object",
+          "required": [
+            "build",
+            "test"
+          ],
+          "properties": {
+            "build": {
+              "type": "string"
+            },
+            "test": {
+              "type": "string"
+            }
+          }
+        },
+        "frontend": {
+          "type": "object",
+          "required": [
+            "build",
+            "test"
+          ],
+          "properties": {
+            "build": {
+              "type": "string"
+            },
+            "test": {
+              "type": "string"
+            },
+            "typeCheck": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "discovery": {
+      "type": "object",
+      "required": [
+        "backendPatterns",
+        "frontendPatterns",
+        "excludePatterns"
+      ],
+      "properties": {
+        "backendPatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "frontendPatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludePatterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "timeouts": {
+      "type": "object",
+      "required": [
+        "backend",
+        "review"
+      ],
+      "properties": {
+        "backend": {
+          "type": "string",
+          "default": "30m"
+        },
+        "review": {
+          "type": "string",
+          "default": "15m"
+        }
+      }
+    },
+    "retry": {
+      "type": "object",
+      "required": [
+        "max"
+      ],
+      "properties": {
+        "max": {
+          "type": "integer",
+          "default": 3
+        }
+      }
+    },
+    "verify": {
+      "type": "object",
+      "required": [
+        "baseBranch"
+      ],
+      "properties": {
+        "baseBranch": {
+          "type": "string",
+          "default": "main"
+        }
+      }
+    },
+    "idPatterns": {
+      "type": "object",
+      "properties": {
+        "task": {
+          "type": "string",
+          "default": "^TASK-\\d{4}$"
+        },
+        "error": {
+          "type": "string",
+          "default": "^ERR-\\d{3}$"
+        },
+        "reviewIssue": {
+          "type": "string",
+          "default": "^RV-\\d{3}$"
+        }
+      }
+    },
+    "reviewContractCheck": {
+      "type": "string",
+      "default": "API changes backward-compatible? Types match across the stack?"
+    }
+  }
+}

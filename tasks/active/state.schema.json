@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://datacenter-layout/tasks/active/state.schema.json",
+  "$id": "https://pipeline-toolkit/state.schema.json",
   "title": "Agent Pipeline State",
   "description": "Validates state.json for the multi-agent automated development pipeline.",
   "type": "object",
@@ -14,7 +14,7 @@
     },
     "type": {
       "type": "string",
-      "enum": ["fullstack", "backend-only", "frontend-only"]
+      "enum": ["fullstack","backend-only","frontend-only"]
     },
     "status": {
       "type": "string",
@@ -22,7 +22,7 @@
     },
     "phase": {
       "type": "string",
-      "enum": ["PLANNING", "BACKEND", "FRONTEND", "REVIEW", "VERIFY", "DONE", "PAUSED"]
+      "enum": ["PLANNING","BACKEND","FRONTEND","REVIEW","VERIFY","DONE","PAUSED"]
     },
     "created": { "type": "string", "format": "date-time" },
     "updated": { "type": "string", "format": "date-time" },
@@ -45,7 +45,7 @@
           "type": "object",
           "required": ["status", "owner"],
           "properties": {
-            "status": { "type": "string", "enum": ["pending", "in-progress", "done", "failed"] },
+            "status": { "type": "string", "enum": ["pending","in-progress","done","failed"] },
             "owner": { "type": "string", "const": "claude" },
             "started": { "type": "string", "format": "date-time" },
             "completed": { "type": "string", "format": "date-time" },
@@ -69,7 +69,7 @@
           "type": "object",
           "required": ["status", "owner", "retryCount", "_invoked"],
           "properties": {
-            "status": { "type": "string", "enum": ["pending", "in-progress", "done", "failed"] },
+            "status": { "type": "string", "enum": ["pending","in-progress","done","failed"] },
             "owner": { "type": "string", "const": "codex" },
             "retryCount": { "type": "integer", "minimum": 0, "maximum": 3 },
             "timeout": { "type": "string" },
@@ -95,7 +95,7 @@
           "type": "object",
           "required": ["status", "owner"],
           "properties": {
-            "status": { "type": "string", "enum": ["pending", "in-progress", "done", "failed", "skipped"] },
+            "status": { "type": "string", "enum": ["pending","in-progress","done","failed","skipped"] },
             "owner": { "type": "string", "const": "cursor" },
             "started": { "type": "string", "format": "date-time" },
             "completed": { "type": "string", "format": "date-time" },
@@ -157,7 +157,7 @@
           "type": "object",
           "required": ["status", "owner"],
           "properties": {
-            "status": { "type": "string", "enum": ["pending", "in-progress", "done", "failed"] },
+            "status": { "type": "string", "enum": ["pending","in-progress","done","failed"] },
             "owner": { "type": "string", "const": "claude" },
             "started": { "type": "string", "format": "date-time" },
             "completed": { "type": "string", "format": "date-time" },

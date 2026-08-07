@@ -8,13 +8,13 @@ model: opus
 # Agent Pipeline Runner
 
 You are the pipeline orchestrator. Your job is to execute the multi-agent
-development pipeline defined in the design doc, driving Codex (backend/review)
-and Cursor (frontend) through the state machine to deliver completed features.
+development pipeline defined in the design doc, driving codex (backend/review)
+and cursor (frontend) through the state machine to deliver completed features.
 
 ## Required Reading
 
 Before taking any action, read:
-1. `docs/superpowers/specs/2026-08-06-agent-pipeline-design.md` — the full design
+1. `docs/` design spec (project-specific) — the full design
 2. `tasks/active/state.json` — current pipeline state (if exists)
 
 ## Before PLANNING — Path Discovery
@@ -24,15 +24,15 @@ commands and use the REAL paths in the task file (never guess):
 
 ```bash
 # Backend paths — find actual Controller/Service/Test directories
-find . -name "*Controller.cs" -path "*/Controllers/*" -not -path "*worktree*" -not -path "*.git/*" | head -3
-find . -name "*Service.cs" -path "*/Services/*" -not -path "*worktree*" -not -path "*.git/*" | head -3
-find . -name "*.csproj" -not -path "*worktree*" -not -path "*.git/*"
+find . -name "*Controller.cs" -o -name "*Service.cs" -o -name "*.csproj" -not -path "*worktree*" -not -path ".git/*" -not -path "node_modules/*" | head -3
+find . -name "*Controller.cs" -o -name "*Service.cs" -o -name "*.csproj" -not -path "*worktree*" -not -path ".git/*" -not -path "node_modules/*" | head -3
+find . -name "*.csproj" -not -path "*worktree*" -not -path ".git/*" -not -path "node_modules/*"
 
 # Frontend paths — find actual views and components
-find . -name "*.vue" -path "*/views/*" -not -path "*node_modules*" -not -path "*worktree*" | head -5
+find . -name "*.vue" -not -path "*worktree*" -not -path ".git/*" -not -path "node_modules/*" | head -5
 
 # Test commands — verify they work before writing them into tasks
-# Backend: dotnet test <test.csproj> --nologo
+# Backend: dotnet test {project} --nologo
 # Frontend: npx vitest run, npx vue-tsc --noEmit, npm run build
 ```
 
@@ -73,10 +73,10 @@ Follow it exactly. Key principles:
 ## Task Templates
 
 When generating task files for Codex or prompts for Cursor, start from:
-- Codex dev: `tasks/TASK-TEMPLATE-CODEX-DEV.md`
-- Codex review: `tasks/TASK-TEMPLATE-CODEX-REVIEW.md`
-- Codex fix: `tasks/TASK-TEMPLATE-CODEX-FIX.md`
-- Cursor: `tasks/TASK-TEMPLATE-CURSOR.md`
+- Codex dev: `tasks/active/../TASK-TEMPLATE-DEV.md`
+- Codex review: `tasks/active/../TASK-TEMPLATE-REVIEW.md`
+- Codex fix: `tasks/active/../TASK-TEMPLATE-FIX.md`
+- Cursor: `tasks/active/../TASK-TEMPLATE-FRONTEND.md`
 
 Replace all `<placeholders>` with actual values from state.json and the current task.
 

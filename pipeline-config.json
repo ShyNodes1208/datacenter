@@ -1,0 +1,50 @@
+{
+  "dirs": {
+    "active": "tasks/active",
+    "completed": "tasks/completed"
+  },
+  "agents": {
+    "orchestrator": "claude",
+    "backend": "codex",
+    "frontend": "cursor",
+    "reviewer": "codex"
+  },
+  "phases": {
+    "planning": "PLANNING",
+    "backend": "BACKEND",
+    "frontend": "FRONTEND",
+    "review": "REVIEW",
+    "verify": "VERIFY",
+    "done": "DONE",
+    "paused": "PAUSED"
+  },
+  "types": ["fullstack", "backend-only", "frontend-only"],
+  "commands": {
+    "backend": {
+      "build": "dotnet build {project}",
+      "test": "dotnet test {project} --nologo"
+    },
+    "frontend": {
+      "build": "npm run build",
+      "test": "npx vitest run",
+      "typeCheck": "npx vue-tsc --noEmit"
+    }
+  },
+  "discovery": {
+    "backendPatterns": ["*Controller.cs", "*Service.cs", "*.csproj"],
+    "frontendPatterns": ["*.vue"],
+    "excludePatterns": ["*worktree*", ".git/*", "node_modules/*"]
+  },
+  "timeouts": {
+    "backend": "30m",
+    "review": "15m"
+  },
+  "retry": { "max": 3 },
+  "verify": { "baseBranch": "main" },
+  "reviewContractCheck": "API changes backward-compatible? Types match across the stack?",
+  "idPatterns": {
+    "task": "^TASK-\\d{4}$",
+    "error": "^ERR-\\d{3}$",
+    "reviewIssue": "^RV-\\d{3}$"
+  }
+}
