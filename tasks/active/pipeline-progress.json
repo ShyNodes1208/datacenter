@@ -28,10 +28,10 @@
       "completed": "2026-08-07T01:37:28Z"
     },
     "TASK-0037": {
-      "status": "pending",
+      "status": "done",
       "owner": "cursor",
-      "commit": null,
-      "completed": null,
+      "commit": "36a4c7a22b375604572312524ed43f895a8fc87d",
+      "completed": "2026-08-07T02:16:08Z",
       "dependsOn": [
         "TASK-0033",
         "TASK-0034",
