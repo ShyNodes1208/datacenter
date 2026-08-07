@@ -6,7 +6,7 @@
 
 - Task ID：TASK-0051
 - Task Name：Agent 角色与工作流重建
-- Status：IN_PROGRESS
+- Status：COMPLETED
 - Owner：Codex Coordinator
 - Reviewer：Codex Reviewer（独立会话/主体）
 - Branch：codex/agent-workflow-realignment
@@ -145,9 +145,9 @@ git diff --check
 
 ## 审核结论
 
-- Reviewer：待独立 Reviewer 填写
-- 结论：待审核
-- 审核命令和证据：待审核
+- Reviewer：Codex Reviewer（独立会话/主体）
+- 结论：PASS
+- 审核命令和证据：validator 22/22、git diff --check、独立 Reviewer 复审报告
 
 ## 缺陷清单
 
@@ -163,9 +163,9 @@ git diff --check
 
 ## 复审结果
 
-- 最终 Reviewer：待独立 Reviewer 填写
-- 复审结论：待审核
-- 关闭缺陷及证据：待审核
+- 最终 Reviewer：Codex Reviewer（独立会话/主体）
+- 复审结论：PASS
+- 关闭缺陷及证据：T0051-ARCHIVE-001 已关闭；归档 12 文件可追溯
 
 ## 防过度开发检查
 
@@ -175,7 +175,7 @@ git diff --check
 - 是否存在无实际需求的抽象：否
 - 是否存在无关重构：否
 - 是否采用最简单可行方案：是
-- Reviewer 结论：待审核
+- Reviewer 结论：PASS；无过度开发阻断项
 
 ## Change Request
 
@@ -196,10 +196,10 @@ git diff --check
 ## Git 提交与推送
 
 - 提交说明：docs: realign agent governance workflow
-- 提交哈希：待提交
-- 推送结果：待推送
-- 本地哈希：待提交
-- 远端哈希：待推送
+- 提交哈希：766997d
+- 推送结果：成功推送 origin/codex/agent-workflow-realignment
+- 本地哈希：766997d
+- 远端哈希：766997d
 
 ## 已知限制
 
@@ -218,3 +218,9 @@ git diff --check
 - [ ] 本地与远端哈希一致
 - [ ] Reviewer 的防过度开发专项检查通过
 - [ ] 状态由协调者依据 Reviewer PASS 记录为 `COMPLETED`
+
+## 最终复核记录
+- Reviewer：Codex Reviewer（独立会话/主体）— PASS；报告：reviews/tasks/TASK-0051-AGENT-GOVERNANCE-REVIEW.md
+- validator 22/22；git diff --check PASS；src/tests tracked diff 为空。
+- 提交：766997d；已推送 origin/codex/agent-workflow-realignment。
+- 11 项 TASK-0051 模块锁已释放。

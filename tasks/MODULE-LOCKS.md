@@ -308,17 +308,20 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 
 | Task ID | 模块/路径 | Owner | 分支 | 状态 | 占用时间 | 释放条件 | 说明 |
 |---|---|---|---|---|---|---|---|
-| TASK-0051 | AGENTS.md | Codex Coordinator | codex/agent-workflow-realignment | CLAIMED | 2026-08-07 13:58 +08:00 | TASK-0051 完成或取消 | 重建项目级角色与约束入口 |
-| TASK-0051 | agents/ | Codex Coordinator | codex/agent-workflow-realignment | CLAIMED | 2026-08-07 13:58 +08:00 | TASK-0051 完成或取消 | 归档旧角色并建立三角色说明 |
-| TASK-0051 | docs/architecture/AGENT-WORKFLOW.md | Codex Coordinator | codex/agent-workflow-realignment | CLAIMED | 2026-08-07 13:58 +08:00 | TASK-0051 完成或取消 | 重建权威工作流 |
-| TASK-0051 | docs/archive/agent-governance-v1-2026-08-07/ | Codex Coordinator | codex/agent-workflow-realignment | CLAIMED | 2026-08-07 13:58 +08:00 | TASK-0051 完成或取消 | 保存替换前治理基线 |
-| TASK-0051 | scripts/validate-agent-workflow.ps1 | Codex Coordinator | codex/agent-workflow-realignment | CLAIMED | 2026-08-07 13:58 +08:00 | TASK-0051 完成或取消 | 更新治理一致性校验 |
-| TASK-0051 | tasks/TASK-TEMPLATE.md | Codex Coordinator | codex/agent-workflow-realignment | CLAIMED | 2026-08-07 13:58 +08:00 | TASK-0051 完成或取消 | 更新任务模板角色字段 |
-| TASK-0051 | tasks/TASK-EXAMPLE.md | Codex Coordinator | codex/agent-workflow-realignment | CLAIMED | 2026-08-07 13:58 +08:00 | TASK-0051 完成或取消 | 更新工作流示例 |
-| TASK-0051 | tasks/TASK-0051-AGENT-GOVERNANCE-REALIGNMENT.md | Codex Coordinator | codex/agent-workflow-realignment | CLAIMED | 2026-08-07 13:58 +08:00 | TASK-0051 完成或取消 | 本任务完整记录 |
-| TASK-0051 | tasks/current-task.md | Codex Coordinator | codex/agent-workflow-realignment | CLAIMED | 2026-08-07 13:58 +08:00 | TASK-0051 完成或取消 | 当前任务指针 |
-| TASK-0051 | tasks/MODULE-LOCKS.md | Codex Coordinator | codex/agent-workflow-realignment | CLAIMED | 2026-08-07 13:58 +08:00 | TASK-0051 完成或取消 | 本任务锁记录 |
+| TASK-0051 | AGENTS.md | Codex Coordinator | codex/agent-workflow-realignment | RELEASED | 2026-08-07 13:58 +08:00 | TASK-0051 完成或取消 | 重建项目级角色与约束入口 |
+| TASK-0051 | agents/ | Codex Coordinator | codex/agent-workflow-realignment | RELEASED | 2026-08-07 13:58 +08:00 | TASK-0051 完成或取消 | 归档旧角色并建立三角色说明 |
+| TASK-0051 | docs/architecture/AGENT-WORKFLOW.md | Codex Coordinator | codex/agent-workflow-realignment | RELEASED | 2026-08-07 13:58 +08:00 | TASK-0051 完成或取消 | 重建权威工作流 |
+| TASK-0051 | docs/archive/agent-governance-v1-2026-08-07/ | Codex Coordinator | codex/agent-workflow-realignment | RELEASED | 2026-08-07 13:58 +08:00 | TASK-0051 完成或取消 | 保存替换前治理基线 |
+| TASK-0051 | scripts/validate-agent-workflow.ps1 | Codex Coordinator | codex/agent-workflow-realignment | RELEASED | 2026-08-07 13:58 +08:00 | TASK-0051 完成或取消 | 更新治理一致性校验 |
+| TASK-0051 | tasks/TASK-TEMPLATE.md | Codex Coordinator | codex/agent-workflow-realignment | RELEASED | 2026-08-07 13:58 +08:00 | TASK-0051 完成或取消 | 更新任务模板角色字段 |
+| TASK-0051 | tasks/TASK-EXAMPLE.md | Codex Coordinator | codex/agent-workflow-realignment | RELEASED | 2026-08-07 13:58 +08:00 | TASK-0051 完成或取消 | 更新工作流示例 |
+| TASK-0051 | tasks/TASK-0051-AGENT-GOVERNANCE-REALIGNMENT.md | Codex Coordinator | codex/agent-workflow-realignment | RELEASED | 2026-08-07 13:58 +08:00 | TASK-0051 完成或取消 | 本任务完整记录 |
+| TASK-0051 | tasks/current-task.md | Codex Coordinator | codex/agent-workflow-realignment | RELEASED | 2026-08-07 13:58 +08:00 | TASK-0051 完成或取消 | 当前任务指针 |
+| TASK-0051 | tasks/MODULE-LOCKS.md | Codex Coordinator | codex/agent-workflow-realignment | RELEASED | 2026-08-07 13:58 +08:00 | TASK-0051 完成或取消 | 本任务锁记录 |
 
 ## 冲突处理示例
 
 若 TASK-1001 已以 `CLAIMED` 占用 `src/backend/Assets/`，TASK-1002 申请 `src/backend/Assets/Racks/` 时属于子路径重叠。TASK-1002 不得认领或修改，必须转为 `BLOCKED` 并记录 TASK-1001；待 TASK-1001 释放后重新检查并认领。
+
+## TASK-0051 释放记录
+- 2026-08-07：Reviewer PASS；提交 766997d 已推送，TASK-0051 锁全部 RELEASED。

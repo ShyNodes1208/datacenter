@@ -4,7 +4,7 @@
 
 - Task ID：TASK-0051
 - Task Name：Agent 角色与工作流重建
-- Status：IN_PROGRESS
+- Status：COMPLETED
 - Branch：codex/agent-workflow-realignment
 - Owner：Codex Coordinator
 - Reviewer：Codex Reviewer（独立会话或主体）
