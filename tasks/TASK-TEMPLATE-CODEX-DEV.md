@@ -23,14 +23,29 @@ Before starting, read these files for full context:
 
 ## Completion Checklist
 
-When done, you MUST update `tasks/active/state.json` **atomically** by reading
-the full document, modifying only your phase, and writing the complete result:
+When done, complete these steps **in order**:
+
+### Step 1: Commit your changes
 
 ```bash
-# Build files array from git diff
+# Add all changed/new files for this phase
+git add <list your changed files>
+git commit -m "<descriptive commit message>"
+```
+
+**This is mandatory.** The state.json update (Step 2) records the commit hash.
+If you skip this, the pipeline breaks — state.json will point to a nonexistent commit.
+
+### Step 2: Update state.json
+
+Update `tasks/active/state.json` **atomically** by reading the full document,
+modifying only your phase, and writing the complete result:
+
+```bash
+# Step 2: Update state.json atomically
+# Uses the commit hash from Step 1
 FILES_JSON=$(git diff --name-only HEAD~1 | jq -R -s 'split("\n") | map(select(length>0))')
 
-# Read current state, merge your changes, write back in one step:
 jq --argjson files "$FILES_JSON" \
   '.phases.<phase>.status = "done" |
    .phases.<phase>._invoked = false |
@@ -47,7 +62,6 @@ jq --argjson files "$FILES_JSON" \
 ```
 
 **Important:**
-- All git changes must be committed BEFORE updating state.json
 - One commit per phase — squash if needed
 - `handoffNote` must include: API signatures, config changes, known caveats
 - The `.updated` timestamp and `.history` entry are REQUIRED — do not skip them

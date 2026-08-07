@@ -26,10 +26,29 @@ backend API details, and module lock information.
 
 ## When Done
 
+Complete these steps **in order**:
+
+### Step 1: Verify and commit
+
+- [ ] npx vitest run (must pass)
+- [ ] npx vue-tsc --noEmit (must pass)
+- [ ] npm run build (must succeed)
+
+```bash
+git add <your changed files>
+git commit -m "<descriptive commit message>"
+```
+
+**This is mandatory.** The state.json update (Step 2) records the commit hash.
+If you skip this, the pipeline breaks — state.json will point to a nonexistent commit.
+
+### Step 2: Update state.json
+
 Update `tasks/active/state.json` **atomically** (read full doc, merge, write back):
 
 ```bash
-# Build files array from git diff
+# Step 2: Update state.json atomically
+# Uses the commit hash from Step 1
 FILES_JSON=$(git diff --name-only HEAD~1 | jq -R -s 'split("\n") | map(select(length>0))')
 
 jq --argjson files "$FILES_JSON" \
@@ -45,9 +64,4 @@ jq --argjson files "$FILES_JSON" \
   && mv tasks/active/state.json.tmp tasks/active/state.json
 ```
 
-**Checklist before writing state.json:**
-- [ ] All changes committed (one commit)
-- [ ] Tests run: `npx vitest run`
-- [ ] Type check passes: `npx vue-tsc --noEmit`
-- [ ] Build succeeds: `npm run build`
 - [ ] Handoff note written (API assumptions, known limitations, test gaps)

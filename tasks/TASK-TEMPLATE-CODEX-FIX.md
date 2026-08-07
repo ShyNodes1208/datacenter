@@ -19,14 +19,31 @@ other phases may have been updated (especially if the other phase was also re-do
 
 ## Completion Checklist
 
-Same as the original dev task — update `state.json` **atomically** by reading
-the full document, modifying only your phase, and writing the complete result:
+Complete these steps **in order**:
+
+### Step 1: Commit your changes
 
 ```bash
-# Build files array from git diff
+# Add all changed/new files for this phase
+git add <list your changed files>
+git commit -m "fix: <describe what was fixed>"
+```
+
+**This is mandatory.** The state.json update (Step 2) records the commit hash.
+If you skip this, the pipeline breaks — state.json will point to a nonexistent commit.
+
+**IMPORTANT:** Reference the issue IDs (e.g., RV-001, RV-003) in your commit message.
+
+### Step 2: Update state.json
+
+Update `state.json` **atomically** by reading the full document, modifying only
+your phase, and writing the complete result:
+
+```bash
+# Step 2: Update state.json atomically
+# Uses the commit hash from Step 1
 FILES_JSON=$(git diff --name-only HEAD~1 | jq -R -s 'split("\n") | map(select(length>0))')
 
-# Read current state, merge your changes, write back in one step:
 jq --argjson files "$FILES_JSON" \
   '.phases.<phase>.status = "done" |
    .phases.<phase>._invoked = false |
@@ -42,5 +59,4 @@ jq --argjson files "$FILES_JSON" \
   && mv tasks/active/state.json.tmp tasks/active/state.json
 ```
 
-**IMPORTANT:** Reference the issue IDs (e.g., RV-001, RV-003) in your commit message.
 - The `.updated` timestamp and `.history` entry are REQUIRED — do not skip them

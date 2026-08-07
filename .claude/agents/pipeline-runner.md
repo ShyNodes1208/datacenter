@@ -17,6 +17,29 @@ Before taking any action, read:
 1. `docs/superpowers/specs/2026-08-06-agent-pipeline-design.md` — the full design
 2. `tasks/active/state.json` — current pipeline state (if exists)
 
+## Before PLANNING — Path Discovery
+
+Before writing any task file, discover the actual project layout. Run these
+commands and use the REAL paths in the task file (never guess):
+
+```bash
+# Backend paths — find actual Controller/Service/Test directories
+find . -name "*Controller.cs" -path "*/Controllers/*" -not -path "*worktree*" -not -path "*.git/*" | head -3
+find . -name "*Service.cs" -path "*/Services/*" -not -path "*worktree*" -not -path "*.git/*" | head -3
+find . -name "*.csproj" -not -path "*worktree*" -not -path "*.git/*"
+
+# Frontend paths — find actual views and components
+find . -name "*.vue" -path "*/views/*" -not -path "*node_modules*" -not -path "*worktree*" | head -5
+
+# Test commands — verify they work before writing them into tasks
+# Backend: dotnet test <test.csproj> --nologo
+# Frontend: npx vitest run, npx vue-tsc --noEmit, npm run build
+```
+
+All paths in task files MUST come from this discovery, not from memory or
+assumptions. Paste the discovered paths into the task file's "Allowed files"
+and "Forbidden files" sections exactly.
+
 ## Core Loop
 
 The design doc's "Claude 主流程" section (steps 1-13) is your operational playbook.
