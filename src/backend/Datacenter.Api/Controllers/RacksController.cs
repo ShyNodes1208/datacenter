@@ -827,6 +827,115 @@ public sealed class RacksController(AppDbContext dbContext, IAntiforgery antifor
             "UNIQUE constraint failed: Racks.RoomId, Racks.Code",
             StringComparison.Ordinal);
 
+    [HttpGet("{rackId:guid}/detail")]
+    public async Task<IActionResult> GetDetail(Guid rackId, CancellationToken cancellationToken)
+    {
+        var rack = await dbContext.Racks
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.Id == rackId, cancellationToken);
+
+        if (rack is null)
+            return NotFound(new { error = "机柜不存在" });
+
+        var devices = await dbContext.ServerPositions
+            .AsNoTracking()
+            .Where(sp => sp.RackId == rackId && sp.Status == "在架")
+            .OrderBy(sp => sp.StartU)
+            .Select(sp => new
+            {
+                sp.Server.Id,
+                sp.Server.Name,
+                sp.Server.DeviceType,
+                sp.StartU,
+                sp.EndU,
+                UHeight = sp.EndU - sp.StartU + 1
+            })
+            .ToListAsync(cancellationToken);
+
+        var usedU = devices.Sum(d => d.UHeight);
+        var serverIds = devices.Select(d => d.Id).ToHashSet();
+
+        var history = await dbContext.AuditRecords
+            .AsNoTracking()
+            .Where(a => serverIds.Contains(a.ServerId))
+            .OrderByDescending(a => a.OperatedAt)
+            .Take(20)
+            .Select(a => new
+            {
+                Time = a.OperatedAt,
+                DeviceName = a.Server.Name,
+                Action = a.OperationType,
+                FromU = a.FromPosition != null ? (int?)int.Parse(a.FromPosition) : null,
+                ToU = a.ToPosition != null ? (int?)int.Parse(a.ToPosition) : null
+            })
+            .ToListAsync(cancellationToken);
+
+        var serverIdList = devices.Select(d => d.Id).ToList();
+        var cables = await dbContext.Cables
+            .AsNoTracking()
+            .Where(c => serverIdList.Contains(c.SourcePort.ServerId) ||
+                        serverIdList.Contains(c.TargetPort.ServerId))
+            .Select(c => new
+            {
+                c.Id,
+                PortName = serverIdList.Contains(c.SourcePort.ServerId)
+                    ? c.SourcePort.PortName : c.TargetPort.PortName,
+                RemoteDevice = serverIdList.Contains(c.SourcePort.ServerId)
+                    ? c.TargetPort.Server.Name : c.SourcePort.Server.Name,
+                RemoteRack = serverIdList.Contains(c.SourcePort.ServerId)
+                    ? c.TargetPort.Server.ServerPositions
+                        .Where(sp => sp.Status == "在架")
+                        .Select(sp => sp.Rack.Code).FirstOrDefault() ?? ""
+                    : c.SourcePort.Server.ServerPositions
+                        .Where(sp => sp.Status == "在架")
+                        .Select(sp => sp.Rack.Code).FirstOrDefault() ?? ""
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(new
+        {
+            rack = new { rack.Id, rack.Code, rack.HeightU, rack.Brand, rack.Power, rack.Notes },
+            devices,
+            occupancy = new { usedU, freeU = rack.HeightU - usedU, totalU = rack.HeightU },
+            positionHistory = history,
+            cables
+        });
+    }
+
+    [HttpGet("{rackId:guid}/position-history")]
+    public async Task<IActionResult> GetPositionHistory(Guid rackId, CancellationToken cancellationToken)
+    {
+        var rack = await dbContext.Racks
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.Id == rackId, cancellationToken);
+
+        if (rack is null)
+            return NotFound(new { error = "机柜不存在" });
+
+        var serverIds = await dbContext.ServerPositions
+            .AsNoTracking()
+            .Where(sp => sp.RackId == rackId)
+            .Select(sp => sp.ServerId)
+            .ToListAsync(cancellationToken);
+
+        var history = await dbContext.AuditRecords
+            .AsNoTracking()
+            .Where(a => serverIds.Contains(a.ServerId))
+            .OrderByDescending(a => a.OperatedAt)
+            .Take(50)
+            .Select(a => new
+            {
+                Time = a.OperatedAt,
+                DeviceName = a.Server.Name,
+                Action = a.OperationType,
+                FromU = a.FromPosition != null ? (int?)int.Parse(a.FromPosition) : null,
+                ToU = a.ToPosition != null ? (int?)int.Parse(a.ToPosition) : null
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(new { rackCode = rack.Code, history });
+    }
+
     private sealed class RoomCodeComparer : IEqualityComparer<(Guid RoomId, string Code)>
     {
         public static RoomCodeComparer Instance { get; } = new();

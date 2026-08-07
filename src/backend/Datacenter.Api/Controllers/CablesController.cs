@@ -454,4 +454,59 @@ public sealed class CablesController(AppDbContext dbContext, IAntiforgery antifo
 
         return Ok(new { links });
     }
+
+    [HttpGet("cables/connections")]
+    public async Task<IActionResult> Connections(
+        [FromQuery] Guid? roomId,
+        [FromQuery] string? cableType,
+        CancellationToken cancellationToken)
+    {
+        var query = dbContext.Cables.AsNoTracking();
+
+        if (roomId.HasValue)
+        {
+            query = query.Where(c =>
+                c.SourcePort.Server.ServerPositions.Any(sp => sp.Rack.RoomId == roomId.Value && sp.Status == "在架") ||
+                c.TargetPort.Server.ServerPositions.Any(sp => sp.Rack.RoomId == roomId.Value && sp.Status == "在架"));
+        }
+        if (!string.IsNullOrWhiteSpace(cableType))
+        {
+            query = query.Where(c => c.CableType == cableType);
+        }
+
+        var connections = await query
+            .Select(c => new
+            {
+                c.Id,
+                Source = new
+                {
+                    DeviceName = c.SourcePort.Server.Name,
+                    PortName = c.SourcePort.PortName,
+                    RackCode = c.SourcePort.Server.ServerPositions
+                        .Where(sp => sp.Status == "在架")
+                        .Select(sp => sp.Rack.Code).FirstOrDefault() ?? "",
+                    RoomName = c.SourcePort.Server.ServerPositions
+                        .Where(sp => sp.Status == "在架")
+                        .Select(sp => sp.Rack.Room.Name).FirstOrDefault() ?? ""
+                },
+                Target = new
+                {
+                    DeviceName = c.TargetPort.Server.Name,
+                    PortName = c.TargetPort.PortName,
+                    RackCode = c.TargetPort.Server.ServerPositions
+                        .Where(sp => sp.Status == "在架")
+                        .Select(sp => sp.Rack.Code).FirstOrDefault() ?? "",
+                    RoomName = c.TargetPort.Server.ServerPositions
+                        .Where(sp => sp.Status == "在架")
+                        .Select(sp => sp.Rack.Room.Name).FirstOrDefault() ?? ""
+                },
+                c.CableType,
+                c.Color,
+                Status = c.Purpose ?? "normal",
+                c.Notes
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(new { connections });
+    }
 }

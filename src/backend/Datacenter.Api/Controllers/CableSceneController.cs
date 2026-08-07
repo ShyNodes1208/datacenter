@@ -98,4 +98,77 @@ public sealed class CableSceneController(AppDbContext dbContext) : ControllerBas
 
         return Ok(new { racks, devices, cables });
     }
+
+    [HttpGet("rooms/{roomId:guid}/floorplan-data")]
+    public async Task<IActionResult> GetFloorplanData(Guid roomId, CancellationToken cancellationToken)
+    {
+        var room = await dbContext.Rooms
+            .AsNoTracking()
+            .Where(r => r.Id == roomId)
+            .Select(r => new { r.Id, r.Name })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (room is null)
+            return NotFound(new { error = "机房不存在" });
+
+        var racks = await dbContext.Racks
+            .AsNoTracking()
+            .Where(r => r.RoomId == roomId)
+            .OrderBy(r => r.Code)
+            .Select(r => new
+            {
+                r.Id, r.Code, r.X, r.Y, r.HeightU,
+                Devices = r.ServerPositions
+                    .Where(sp => sp.Status == "在架")
+                    .Select(sp => new
+                    {
+                        sp.Server.Id,
+                        sp.Server.Name,
+                        sp.Server.DeviceType,
+                        sp.StartU,
+                        sp.EndU
+                    }).ToList()
+            })
+            .ToListAsync(cancellationToken);
+
+        var rackIds = racks.Select(r => r.Id).ToHashSet();
+
+        var cables = await dbContext.Cables
+            .AsNoTracking()
+            .Where(c =>
+                c.SourcePort.Server.ServerPositions.Any(sp => rackIds.Contains(sp.RackId) && sp.Status == "在架") &&
+                c.TargetPort.Server.ServerPositions.Any(sp => rackIds.Contains(sp.RackId) && sp.Status == "在架"))
+            .Select(c => new
+            {
+                c.Id,
+                SourceRackCode = c.SourcePort.Server.ServerPositions
+                    .Where(sp => sp.Status == "在架")
+                    .Select(sp => sp.Rack.Code).FirstOrDefault() ?? "",
+                TargetRackCode = c.TargetPort.Server.ServerPositions
+                    .Where(sp => sp.Status == "在架")
+                    .Select(sp => sp.Rack.Code).FirstOrDefault() ?? "",
+                c.CableType,
+                c.Color
+            })
+            .ToListAsync(cancellationToken);
+
+        var resultRacks = racks.Select(r => new
+        {
+            r.Id, r.Code, r.X, r.Y, r.HeightU,
+            r.Devices,
+            Occupancy = new
+            {
+                UsedU = r.Devices.Sum(d => d.EndU - d.StartU + 1),
+                FreeU = r.HeightU - r.Devices.Sum(d => d.EndU - d.StartU + 1),
+                TotalU = r.HeightU
+            }
+        });
+
+        return Ok(new
+        {
+            room = new { room.Id, room.Name, RackCount = racks.Count },
+            racks = resultRacks,
+            cables
+        });
+    }
 }
