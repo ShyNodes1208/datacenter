@@ -117,56 +117,70 @@ public sealed class CableSceneController(AppDbContext dbContext) : ControllerBas
             .OrderBy(r => r.Code)
             .Select(r => new
             {
-                r.Id, r.Code, r.X, r.Y, r.HeightU,
-                Devices = r.ServerPositions
-                    .Where(sp => sp.Status == "在架")
-                    .Select(sp => new
-                    {
-                        sp.Server.Id,
-                        sp.Server.Name,
-                        sp.Server.DeviceType,
-                        sp.StartU,
-                        sp.EndU
-                    }).ToList()
+                r.Id, r.Code, r.X, r.Y, r.HeightU
             })
             .ToListAsync(cancellationToken);
 
         var rackIds = racks.Select(r => r.Id).ToHashSet();
 
+        // 所有在架设备按机柜分组
+        var devicesByRack = await dbContext.ServerPositions
+            .AsNoTracking()
+            .Where(sp => rackIds.Contains(sp.RackId) && sp.Status == "在架")
+            .Select(sp => new
+            {
+                sp.RackId,
+                sp.Server.Id,
+                sp.Server.Name,
+                sp.Server.DeviceType,
+                sp.StartU,
+                sp.EndU,
+                UHeight = sp.EndU - sp.StartU + 1
+            })
+            .ToListAsync(cancellationToken);
+
+        var rackGroups = devicesByRack
+            .GroupBy(d => d.RackId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var resultRacks = racks.Select(r =>
+        {
+            var devices = rackGroups.GetValueOrDefault(r.Id, []);
+            var usedU = devices.Sum(d => d.UHeight);
+            return new
+            {
+                r.Id, r.Code, r.X, r.Y, r.HeightU,
+                Devices = devices.Select(d => new { d.Id, d.Name, d.DeviceType, d.StartU, d.EndU }),
+                Occupancy = new { UsedU = usedU, FreeU = r.HeightU - usedU, TotalU = r.HeightU }
+            };
+        });
+
+        var rackCount = racks.Count;
+
         var cables = await dbContext.Cables
             .AsNoTracking()
             .Where(c =>
-                c.SourcePort.Server.ServerPositions.Any(sp => rackIds.Contains(sp.RackId) && sp.Status == "在架") &&
-                c.TargetPort.Server.ServerPositions.Any(sp => rackIds.Contains(sp.RackId) && sp.Status == "在架"))
+                dbContext.ServerPositions.Any(sp =>
+                    sp.ServerId == c.SourcePort.ServerId && rackIds.Contains(sp.RackId) && sp.Status == "在架") &&
+                dbContext.ServerPositions.Any(sp =>
+                    sp.ServerId == c.TargetPort.ServerId && rackIds.Contains(sp.RackId) && sp.Status == "在架"))
             .Select(c => new
             {
                 c.Id,
-                SourceRackCode = c.SourcePort.Server.ServerPositions
-                    .Where(sp => sp.Status == "在架")
+                SourceRackCode = dbContext.ServerPositions
+                    .Where(sp => sp.ServerId == c.SourcePort.ServerId && sp.Status == "在架")
                     .Select(sp => sp.Rack.Code).FirstOrDefault() ?? "",
-                TargetRackCode = c.TargetPort.Server.ServerPositions
-                    .Where(sp => sp.Status == "在架")
+                TargetRackCode = dbContext.ServerPositions
+                    .Where(sp => sp.ServerId == c.TargetPort.ServerId && sp.Status == "在架")
                     .Select(sp => sp.Rack.Code).FirstOrDefault() ?? "",
                 c.CableType,
                 c.Color
             })
             .ToListAsync(cancellationToken);
 
-        var resultRacks = racks.Select(r => new
-        {
-            r.Id, r.Code, r.X, r.Y, r.HeightU,
-            r.Devices,
-            Occupancy = new
-            {
-                UsedU = r.Devices.Sum(d => d.EndU - d.StartU + 1),
-                FreeU = r.HeightU - r.Devices.Sum(d => d.EndU - d.StartU + 1),
-                TotalU = r.HeightU
-            }
-        });
-
         return Ok(new
         {
-            room = new { room.Id, room.Name, RackCount = racks.Count },
+            room = new { room.Id, room.Name, RackCount = rackCount },
             racks = resultRacks,
             cables
         });

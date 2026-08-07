@@ -883,11 +883,11 @@ public sealed class RacksController(AppDbContext dbContext, IAntiforgery antifor
                 RemoteDevice = serverIdList.Contains(c.SourcePort.ServerId)
                     ? c.TargetPort.Server.Name : c.SourcePort.Server.Name,
                 RemoteRack = serverIdList.Contains(c.SourcePort.ServerId)
-                    ? c.TargetPort.Server.ServerPositions
-                        .Where(sp => sp.Status == "在架")
+                    ? dbContext.ServerPositions
+                        .Where(sp => sp.ServerId == c.TargetPort.ServerId && sp.Status == "在架")
                         .Select(sp => sp.Rack.Code).FirstOrDefault() ?? ""
-                    : c.SourcePort.Server.ServerPositions
-                        .Where(sp => sp.Status == "在架")
+                    : dbContext.ServerPositions
+                        .Where(sp => sp.ServerId == c.SourcePort.ServerId && sp.Status == "在架")
                         .Select(sp => sp.Rack.Code).FirstOrDefault() ?? ""
             })
             .ToListAsync(cancellationToken);

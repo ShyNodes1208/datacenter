@@ -466,8 +466,10 @@ public sealed class CablesController(AppDbContext dbContext, IAntiforgery antifo
         if (roomId.HasValue)
         {
             query = query.Where(c =>
-                c.SourcePort.Server.ServerPositions.Any(sp => sp.Rack.RoomId == roomId.Value && sp.Status == "在架") ||
-                c.TargetPort.Server.ServerPositions.Any(sp => sp.Rack.RoomId == roomId.Value && sp.Status == "在架"));
+                dbContext.ServerPositions.Any(sp =>
+                    sp.ServerId == c.SourcePort.ServerId && sp.Rack.RoomId == roomId.Value && sp.Status == "在架") ||
+                dbContext.ServerPositions.Any(sp =>
+                    sp.ServerId == c.TargetPort.ServerId && sp.Rack.RoomId == roomId.Value && sp.Status == "在架"));
         }
         if (!string.IsNullOrWhiteSpace(cableType))
         {
@@ -482,22 +484,22 @@ public sealed class CablesController(AppDbContext dbContext, IAntiforgery antifo
                 {
                     DeviceName = c.SourcePort.Server.Name,
                     PortName = c.SourcePort.PortName,
-                    RackCode = c.SourcePort.Server.ServerPositions
-                        .Where(sp => sp.Status == "在架")
+                    RackCode = dbContext.ServerPositions
+                        .Where(sp => sp.ServerId == c.SourcePort.ServerId && sp.Status == "在架")
                         .Select(sp => sp.Rack.Code).FirstOrDefault() ?? "",
-                    RoomName = c.SourcePort.Server.ServerPositions
-                        .Where(sp => sp.Status == "在架")
+                    RoomName = dbContext.ServerPositions
+                        .Where(sp => sp.ServerId == c.SourcePort.ServerId && sp.Status == "在架")
                         .Select(sp => sp.Rack.Room.Name).FirstOrDefault() ?? ""
                 },
                 Target = new
                 {
                     DeviceName = c.TargetPort.Server.Name,
                     PortName = c.TargetPort.PortName,
-                    RackCode = c.TargetPort.Server.ServerPositions
-                        .Where(sp => sp.Status == "在架")
+                    RackCode = dbContext.ServerPositions
+                        .Where(sp => sp.ServerId == c.TargetPort.ServerId && sp.Status == "在架")
                         .Select(sp => sp.Rack.Code).FirstOrDefault() ?? "",
-                    RoomName = c.TargetPort.Server.ServerPositions
-                        .Where(sp => sp.Status == "在架")
+                    RoomName = dbContext.ServerPositions
+                        .Where(sp => sp.ServerId == c.TargetPort.ServerId && sp.Status == "在架")
                         .Select(sp => sp.Rack.Room.Name).FirstOrDefault() ?? ""
                 },
                 c.CableType,
