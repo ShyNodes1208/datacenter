@@ -115,11 +115,12 @@ function autoLayoutRooms(rooms: TopologyRoom[]): Map<string, { x: number; y: num
   const zeroRooms = rooms.filter((room) => room.topologyX === 0 && room.topologyY === 0)
   const layoutZeros = zeroRooms.length > 1 || rooms.every((room) => room.topologyX === 0 && room.topologyY === 0)
   let zeroIndex = 0
+  const cols = Math.min(4, Math.ceil(Math.sqrt(rooms.length)))
   for (const room of rooms) {
     if (layoutZeros && room.topologyX === 0 && room.topologyY === 0) {
-      const col = zeroIndex % 3
-      const row = Math.floor(zeroIndex / 3)
-      positions.set(room.id, { x: 80 + col * 240, y: 80 + row * 160 })
+      const col = zeroIndex % cols
+      const row = Math.floor(zeroIndex / cols)
+      positions.set(room.id, { x: 40 + col * 220, y: 40 + row * 140 })
       zeroIndex += 1
       continue
     }
@@ -435,7 +436,7 @@ onUnmounted(() => {
 .topology-canvas {
   position: relative;
   flex: 1;
-  min-height: 560px;
+  min-height: 760px;
   border: 1px solid #cfd8e3;
   border-radius: 12px;
   overflow: hidden;
@@ -449,7 +450,7 @@ onUnmounted(() => {
 .konva-stage {
   width: 100%;
   height: 100%;
-  min-height: 560px;
+  min-height: 760px;
 }
 
 .topology-tooltip {
