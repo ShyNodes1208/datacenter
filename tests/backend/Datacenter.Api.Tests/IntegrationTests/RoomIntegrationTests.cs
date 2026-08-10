@@ -43,10 +43,102 @@ public sealed class RoomIntegrationTests(AuthTestFixture fixture)
         using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
         var rooms = document.RootElement.EnumerateArray().ToArray();
         Assert.Equal(2, rooms.Length);
-        Assert.All(rooms, room => Assert.Equal(["id", "name", "status"], room.EnumerateObject().Select(property => property.Name).Order()));
+        Assert.All(rooms, room => Assert.Equal(
+            ["id", "location", "name", "rackCount", "status"],
+            room.EnumerateObject().Select(property => property.Name).Order()));
         Assert.All(rooms, room => Assert.True(Guid.TryParse(room.GetProperty("id").GetString(), out _)));
         Assert.Contains(rooms, room => room.GetProperty("name").GetString() == "主机房" && room.GetProperty("status").GetString() == "启用");
         Assert.Contains(rooms, room => room.GetProperty("name").GetString() == "灾备机房" && room.GetProperty("status").GetString() == "停用");
+    }
+
+    [Fact]
+    public async Task GetRoomsReturnsLocationAndRackCount()
+    {
+        var roomWithRacks = new Room { Name = "主机房", Status = "启用", Location = "1号楼B1" };
+        var emptyRoom = new Room { Name = "灾备机房", Status = "停用", Location = null };
+        var racks = new[]
+        {
+            new Rack { RoomId = roomWithRacks.Id, Code = "R001", HeightU = 42, X = 0, Y = 0, Z = 0 },
+            new Rack { RoomId = roomWithRacks.Id, Code = "R002", HeightU = 42, X = 1, Y = 0, Z = 0 }
+        };
+        await ReplaceRoomsAndRacksAsync([roomWithRacks, emptyRoom], racks);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.ReadOnlyViewer);
+
+        using var response = await client.GetAsync("/api/rooms");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        var rooms = document.RootElement.EnumerateArray().ToArray();
+        var main = Assert.Single(rooms, room => room.GetProperty("name").GetString() == "主机房");
+        Assert.Equal("1号楼B1", main.GetProperty("location").GetString());
+        Assert.Equal(2, main.GetProperty("rackCount").GetInt32());
+        var backup = Assert.Single(rooms, room => room.GetProperty("name").GetString() == "灾备机房");
+        Assert.Equal(JsonValueKind.Null, backup.GetProperty("location").ValueKind);
+        Assert.Equal(0, backup.GetProperty("rackCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task RoomAdministratorCanCreateAndUpdateRoomLocation()
+    {
+        await ReplaceRoomsAsync();
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.RoomAdministrator);
+
+        using var createResponse = await PostRoomAsync(client, "主机房", "启用", "A区");
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+
+        await using (var scope = fixture.Factory.Services.CreateAsyncScope())
+        {
+            var room = await scope.ServiceProvider.GetRequiredService<AppDbContext>().Rooms
+                .AsNoTracking()
+                .SingleAsync(item => item.Name == "主机房");
+            Assert.Equal("A区", room.Location);
+
+            using var updateResponse = await PutRoomAsync(client, room.Id, "主机房", "启用", "B区");
+            Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
+        }
+
+        await using (var scope = fixture.Factory.Services.CreateAsyncScope())
+        {
+            var room = await scope.ServiceProvider.GetRequiredService<AppDbContext>().Rooms
+                .AsNoTracking()
+                .SingleAsync(item => item.Name == "主机房");
+            Assert.Equal("B区", room.Location);
+        }
+    }
+
+    [Fact]
+    public async Task UpdateRoom_WithoutLocationPreservesExistingValue()
+    {
+        await ReplaceRoomsAsync();
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.RoomAdministrator);
+
+        using var createResponse = await PostRoomAsync(client, "主机房", "启用", "A区");
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
+
+        Guid roomId;
+        await using (var scope = fixture.Factory.Services.CreateAsyncScope())
+        {
+            var room = await scope.ServiceProvider.GetRequiredService<AppDbContext>().Rooms
+                .AsNoTracking()
+                .SingleAsync(item => item.Name == "主机房");
+            roomId = room.Id;
+            Assert.Equal("A区", room.Location);
+        }
+
+        // Update without location — should preserve existing "A区"
+        using var updateResponse = await PutRoomAsync(client, roomId, "主机房", "停用" /* no location */);
+        Assert.Equal(HttpStatusCode.OK, updateResponse.StatusCode);
+
+        await using (var scope = fixture.Factory.Services.CreateAsyncScope())
+        {
+            var room = await scope.ServiceProvider.GetRequiredService<AppDbContext>().Rooms
+                .AsNoTracking()
+                .SingleAsync(item => item.Id == roomId);
+            Assert.Equal("A区", room.Location);
+        }
     }
 
     [Fact]
@@ -402,26 +494,27 @@ public sealed class RoomIntegrationTests(AuthTestFixture fixture)
             .CountAsync(room => room.Name == name);
     }
 
-    private static async Task<HttpResponseMessage> PostRoomAsync(HttpClient client, string name, string status)
+    private static async Task<HttpResponseMessage> PostRoomAsync(
+        HttpClient client, string name, string status, string? location = null)
     {
         using var csrf = await client.GetAsync("/api/auth/csrf");
         var token = csrf.Headers.GetValues("X-XSRF-TOKEN").Single();
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/rooms")
         {
-            Content = JsonContent.Create(new { name, status })
+            Content = JsonContent.Create(new { name, status, location })
         };
         request.Headers.Add("X-XSRF-TOKEN", token);
         return await client.SendAsync(request);
     }
 
     private static async Task<HttpResponseMessage> PutRoomAsync(
-        HttpClient client, Guid id, string name, string status)
+        HttpClient client, Guid id, string name, string status, string? location = null)
     {
         using var csrf = await client.GetAsync("/api/auth/csrf");
         var token = csrf.Headers.GetValues("X-XSRF-TOKEN").Single();
         using var request = new HttpRequestMessage(HttpMethod.Put, $"/api/rooms/{id}")
         {
-            Content = JsonContent.Create(new { name, status })
+            Content = JsonContent.Create(new { name, status, location })
         };
         request.Headers.Add("X-XSRF-TOKEN", token);
         return await client.SendAsync(request);

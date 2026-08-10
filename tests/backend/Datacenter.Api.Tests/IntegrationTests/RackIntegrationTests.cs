@@ -189,6 +189,27 @@ public sealed class RackIntegrationTests(AuthTestFixture fixture)
     }
 
     [Fact]
+    public async Task ImportOverwrite_WithoutStatusPreservesExistingValue()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        var rack = NewRack(room.Id, "R001");
+        rack.Status = "停用";
+        await ReplaceDataAsync([room], [rack]);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.RoomAdministrator);
+        // ImportRow does not include 'status' — overwrite should keep "停用"
+        var action = ImportRow(2, "overwrite", room.Id, rack.Code, rack.Id, heightU: 47);
+
+        using var response = await PostImportAsync(client, [action]);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var updated = await FindRackAsync(room.Id, rack.Code);
+        Assert.NotNull(updated);
+        Assert.Equal("停用", updated.Status);
+        Assert.Equal(47, updated.HeightU);
+    }
+
+    [Fact]
     public async Task ImportRowFailureDoesNotRollbackAnotherValidRow()
     {
         var room = new Room { Name = "主机房", Status = "启用" };
@@ -398,7 +419,8 @@ public sealed class RackIntegrationTests(AuthTestFixture fixture)
             notes = rack.Notes,
             x = rack.X,
             y = rack.Y,
-            z = rack.Z
+            z = rack.Z,
+            status = rack.Status
         });
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
@@ -440,7 +462,8 @@ public sealed class RackIntegrationTests(AuthTestFixture fixture)
             notes = rack.Notes,
             x = rack.X,
             y = rack.Y,
-            z = rack.Z
+            z = rack.Z,
+            status = rack.Status
         });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -597,8 +620,161 @@ public sealed class RackIntegrationTests(AuthTestFixture fixture)
         notes = rack.Notes,
         x = rack.X,
         y = rack.Y,
-        z = rack.Z
+        z = rack.Z,
+        status = rack.Status
     };
+
+    [Fact]
+    public async Task CreateRackDefaultsStatusToEnabled()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        await ReplaceDataAsync([room], []);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.RoomAdministrator);
+
+        using var response = await PostRackAsync(client, new
+        {
+            code = "R001",
+            roomId = room.Id,
+            heightU = 42,
+            brand = "华为",
+            power = 5.5,
+            notes = "A区",
+            x = 1,
+            y = 2,
+            z = 3
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = await ReadDocumentAsync(response);
+        Assert.Equal("启用", document.RootElement.GetProperty("status").GetString());
+        var rack = await FindRackAsync(room.Id, "R001");
+        Assert.NotNull(rack);
+        Assert.Equal("启用", rack.Status);
+    }
+
+    [Fact]
+    public async Task CreateAndUpdateRackStatusValidation()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        var rack = NewRack(room.Id, "R001");
+        await ReplaceDataAsync([room], [rack]);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.RoomAdministrator);
+
+        using var createInvalid = await PostRackAsync(client, new
+        {
+            code = "R002",
+            roomId = room.Id,
+            heightU = 42,
+            brand = "华为",
+            power = 5.5,
+            notes = "A区",
+            x = 1,
+            y = 2,
+            z = 3,
+            status = "维修中"
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, createInvalid.StatusCode);
+        Assert.Equal("状态值无效", await ReadErrorAsync(createInvalid));
+
+        using var updateInvalid = await PutRackAsync(client, rack.Id, new
+        {
+            code = rack.Code,
+            heightU = rack.HeightU,
+            brand = rack.Brand,
+            power = rack.Power,
+            notes = rack.Notes,
+            x = rack.X,
+            y = rack.Y,
+            z = rack.Z,
+            status = "维修中"
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, updateInvalid.StatusCode);
+        Assert.Equal("状态值无效", await ReadErrorAsync(updateInvalid));
+
+        using var updateOk = await PutRackAsync(client, rack.Id, new
+        {
+            code = rack.Code,
+            heightU = rack.HeightU,
+            brand = rack.Brand,
+            power = rack.Power,
+            notes = rack.Notes,
+            x = rack.X,
+            y = rack.Y,
+            z = rack.Z,
+            status = "停用"
+        });
+        Assert.Equal(HttpStatusCode.OK, updateOk.StatusCode);
+        using var document = await ReadDocumentAsync(updateOk);
+        Assert.Equal("停用", document.RootElement.GetProperty("status").GetString());
+        Assert.Equal("停用", (await FindRackByIdAsync(rack.Id))!.Status);
+    }
+
+    [Fact]
+    public async Task UpdateRack_WithoutStatusPreservesExistingValue()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        var rack = NewRack(room.Id, "R001");
+        rack.Status = "停用";
+        await ReplaceDataAsync([room], [rack]);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.RoomAdministrator);
+
+        // PUT without status should preserve existing value (not reject with 400)
+        using var response = await PutRackAsync(client, rack.Id, new
+        {
+            code = rack.Code,
+            heightU = rack.HeightU,
+            brand = rack.Brand,
+            power = rack.Power,
+            notes = rack.Notes,
+            x = rack.X + 1,
+            y = rack.Y,
+            z = rack.Z
+            // status omitted — should keep "停用"
+        });
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var updated = await FindRackByIdAsync(rack.Id);
+        Assert.Equal("停用", updated!.Status);
+        Assert.Equal(rack.X + 1, updated.X);
+    }
+
+    [Fact]
+    public async Task GetRacksReturnsStatus()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        var enabled = NewRack(room.Id, "R001");
+        var disabled = NewRack(room.Id, "R002");
+        disabled.Status = "停用";
+        await ReplaceDataAsync([room], [enabled, disabled]);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.ReadOnlyViewer);
+
+        using var response = await client.GetAsync($"/api/racks?roomId={room.Id}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = await ReadDocumentAsync(response);
+        var items = document.RootElement.EnumerateArray().ToArray();
+        Assert.Contains(items, item =>
+            item.GetProperty("code").GetString() == "R001"
+            && item.GetProperty("status").GetString() == "启用");
+        Assert.Contains(items, item =>
+            item.GetProperty("code").GetString() == "R002"
+            && item.GetProperty("status").GetString() == "停用");
+    }
+
+    private static async Task<HttpResponseMessage> PostRackAsync(HttpClient client, object body)
+    {
+        using var csrf = await client.GetAsync("/api/auth/csrf");
+        var token = csrf.Headers.GetValues("X-XSRF-TOKEN").Single();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/racks")
+        {
+            Content = JsonContent.Create(body)
+        };
+        request.Headers.Add("X-XSRF-TOKEN", token);
+        return await client.SendAsync(request);
+    }
 
     private static object?[] ValidRow(string roomName) =>
         ["R001", roomName, 42, "华为", 5.5, "A区", 1, 2, 3];

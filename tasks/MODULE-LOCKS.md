@@ -6,17 +6,28 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 
 | Task ID | Module or Path | Owner | Claimed At | Status | Release Condition | Released At |
 |---|---|---|---|---|---|---|
-| TASK-0020 | src/frontend/src/views/HomeView.vue | Cursor Frontend | 2026-07-23 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-0020 | src/frontend/src/__tests__/router-and-views.test.ts | Cursor Frontend | 2026-07-23 +08:00 | HANDED_OFF | Reviewer：Codex Reviewer；TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-0020 | src/backend/Datacenter.Api/Datacenter.Api.csproj | Codex Backend | 2026-07-23 13:22:44 +08:00 | HANDED_OFF | TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-0020 | src/backend/Datacenter.Api/Models/Rack.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | HANDED_OFF | TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-0020 | src/backend/Datacenter.Api/Data/AppDbContext.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | HANDED_OFF | TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-0020 | src/backend/Datacenter.Api/Migrations/20260723052334_AddRacks.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | HANDED_OFF | TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-0020 | src/backend/Datacenter.Api/Migrations/20260723052334_AddRacks.Designer.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | HANDED_OFF | TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-0020 | src/backend/Datacenter.Api/Migrations/AppDbContextModelSnapshot.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | HANDED_OFF | TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-0020 | src/backend/Datacenter.Api/Controllers/RacksController.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | HANDED_OFF | TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-0020 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RackIntegrationTests.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | HANDED_OFF | TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-0020 | tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj | Codex Backend | 2026-07-23 13:27:33 +08:00 | HANDED_OFF | TASK-0020 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-20260810-000001 | src/backend/Datacenter.Api/Models/Room.cs | Cursor | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000001 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-20260810-000001 | src/backend/Datacenter.Api/Models/Rack.cs | Cursor | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000001 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-20260810-000001 | src/backend/Datacenter.Api/Controllers/RoomsController.cs | Cursor | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000001 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-20260810-000001 | src/backend/Datacenter.Api/Controllers/RacksController.cs | Cursor | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000001 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-20260810-000001 | src/backend/Datacenter.Api/Controllers/ServersController.cs | Cursor | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000001 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-20260810-000001 | src/backend/Datacenter.Api/Data/AppDbContext.cs | Cursor | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000001 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-20260810-000001 | src/backend/Datacenter.Api/Migrations/ | Cursor | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000001 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-20260810-000001 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RoomIntegrationTests.cs | Cursor | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000001 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-20260810-000001 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RackIntegrationTests.cs | Cursor | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000001 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-20260810-000001 | tests/backend/Datacenter.Api.Tests/IntegrationTests/ServerPositionIntegrationTests.cs | Cursor | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000001 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-20260810-000001 | tasks/MODULE-LOCKS.md | Cursor | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000001 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0020 | src/frontend/src/views/HomeView.vue | Cursor Frontend | 2026-07-23 +08:00 | RELEASED | TASK-0020 COMPLETED | 2026-08-10 (Claude：TASK-0020 已完成，释放过期锁) |
+| TASK-0020 | src/frontend/src/__tests__/router-and-views.test.ts | Cursor Frontend | 2026-07-23 +08:00 | RELEASED | TASK-0020 COMPLETED | 2026-08-10 (Claude：TASK-0020 已完成，释放过期锁) |
+| TASK-0020 | src/backend/Datacenter.Api/Datacenter.Api.csproj | Codex Backend | 2026-07-23 13:22:44 +08:00 | RELEASED | TASK-0020 COMPLETED | 2026-08-10 (Claude：TASK-0020 已完成，释放过期锁) |
+| TASK-0020 | src/backend/Datacenter.Api/Models/Rack.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | RELEASED | TASK-0020 COMPLETED | 2026-08-10 (Claude：TASK-0020 已完成，释放过期锁) |
+| TASK-0020 | src/backend/Datacenter.Api/Data/AppDbContext.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | RELEASED | TASK-0020 COMPLETED | 2026-08-10 (Claude：TASK-0020 已完成，释放过期锁) |
+| TASK-0020 | src/backend/Datacenter.Api/Migrations/20260723052334_AddRacks.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | RELEASED | TASK-0020 COMPLETED | 2026-08-10 (Claude：TASK-0020 已完成，释放过期锁) |
+| TASK-0020 | src/backend/Datacenter.Api/Migrations/20260723052334_AddRacks.Designer.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | RELEASED | TASK-0020 COMPLETED | 2026-08-10 (Claude：TASK-0020 已完成，释放过期锁) |
+| TASK-0020 | src/backend/Datacenter.Api/Migrations/AppDbContextModelSnapshot.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | RELEASED | TASK-0020 COMPLETED | 2026-08-10 (Claude：TASK-0020 已完成，释放过期锁) |
+| TASK-0020 | src/backend/Datacenter.Api/Controllers/RacksController.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | RELEASED | TASK-0020 COMPLETED | 2026-08-10 (Claude：TASK-0020 已完成，释放过期锁) |
+| TASK-0020 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RackIntegrationTests.cs | Codex Backend | 2026-07-23 13:22:44 +08:00 | RELEASED | TASK-0020 COMPLETED | 2026-08-10 (Claude：TASK-0020 已完成，释放过期锁) |
+| TASK-0020 | tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj | Codex Backend | 2026-07-23 13:27:33 +08:00 | RELEASED | TASK-0020 COMPLETED | 2026-08-10 (Claude：TASK-0020 已完成，释放过期锁) |
 | TASK-0020 | tasks/TASK-0020-IMPORT-RACKS.md | Codex Architect | 2026-07-23 +08:00 | RELEASED | 完成已批准架构规格并执行 DRAFT → READY 后释放；不转交或代领实施锁 | 2026-07-23 +08:00（Codex Architect 完成规格并释放；未认领 Backend/Frontend 实施锁） |
 | TASK-0020 | tasks/current-task.md | Codex Architect | 2026-07-23 +08:00 | RELEASED | 仅登记 TASK-0020 为下一 READY 任务；保留 TASK-0019 当前审核事实；规格完成后释放 | 2026-07-23 +08:00（Codex Architect 完成同步并释放；未认领 Backend/Frontend 实施锁） |
 | TASK-0020 | tasks/MODULE-LOCKS.md | Codex Architect | 2026-07-23 +08:00 | RELEASED | 仅登记并释放三项 Architect 规格锁；不得修改 TASK-0019 产品锁 | 2026-07-23 +08:00（Codex Architect 完成登记并释放；TASK-0019 四项 HANDED_OFF 锁保持不变） |

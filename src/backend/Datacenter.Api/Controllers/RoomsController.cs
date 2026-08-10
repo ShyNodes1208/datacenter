@@ -18,7 +18,14 @@ public sealed class RoomsController(AppDbContext dbContext, IAntiforgery antifor
     {
         var rooms = await dbContext.Rooms
             .AsNoTracking()
-            .Select(room => new { room.Id, room.Name, room.Status })
+            .Select(room => new
+            {
+                room.Id,
+                room.Name,
+                room.Status,
+                room.Location,
+                RackCount = dbContext.Racks.Count(rack => rack.RoomId == room.Id)
+            })
             .ToListAsync(cancellationToken);
 
         return Ok(rooms);
@@ -57,7 +64,7 @@ public sealed class RoomsController(AppDbContext dbContext, IAntiforgery antifor
             return Conflict(new { error = "机房名称已存在" });
         }
 
-        var room = new Room { Name = name, Status = request.Status };
+        var room = new Room { Name = name, Status = request.Status, Location = request.Location };
         dbContext.Rooms.Add(room);
         try
         {
@@ -112,6 +119,7 @@ public sealed class RoomsController(AppDbContext dbContext, IAntiforgery antifor
 
         room.Name = name;
         room.Status = request.Status;
+        room.Location = request.Location ?? room.Location;
 
         try
         {
@@ -122,7 +130,7 @@ public sealed class RoomsController(AppDbContext dbContext, IAntiforgery antifor
             return Conflict(new { error = "机房名称已存在" });
         }
 
-        return Ok(new { room.Id, room.Name, room.Status });
+        return Ok(new { room.Id, room.Name, room.Status, room.Location });
     }
 
     [HttpDelete("{id:guid}")]
@@ -168,6 +176,6 @@ public sealed class RoomsController(AppDbContext dbContext, IAntiforgery antifor
         && sqliteException.Message.Contains("UNIQUE constraint failed: Rooms.Name", StringComparison.Ordinal);
 }
 
-public sealed record CreateRoomRequest(string? Name, string? Status);
+public sealed record CreateRoomRequest(string? Name, string? Status, string? Location = null);
 
-public sealed record UpdateRoomRequest(string? Name, string? Status);
+public sealed record UpdateRoomRequest(string? Name, string? Status, string? Location = null);

@@ -44,6 +44,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         room.HasIndex(item => item.Name).IsUnique();
         room.Property(item => item.Name).IsRequired();
         room.Property(item => item.Status).IsRequired();
+        room.Property(item => item.Location);
 
         var rack = modelBuilder.Entity<Rack>();
         rack.ToTable("Racks");
@@ -54,6 +55,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         rack.Property(item => item.X).IsRequired();
         rack.Property(item => item.Y).IsRequired();
         rack.Property(item => item.Z).IsRequired();
+        rack.Property(item => item.Status).IsRequired().HasDefaultValue("启用");
         rack.HasOne(item => item.Room)
             .WithMany()
             .HasForeignKey(item => item.RoomId)

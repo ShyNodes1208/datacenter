@@ -365,6 +365,43 @@ public sealed class ServerPositionIntegrationTests(AuthTestFixture fixture)
     }
 
     [Fact]
+    public async Task DisabledRackReturnsBadRequest()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        var rack = new Rack
+        {
+            RoomId = room.Id,
+            Code = "R001",
+            HeightU = 42,
+            X = 0,
+            Y = 0,
+            Z = 0,
+            Status = "停用"
+        };
+        var server = new Server
+        {
+            Name = "web-01",
+            ManagementIP = "10.0.0.1",
+            DeviceType = "机架式服务器",
+            DeviceHeight = 2,
+            PositionStatus = "未上架"
+        };
+        await ReplaceDataAsync([room], [rack], [server], []);
+
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.RoomAdministrator);
+
+        using var response = await PostRackAsync(client, server.Id, new
+        {
+            rackId = rack.Id,
+            startU = 10
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("机柜已停用", await ReadErrorAsync(response));
+    }
+
+    [Fact]
     public async Task NonexistentRackReturnsNotFound()
     {
         var server = new Server
@@ -815,6 +852,53 @@ public sealed class ServerPositionIntegrationTests(AuthTestFixture fixture)
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("目标机柜所在机房未启用", await ReadErrorAsync(response));
+    }
+
+    [Fact]
+    public async Task MoveToDisabledRackReturnsBadRequest()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        var sourceRack = new Rack { RoomId = room.Id, Code = "R001", HeightU = 42, X = 0, Y = 0, Z = 0 };
+        var targetRack = new Rack
+        {
+            RoomId = room.Id,
+            Code = "R002",
+            HeightU = 42,
+            X = 1,
+            Y = 0,
+            Z = 0,
+            Status = "停用"
+        };
+        var server = new Server
+        {
+            Name = "web-01",
+            ManagementIP = "10.0.0.1",
+            DeviceType = "机架式服务器",
+            DeviceHeight = 2,
+            PositionStatus = "在架"
+        };
+        var existingPosition = new ServerPosition
+        {
+            ServerId = server.Id,
+            RackId = sourceRack.Id,
+            StartU = 10,
+            EndU = 11,
+            Status = "在架",
+            InstalledAt = DateTime.UtcNow
+        };
+        await ReplaceDataAsync([room], [sourceRack, targetRack], [server], [existingPosition]);
+
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.RoomAdministrator);
+
+        using var response = await PostMoveAsync(client, server.Id, new
+        {
+            rackId = targetRack.Id,
+            startU = 10
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("目标机柜已停用", await ReadErrorAsync(response));
     }
 
     [Fact]

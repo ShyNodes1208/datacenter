@@ -394,6 +394,11 @@ public sealed class ServersController(AppDbContext dbContext, IAntiforgery antif
             return BadRequest(new { error = "目标机柜所在机房未启用" });
         }
 
+        if (rack.Status != "启用")
+        {
+            return BadRequest(new { error = "机柜已停用" });
+        }
+
         var endU = request.StartU + server.DeviceHeight - 1;
 
         if (endU > rack.HeightU)
@@ -497,6 +502,11 @@ public sealed class ServersController(AppDbContext dbContext, IAntiforgery antif
         if (targetRack.Room.Status != "启用")
         {
             return BadRequest(new { error = "目标机柜所在机房未启用" });
+        }
+
+        if (targetRack.Status != "启用")
+        {
+            return BadRequest(new { error = "目标机柜已停用" });
         }
 
         if (oldPosition.RackId == request.RackId && oldPosition.StartU == request.StartU)

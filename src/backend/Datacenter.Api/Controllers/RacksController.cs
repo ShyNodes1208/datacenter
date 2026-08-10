@@ -66,7 +66,8 @@ public sealed class RacksController(AppDbContext dbContext, IAntiforgery antifor
                 rack.Notes,
                 rack.X,
                 rack.Y,
-                rack.Z
+                rack.Z,
+                rack.Status
             })
             .ToListAsync(cancellationToken);
 
@@ -130,7 +131,8 @@ public sealed class RacksController(AppDbContext dbContext, IAntiforgery antifor
             rack.Notes,
             rack.X,
             rack.Y,
-            rack.Z
+            rack.Z,
+            rack.Status
         });
 
         return Ok(result);
@@ -256,6 +258,12 @@ public sealed class RacksController(AppDbContext dbContext, IAntiforgery antifor
             return Conflict(new { error = "同一机房内机柜编号已存在" });
         }
 
+        var status = request.Status ?? "启用";
+        if (status is not ("启用" or "停用"))
+        {
+            return BadRequest(new { error = "状态值无效" });
+        }
+
         var rack = new Rack
         {
             Code = code,
@@ -266,7 +274,8 @@ public sealed class RacksController(AppDbContext dbContext, IAntiforgery antifor
             Notes = request.Notes,
             X = request.X,
             Y = request.Y,
-            Z = request.Z
+            Z = request.Z,
+            Status = status
         };
         dbContext.Racks.Add(rack);
 
@@ -298,7 +307,8 @@ public sealed class RacksController(AppDbContext dbContext, IAntiforgery antifor
             rack.Notes,
             rack.X,
             rack.Y,
-            rack.Z
+            rack.Z,
+            rack.Status
         });
     }
 
@@ -351,6 +361,11 @@ public sealed class RacksController(AppDbContext dbContext, IAntiforgery antifor
             return Conflict(new { error = "同一机房内机柜编号已存在" });
         }
 
+        if (request.Status != null && request.Status is not ("启用" or "停用"))
+        {
+            return BadRequest(new { error = "状态值无效" });
+        }
+
         rack.Code = code;
         rack.HeightU = request.HeightU;
         rack.Brand = NullIfWhiteSpace(request.Brand);
@@ -359,6 +374,7 @@ public sealed class RacksController(AppDbContext dbContext, IAntiforgery antifor
         rack.X = request.X;
         rack.Y = request.Y;
         rack.Z = request.Z;
+        if (request.Status != null) rack.Status = request.Status;
 
         try
         {
@@ -384,7 +400,8 @@ public sealed class RacksController(AppDbContext dbContext, IAntiforgery antifor
             rack.Notes,
             rack.X,
             rack.Y,
-            rack.Z
+            rack.Z,
+            rack.Status
         });
     }
 
@@ -546,7 +563,8 @@ public sealed class RacksController(AppDbContext dbContext, IAntiforgery antifor
                     Notes = row.Notes,
                     X = row.X,
                     Y = row.Y,
-                    Z = row.Z
+                    Z = row.Z,
+                    Status = row.Status ?? "启用"
                 };
                 dbContext.Racks.Add(rack);
                 try
@@ -585,6 +603,7 @@ public sealed class RacksController(AppDbContext dbContext, IAntiforgery antifor
                 rack.X = row.X;
                 rack.Y = row.Y;
                 rack.Z = row.Z;
+                rack.Status = row.Status ?? rack.Status;
                 await dbContext.SaveChangesAsync(cancellationToken);
                 overwritten++;
                 continue;
@@ -757,6 +776,12 @@ public sealed class RacksController(AppDbContext dbContext, IAntiforgery antifor
             return "高度(U)必须为正整数";
         }
 
+        var status = row.Status ?? "启用";
+        if (status is not ("启用" or "停用"))
+        {
+            return "状态值无效";
+        }
+
         if (!await dbContext.Rooms.AnyAsync(room => room.Id == row.RoomId, cancellationToken))
         {
             return "机房不存在";
@@ -881,7 +906,8 @@ public sealed record ImportRowAction(
     double X,
     double Y,
     double Z,
-    Guid? ExistingRackId);
+    Guid? ExistingRackId,
+    string? Status = null);
 
 public sealed record ImportResponse(
     int Created,
@@ -900,7 +926,8 @@ public sealed record UpdateRackRequest(
     string? Notes,
     double X,
     double Y,
-    double Z);
+    double Z,
+    string? Status = null);
 
 public sealed record CreateRackRequest(
     string? Code,
@@ -911,4 +938,5 @@ public sealed record CreateRackRequest(
     string? Notes,
     double X,
     double Y,
-    double Z);
+    double Z,
+    string? Status = null);
