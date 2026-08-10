@@ -6,6 +6,18 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 
 | Task ID | Module or Path | Owner | Claimed At | Status | Release Condition | Released At |
 |---|---|---|---|---|---|---|
+| TASK-20260810-000003 | src/backend/Datacenter.Api/Models/Room.cs | Cursor | 2026-08-10 17:45:36 +08:00 | CLAIMED | TASK-20260810-000003 交审或完成时释放 | |
+| TASK-20260810-000003 | src/backend/Datacenter.Api/Controllers/RoomsController.cs | Cursor | 2026-08-10 17:45:36 +08:00 | CLAIMED | TASK-20260810-000003 交审或完成时释放 | |
+| TASK-20260810-000003 | src/backend/Datacenter.Api/Data/AppDbContext.cs | Cursor | 2026-08-10 17:45:36 +08:00 | CLAIMED | TASK-20260810-000003 交审或完成时释放 | |
+| TASK-20260810-000003 | src/backend/Datacenter.Api/Migrations/ | Cursor | 2026-08-10 17:45:36 +08:00 | CLAIMED | TASK-20260810-000003 交审或完成时释放 | |
+| TASK-20260810-000003 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RoomIntegrationTests.cs | Cursor | 2026-08-10 17:45:36 +08:00 | CLAIMED | TASK-20260810-000003 交审或完成时释放 | |
+| TASK-20260810-000003 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RoomTopologyIntegrationTests.cs | Cursor | 2026-08-10 17:45:36 +08:00 | CLAIMED | TASK-20260810-000003 交审或完成时释放 | |
+| TASK-20260810-000003 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-10 17:45:36 +08:00 | CLAIMED | TASK-20260810-000003 交审或完成时释放 | |
+| TASK-20260810-000003 | src/frontend/src/composables/useTopology.ts | Cursor | 2026-08-10 17:45:36 +08:00 | CLAIMED | TASK-20260810-000003 交审或完成时释放 | |
+| TASK-20260810-000003 | src/frontend/src/router.ts | Cursor | 2026-08-10 17:45:36 +08:00 | CLAIMED | TASK-20260810-000003 交审或完成时释放 | |
+| TASK-20260810-000003 | src/frontend/src/App.vue | Cursor | 2026-08-10 17:45:36 +08:00 | CLAIMED | TASK-20260810-000003 交审或完成时释放 | |
+| TASK-20260810-000003 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-10 17:45:36 +08:00 | CLAIMED | TASK-20260810-000003 交审或完成时释放 | |
+| TASK-20260810-000003 | .ai/IMPLEMENTATION.md | Cursor | 2026-08-10 17:45:36 +08:00 | CLAIMED | TASK-20260810-000003 交审或完成时释放 | |
 | TASK-20260810-000001 | src/backend/Datacenter.Api/Models/Room.cs | Cursor | 2026-08-10 +08:00 | RELEASED | TASK-20260810-000001 COMPLETED | 2026-08-10 (Claude) |
 | TASK-20260810-000001 | src/backend/Datacenter.Api/Models/Rack.cs | Cursor | 2026-08-10 +08:00 | RELEASED | TASK-20260810-000001 COMPLETED | 2026-08-10 (Claude) |
 | TASK-20260810-000001 | src/backend/Datacenter.Api/Controllers/RoomsController.cs | Cursor | 2026-08-10 +08:00 | RELEASED | TASK-20260810-000001 COMPLETED | 2026-08-10 (Claude) |

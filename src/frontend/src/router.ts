@@ -24,6 +24,7 @@ export const router = createRouter({
     { path: '/servers/:id/edit', component: ServerFormView, meta: { requiresAuth: true } },
     { path: '/servers/:id', component: ServerDetailView, meta: { requiresAuth: true } },
     { path: '/cables', component: () => import('./views/CableListView.vue'), meta: { requiresAuth: true } },
+    { path: '/topology', component: () => import('./views/TopologyView.vue'), meta: { requiresAuth: true } },
     { path: '/rooms/:id/floorplan', component: () => import('./views/FloorplanView.vue'), meta: { requiresAuth: true } },
   ],
 })

@@ -44,7 +44,7 @@ public sealed class RoomIntegrationTests(AuthTestFixture fixture)
         var rooms = document.RootElement.EnumerateArray().ToArray();
         Assert.Equal(2, rooms.Length);
         Assert.All(rooms, room => Assert.Equal(
-            ["id", "location", "name", "rackCount", "status"],
+            ["id", "location", "name", "rackCount", "status", "topologyX", "topologyY"],
             room.EnumerateObject().Select(property => property.Name).Order()));
         Assert.All(rooms, room => Assert.True(Guid.TryParse(room.GetProperty("id").GetString(), out _)));
         Assert.Contains(rooms, room => room.GetProperty("name").GetString() == "主机房" && room.GetProperty("status").GetString() == "启用");
@@ -139,6 +139,72 @@ public sealed class RoomIntegrationTests(AuthTestFixture fixture)
                 .SingleAsync(item => item.Id == roomId);
             Assert.Equal("A区", room.Location);
         }
+    }
+
+    [Fact]
+    public async Task GetRoomsReturnsTopologyCoordinates()
+    {
+        await ReplaceRoomsAsync(
+            new Room { Name = "主机房", Status = "启用", TopologyX = 120, TopologyY = 80 },
+            new Room { Name = "灾备机房", Status = "停用" });
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.ReadOnlyViewer);
+
+        using var response = await client.GetAsync("/api/rooms");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        var rooms = document.RootElement.EnumerateArray().ToArray();
+        var main = Assert.Single(rooms, room => room.GetProperty("name").GetString() == "主机房");
+        Assert.Equal(120, main.GetProperty("topologyX").GetDouble());
+        Assert.Equal(80, main.GetProperty("topologyY").GetDouble());
+        var backup = Assert.Single(rooms, room => room.GetProperty("name").GetString() == "灾备机房");
+        Assert.Equal(0, backup.GetProperty("topologyX").GetDouble());
+        Assert.Equal(0, backup.GetProperty("topologyY").GetDouble());
+    }
+
+    [Fact]
+    public async Task RoomAdministratorCanUpdateTopologyCoordinates()
+    {
+        var room = new Room { Name = "主机房", Status = "启用", Location = "A区", TopologyX = 10, TopologyY = 20 };
+        await ReplaceRoomsAsync(room);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.RoomAdministrator);
+
+        using var response = await PutRoomAsync(client, room.Id, "主机房", "启用", "A区", 240, 160);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        Assert.Equal(240, document.RootElement.GetProperty("topologyX").GetDouble());
+        Assert.Equal(160, document.RootElement.GetProperty("topologyY").GetDouble());
+
+        await using var scope = fixture.Factory.Services.CreateAsyncScope();
+        var saved = await scope.ServiceProvider.GetRequiredService<AppDbContext>().Rooms
+            .AsNoTracking()
+            .SingleAsync(item => item.Id == room.Id);
+        Assert.Equal(240, saved.TopologyX);
+        Assert.Equal(160, saved.TopologyY);
+        Assert.Equal("A区", saved.Location);
+    }
+
+    [Fact]
+    public async Task UpdateRoom_WithoutTopologyPreservesExistingCoordinates()
+    {
+        var room = new Room { Name = "主机房", Status = "启用", TopologyX = 55, TopologyY = 66 };
+        await ReplaceRoomsAsync(room);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.RoomAdministrator);
+
+        using var response = await PutRoomAsync(client, room.Id, "主机房", "停用");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await using var scope = fixture.Factory.Services.CreateAsyncScope();
+        var saved = await scope.ServiceProvider.GetRequiredService<AppDbContext>().Rooms
+            .AsNoTracking()
+            .SingleAsync(item => item.Id == room.Id);
+        Assert.Equal(55, saved.TopologyX);
+        Assert.Equal(66, saved.TopologyY);
+        Assert.Equal("停用", saved.Status);
     }
 
     [Fact]
@@ -508,13 +574,19 @@ public sealed class RoomIntegrationTests(AuthTestFixture fixture)
     }
 
     private static async Task<HttpResponseMessage> PutRoomAsync(
-        HttpClient client, Guid id, string name, string status, string? location = null)
+        HttpClient client,
+        Guid id,
+        string name,
+        string status,
+        string? location = null,
+        double? topologyX = null,
+        double? topologyY = null)
     {
         using var csrf = await client.GetAsync("/api/auth/csrf");
         var token = csrf.Headers.GetValues("X-XSRF-TOKEN").Single();
         using var request = new HttpRequestMessage(HttpMethod.Put, $"/api/rooms/{id}")
         {
-            Content = JsonContent.Create(new { name, status, location })
+            Content = JsonContent.Create(new { name, status, location, topologyX, topologyY })
         };
         request.Headers.Add("X-XSRF-TOKEN", token);
         return await client.SendAsync(request);

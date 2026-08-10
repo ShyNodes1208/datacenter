@@ -45,6 +45,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         room.Property(item => item.Name).IsRequired();
         room.Property(item => item.Status).IsRequired();
         room.Property(item => item.Location);
+        room.Property(item => item.TopologyX).IsRequired().HasDefaultValue(0d);
+        room.Property(item => item.TopologyY).IsRequired().HasDefaultValue(0d);
 
         var rack = modelBuilder.Entity<Rack>();
         rack.ToTable("Racks");
