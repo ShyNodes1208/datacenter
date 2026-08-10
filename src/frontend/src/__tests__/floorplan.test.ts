@@ -49,6 +49,6 @@ describe('FloorplanView', () => {
 
     expect(html).toContain('查看模式')
     expect(html).toContain('编辑模式')
-    expect(html).toContain('返回')
+    expect(html).toContain('机房详情')
   })
 })
