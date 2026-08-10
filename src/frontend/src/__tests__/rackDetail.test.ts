@@ -18,7 +18,7 @@ vi.mock('../composables/useAuth', () => ({
 
 vi.mock('../composables/useRackDetail', () => ({
   useRackDetail: () => ({
-    rack: ref({ id: 'r1', code: 'A01', roomId: 'rm1', roomName: 'Room A', heightU: 42 }),
+    rack: ref({ id: 'r1', code: 'A01', roomId: 'rm1', roomName: 'Room A', heightU: 42, status: '启用' }),
     uSlots: ref([]),
     stats: ref({ total: 42, occupied: 10, empty: 32 }),
     loading: ref(false),
@@ -48,5 +48,6 @@ describe('RackDeviceView', () => {
     expect(html).toContain('A01')
     expect(html).toContain('Room A')
     expect(html).toContain('在架服务器')
+    expect(html).toContain('状态：启用')
   })
 })

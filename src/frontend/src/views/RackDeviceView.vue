@@ -752,6 +752,7 @@ async function deleteRack(): Promise<void> {
             &gt; {{ rack.code }}
           </p>
           <p class="toolbar__stats">
+            状态：{{ rack.status }} |
             U 位总数：{{ stats.total }} |
             已占用：{{ stats.occupied }} |
             空闲：{{ stats.empty }} |

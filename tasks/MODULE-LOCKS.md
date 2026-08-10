@@ -318,3 +318,8 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 ## 冲突处理示例
 
 若 TASK-1001 已以 `CLAIMED` 占用 `src/backend/Assets/`，TASK-1002 申请 `src/backend/Assets/Racks/` 时属于子路径重叠。TASK-1002 不得认领或修改，必须转为 `BLOCKED` 并记录 TASK-1001；待 TASK-1001 释放后重新检查并认领。
+| TASK-20260810-000002 | src/frontend/src/views/HomeView.vue | Cursor Frontend | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000002 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-20260810-000002 | src/frontend/src/views/RackDeviceView.vue | Cursor Frontend | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000002 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-20260810-000002 | src/frontend/src/composables/useDashboard.ts | Cursor Frontend | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000002 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-20260810-000002 | src/frontend/src/composables/useFloorplan.ts | Cursor Frontend | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000002 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-20260810-000002 | src/frontend/src/composables/useRackDetail.ts | Cursor Frontend | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000002 COMPLETED 或 CANCELLED 时释放 | |

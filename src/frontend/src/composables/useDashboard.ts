@@ -14,6 +14,8 @@ export interface RoomItem {
   id: string
   name: string
   status: string
+  location: string | null
+  rackCount: number
 }
 
 export function useDashboard() {
@@ -66,7 +68,15 @@ export function useDashboard() {
         typeof record.name === 'string' &&
         typeof record.status === 'string'
       ) {
-        parsed.push({ id: record.id, name: record.name, status: record.status })
+        const location = typeof record.location === 'string' ? record.location : null
+        const rackCount = typeof record.rackCount === 'number' ? record.rackCount : 0
+        parsed.push({
+          id: record.id,
+          name: record.name,
+          status: record.status,
+          location,
+          rackCount,
+        })
       }
     }
     rooms.value = parsed

@@ -9,7 +9,7 @@ vi.mock('../composables/useApi', () => ({
 const RACK = {
   id: 'r1', code: 'A01', roomId: 'room1', roomName: 'Room 1',
   heightU: 42, occupiedU: 10, brand: 'HP', power: 3.5, notes: null,
-  x: 600, y: 1000, z: 0,
+  x: 600, y: 1000, z: 0, status: '启用',
 }
 
 describe('useFloorplan', () => {
@@ -51,6 +51,7 @@ describe('useFloorplan', () => {
       expect(loading.value).toBe(false)
       expect(racks.value).toHaveLength(1)
       expect(racks.value[0].code).toBe('A01')
+      expect(racks.value[0].status).toBe('启用')
       expect(requestMock).toHaveBeenCalledWith('/api/racks?roomId=room1')
     })
 

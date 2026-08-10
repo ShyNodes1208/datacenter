@@ -8,6 +8,7 @@ interface RackInfo {
   roomId: string
   roomName: string
   heightU: number
+  status: string
 }
 
 interface AvailabilityPosition {
@@ -34,6 +35,11 @@ interface DevicePositionsResponse {
     roomName: string
     heightU: number
   }
+}
+
+interface RackListItem {
+  id: string
+  status?: string
 }
 
 export function buildUSlotsFromOccupancy(
@@ -168,12 +174,26 @@ export function useRackDetail(rackId: string) {
       return
     }
 
+    const roomId = rackResult.data.rack.roomId
+    let status = '未知'
+    const listResult = await request<RackListItem[]>(
+      `/api/racks?roomId=${encodeURIComponent(roomId)}`,
+      { method: 'GET' },
+    )
+    if (listResult.ok && Array.isArray(listResult.data)) {
+      const match = listResult.data.find((item) => item.id === rackId)
+      if (match && typeof match.status === 'string') {
+        status = match.status
+      }
+    }
+
     rack.value = {
       id: rackResult.data.rack.id,
       code: rackResult.data.rack.code,
-      roomId: rackResult.data.rack.roomId,
+      roomId,
       roomName: rackResult.data.rack.roomName,
       heightU: rackResult.data.rack.heightU,
+      status,
     }
 
     const availResult = await request<AvailabilityResponse>(

@@ -1,0 +1,74 @@
+- generic [ref=e2]:
+  - generic [ref=e11]:
+    - link "机房列表" [ref=e12] [cursor=pointer]:
+      - /url: /
+    - link "服务器管理" [ref=e13] [cursor=pointer]:
+      - /url: /servers
+    - link "线缆管理" [ref=e14] [cursor=pointer]:
+      - /url: /cables
+    - generic [ref=e15]: admin（机房管理员）
+    - button "登出" [ref=e16] [cursor=pointer]
+  - generic [ref=e164]:
+    - generic [ref=e165]:
+      - generic [ref=e166]:
+        - paragraph [ref=e167]:
+          - link "机房列表" [ref=e168] [cursor=pointer]:
+            - /url: /
+          - text: "> AC-TEST-86c032"
+          - link "平面图" [ref=e169] [cursor=pointer]:
+            - /url: /rooms/a92702b6-743e-435f-8de3-b6b1f62c963a/floorplan
+          - text: "> R-c0f4"
+        - paragraph [ref=e170]: U 位总数：42 | 已占用：0 | 空闲：42 | 使用率：0% | 在架服务器：0
+      - generic [ref=e171]:
+        - button "连接路径查询" [ref=e172] [cursor=pointer]
+        - button "导入设备" [ref=e173] [cursor=pointer]
+        - button "上架服务器" [ref=e174] [cursor=pointer]
+        - button "删除机柜" [ref=e175] [cursor=pointer]
+    - generic [ref=e176]:
+      - generic [ref=e178]:
+        - generic [ref=e180]: R-c0f4
+        - generic [ref=e182]:
+          - generic [ref=e183]: "42"
+          - generic [ref=e184]: "41"
+          - generic [ref=e185]: "40"
+          - generic [ref=e186]: "39"
+          - generic [ref=e187]: "38"
+          - generic [ref=e188]: "37"
+          - generic [ref=e189]: "36"
+          - generic [ref=e190]: "35"
+          - generic [ref=e191]: "34"
+          - generic [ref=e192]: "33"
+          - generic [ref=e193]: "32"
+          - generic [ref=e194]: "31"
+          - generic [ref=e195]: "30"
+          - generic [ref=e196]: "29"
+          - generic [ref=e197]: "28"
+          - generic [ref=e198]: "27"
+          - generic [ref=e199]: "26"
+          - generic [ref=e200]: "25"
+          - generic [ref=e201]: "24"
+          - generic [ref=e202]: "23"
+          - generic [ref=e203]: "22"
+          - generic [ref=e204]: "21"
+          - generic [ref=e205]: "20"
+          - generic [ref=e206]: "19"
+          - generic [ref=e207]: "18"
+          - generic [ref=e208]: "17"
+          - generic [ref=e209]: "16"
+          - generic [ref=e210]: "15"
+          - generic [ref=e211]: "14"
+          - generic [ref=e212]: "13"
+          - generic [ref=e213]: "12"
+          - generic [ref=e214]: "11"
+          - generic [ref=e215]: "10"
+          - generic [ref=e216]: "9"
+          - generic [ref=e217]: "8"
+          - generic [ref=e218]: "7"
+          - generic [ref=e219]: "6"
+          - generic [ref=e220]: "5"
+          - generic [ref=e221]: "4"
+          - generic [ref=e222]: "3"
+          - generic [ref=e223]: "2"
+          - generic [ref=e224]: "1"
+        - generic [ref=e225]: 空闲 42U
+      - generic [ref=e228]: 0%

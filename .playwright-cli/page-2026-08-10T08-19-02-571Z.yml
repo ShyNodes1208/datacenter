@@ -1,0 +1,106 @@
+- generic [ref=e2]:
+  - generic [ref=e11]:
+    - link "机房列表" [ref=e12] [cursor=pointer]:
+      - /url: /
+    - link "服务器管理" [ref=e13] [cursor=pointer]:
+      - /url: /servers
+    - link "线缆管理" [ref=e14] [cursor=pointer]:
+      - /url: /cables
+    - generic [ref=e15]: admin（机房管理员）
+    - button "登出" [ref=e16] [cursor=pointer]
+  - generic [ref=e17]:
+    - region "统计概览" [ref=e18]:
+      - generic [ref=e19]:
+        - generic [ref=e20]:
+          - generic [ref=e21]: "23"
+          - generic [ref=e22]: 服务器
+        - generic [ref=e23]:
+          - generic [ref=e24]: "8"
+          - generic [ref=e25]: 机柜
+        - generic [ref=e26]:
+          - generic [ref=e27]: "0"
+          - generic [ref=e28]: 线缆
+    - generic [ref=e29]:
+      - button "↥ Excel 导入机柜" [ref=e30] [cursor=pointer]
+      - button "↥ 批量导入设备" [ref=e31] [cursor=pointer]
+      - button "↥ Excel 导入服务器" [ref=e32] [cursor=pointer]
+      - button "✚ 新增机房" [ref=e137] [cursor=pointer]
+    - region "机房列表" [ref=e34]:
+      - generic [ref=e35]:
+        - generic [ref=e37] [cursor=pointer]:
+          - generic [ref=e38]: ▶
+          - generic [ref=e39]: AC-TEST-86c032
+          - generic [ref=e40]: 启用
+          - button "平面图" [ref=e41]
+          - button "✎ 编辑" [ref=e138]
+          - button "✕ 删除" [ref=e43]
+        - generic [ref=e45] [cursor=pointer]:
+          - generic [ref=e46]: ▶
+          - generic [ref=e47]: AC-7b5ccb
+          - generic [ref=e48]: 启用
+          - button "平面图" [ref=e49]
+          - button "✎ 编辑" [ref=e139]
+          - button "✕ 删除" [ref=e51]
+        - generic [ref=e53] [cursor=pointer]:
+          - generic [ref=e54]: ▶
+          - generic [ref=e55]: AC-10030b
+          - generic [ref=e56]: 启用
+          - button "平面图" [ref=e57]
+          - button "✎ 编辑" [ref=e140]
+          - button "✕ 删除" [ref=e59]
+        - generic [ref=e61] [cursor=pointer]:
+          - generic [ref=e62]: ▶
+          - generic [ref=e63]: AC-DEACT-c4bc
+          - generic [ref=e64]: 启用
+          - button "平面图" [ref=e65]
+          - button "✎ 编辑" [ref=e141]
+          - button "✕ 删除" [ref=e67]
+        - generic [ref=e69] [cursor=pointer]:
+          - generic [ref=e70]: ▶
+          - generic [ref=e71]: AC-03d5ef
+          - generic [ref=e72]: 启用
+          - button "平面图" [ref=e73]
+          - button "✎ 编辑" [ref=e142]
+          - button "✕ 删除" [ref=e75]
+        - generic [ref=e77] [cursor=pointer]:
+          - generic [ref=e78]: ▶
+          - generic [ref=e79]: AC-DEACT-8ffa
+          - generic [ref=e80]: 启用
+          - button "平面图" [ref=e81]
+          - button "✎ 编辑" [ref=e143]
+          - button "✕ 删除" [ref=e83]
+        - generic [ref=e85] [cursor=pointer]:
+          - generic [ref=e86]: ▶
+          - generic [ref=e87]: FINAL-9656f9
+          - generic [ref=e88]: 启用
+          - button "平面图" [ref=e89]
+          - button "✎ 编辑" [ref=e144]
+          - button "✕ 删除" [ref=e91]
+        - generic [ref=e93] [cursor=pointer]:
+          - generic [ref=e94]: ▶
+          - generic [ref=e95]: FINAL-d63a12
+          - generic [ref=e96]: 启用
+          - button "平面图" [ref=e97]
+          - button "✎ 编辑" [ref=e145]
+          - button "✕ 删除" [ref=e99]
+        - generic [ref=e101] [cursor=pointer]:
+          - generic [ref=e102]: ▶
+          - generic [ref=e103]: DBG-119aaf
+          - generic [ref=e104]: 启用
+          - button "平面图" [ref=e105]
+          - button "✎ 编辑" [ref=e146]
+          - button "✕ 删除" [ref=e107]
+        - generic [ref=e109] [cursor=pointer]:
+          - generic [ref=e110]: ▶
+          - generic [ref=e111]: FINAL-9a16ba
+          - generic [ref=e112]: 启用
+          - button "平面图" [ref=e113]
+          - button "✎ 编辑" [ref=e147]
+          - button "✕ 删除" [ref=e115]
+        - generic [ref=e117] [cursor=pointer]:
+          - generic [ref=e118]: ▶
+          - generic [ref=e119]: DEACT-5c66
+          - generic [ref=e120]: 启用
+          - button "平面图" [ref=e121]
+          - button "✎ 编辑" [ref=e148]
+          - button "✕ 删除" [ref=e123]

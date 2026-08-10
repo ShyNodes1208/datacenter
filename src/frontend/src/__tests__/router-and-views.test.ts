@@ -50,6 +50,8 @@ type RoomFixture = {
   id: string
   name: string
   status: string
+  location?: string | null
+  rackCount?: number
 }
 
 type ImportRowFixture = {
@@ -511,11 +513,35 @@ describe('HomeView readonly room list (G09-03)', () => {
 
     expect(requestMock).toHaveBeenCalledWith('/api/rooms', { method: 'GET' })
     expect(state.rooms).toEqual([
-      { id: 'room-1', name: '机房A', status: '启用' },
-      { id: 'room-2', name: '机房B', status: '停用' },
+      { id: 'room-1', name: '机房A', status: '启用', location: null, rackCount: 0 },
+      { id: 'room-2', name: '机房B', status: '停用', location: null, rackCount: 0 },
     ])
     expect(state.roomsError).toBe('')
     expect(html).toContain('aria-label="机房列表"')
+  })
+
+  it('shows location and rackCount on room cards when present', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    requestMock.mockResolvedValue({
+      ok: true,
+      data: [
+        { id: 'room-1', name: '机房A', status: '启用', location: '1F-东区', rackCount: 4 },
+      ],
+      headers: new Headers(),
+      status: 200,
+    })
+
+    const view = await mountSharedHomeView()
+    try {
+      expect(readSetupField<RoomFixture[] | null>(view.state, 'rooms')).toEqual([
+        { id: 'room-1', name: '机房A', status: '启用', location: '1F-东区', rackCount: 4 },
+      ])
+      const html = await view.html()
+      expect(html).toContain('1F-东区')
+      expect(html).toContain('机柜 4')
+    } finally {
+      view.unmount()
+    }
   })
 
   it('shows the empty state when the API returns an empty array', async () => {
@@ -572,7 +598,7 @@ describe('HomeView readonly room list (G09-03)', () => {
       const listHtml = listMatch?.[0] ?? ''
 
       expect(readSetupField<RoomFixture[] | null>(view.state, 'rooms')).toEqual([
-        { id: 'room-1', name: '机房A', status: '启用' },
+        { id: 'room-1', name: '机房A', status: '启用', location: null, rackCount: 0 },
       ])
       expect(listHtml).not.toContain('编辑')
       for (const label of forbiddenControls) {
@@ -629,10 +655,13 @@ describe('HomeView create room (TASK-0018)', () => {
       expect(view.hasForm(html)).toBe(true)
       expect(view.inputValue(html, 'roomName')).toBe('')
       expect(view.selectedStatus(html)).toBe('启用')
+      expect(view.inputValue(html, 'roomLocation')).toBe('')
       expect(view.hasButton(html, '保存')).toBe(true)
       expect(view.hasButton(html, '取消')).toBe(true)
       expect(html).toMatch(/name="roomName"/)
       expect(html).toMatch(/name="roomStatus"/)
+      expect(html).toMatch(/name="roomLocation"/)
+      expect(html).toContain('位置说明')
     } finally {
       view.unmount()
     }
@@ -677,7 +706,7 @@ describe('HomeView create room (TASK-0018)', () => {
 
       expect(requestMock).toHaveBeenCalledWith('/api/rooms', {
         method: 'POST',
-        body: { name: '主机房', status: '启用' },
+        body: { name: '主机房', status: '启用', location: null },
         csrfToken: 'csrf-token-1',
       })
       const getCalls = requestMock.mock.calls.filter(
@@ -880,18 +909,26 @@ describe('HomeView edit room', () => {
   it('opens edit form with pre-filled values from the room', async () => {
     userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
     requestMock.mockResolvedValue(
-      mockRoomsGet([{ id: 'room-1', name: '主机房', status: '停用' }]),
+      mockRoomsGet([{ id: 'room-1', name: '主机房', status: '停用', location: 'B2', rackCount: 2 }]),
     )
 
     const view = await mountSharedHomeView()
     try {
-      view.state.startEdit({ id: 'room-1', name: '主机房', status: '停用' })
+      view.state.startEdit({
+        id: 'room-1',
+        name: '主机房',
+        status: '停用',
+        location: 'B2',
+        rackCount: 2,
+      })
       await flushUi()
 
       const html = await view.html()
       expect(html).toMatch(/name="editName"/)
       expect(html).toMatch(/name="editStatus"/)
+      expect(html).toMatch(/name="editLocation"/)
       expect(html).toContain('value="主机房"')
+      expect(html).toContain('value="B2"')
       expect(html).toMatch(/<option[^>]*value="停用"[^>]*selected/)
       expect(html).toContain('保存')
       expect(html).toContain('取消')
@@ -944,7 +981,7 @@ describe('HomeView edit room', () => {
       expect(putCalls.length).toBe(1)
       expect(putCalls[0]?.[1]).toMatchObject({
         method: 'PUT',
-        body: { name: '新名', status: '停用' },
+        body: { name: '新名', status: '停用', location: null },
         csrfToken: 'csrf-edit-1',
       })
 

@@ -14,6 +14,7 @@ export type RackItem = {
   x: number
   y: number
   z: number
+  status?: string
 }
 
 export const SCALE_FACTOR = 0.1

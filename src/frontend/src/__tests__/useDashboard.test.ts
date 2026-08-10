@@ -52,8 +52,8 @@ describe('useDashboard', () => {
     mockRequest.mockResolvedValueOnce({
       ok: true,
       data: [
-        { id: '1', name: '机房A', status: '启用' },
-        { id: '2', name: '网络机房', status: '启用' },
+        { id: '1', name: '机房A', status: '启用', location: '1F-A', rackCount: 3 },
+        { id: '2', name: '网络机房', status: '启用', location: null, rackCount: 0 },
       ],
     })
 
@@ -61,6 +61,19 @@ describe('useDashboard', () => {
     await loadRooms()
 
     expect(rooms.value).toHaveLength(2)
-    expect(rooms.value![0].name).toBe('机房A')
+    expect(rooms.value![0]).toEqual({
+      id: '1',
+      name: '机房A',
+      status: '启用',
+      location: '1F-A',
+      rackCount: 3,
+    })
+    expect(rooms.value![1]).toEqual({
+      id: '2',
+      name: '网络机房',
+      status: '启用',
+      location: null,
+      rackCount: 0,
+    })
   })
 })

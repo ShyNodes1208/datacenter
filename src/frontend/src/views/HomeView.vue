@@ -61,6 +61,7 @@ interface RackSummaryItem {
   brand: string | null
   occupiedU: number
   positions: USlot[]
+  status: string
 }
 
 const roomRackSummaries = ref<Map<string, { racks: RackSummaryItem[] }>>(new Map())
@@ -69,12 +70,14 @@ const rackSummaryLoading = ref<Set<string>>(new Set())
 const createFormVisible = ref(false)
 const roomName = ref('')
 const roomStatus = ref('启用')
+const roomLocation = ref('')
 const createSubmitting = ref(false)
 const createError = ref('')
 
 const editingRoomId = ref<string | null>(null)
 const editName = ref('')
 const editStatus = ref('启用')
+const editLocation = ref('')
 const editSubmitting = ref(false)
 const editError = ref('')
 
@@ -150,6 +153,7 @@ function cancelCreate(): void {
   createFormVisible.value = false
   roomName.value = ''
   roomStatus.value = '启用'
+  roomLocation.value = ''
   createError.value = ''
 }
 
@@ -157,6 +161,7 @@ function startEdit(room: RoomItem): void {
   editingRoomId.value = room.id
   editName.value = room.name
   editStatus.value = room.status
+  editLocation.value = room.location ?? ''
   editError.value = ''
 }
 
@@ -164,6 +169,7 @@ function cancelEdit(): void {
   editingRoomId.value = null
   editName.value = ''
   editStatus.value = '启用'
+  editLocation.value = ''
   editError.value = ''
 }
 
@@ -194,7 +200,11 @@ async function saveEdit(room: RoomItem): Promise<void> {
 
   const result = await request(`/api/rooms/${room.id}`, {
     method: 'PUT',
-    body: { name: editName.value, status: editStatus.value },
+    body: {
+      name: editName.value,
+      status: editStatus.value,
+      location: editLocation.value.trim() || null,
+    },
     csrfToken: token,
   })
 
@@ -207,6 +217,7 @@ async function saveEdit(room: RoomItem): Promise<void> {
   editingRoomId.value = null
   editName.value = ''
   editStatus.value = '启用'
+  editLocation.value = ''
   editError.value = ''
   await loadRooms()
   await loadSummary()
@@ -289,7 +300,11 @@ async function onCreateRoom(): Promise<void> {
 
   const result = await request('/api/rooms', {
     method: 'POST',
-    body: { name: roomName.value, status: roomStatus.value },
+    body: {
+      name: roomName.value,
+      status: roomStatus.value,
+      location: roomLocation.value.trim() || null,
+    },
     csrfToken: token,
   })
 
@@ -302,6 +317,7 @@ async function onCreateRoom(): Promise<void> {
   createFormVisible.value = false
   roomName.value = ''
   roomStatus.value = '启用'
+  roomLocation.value = ''
   createError.value = ''
   await refreshDashboard()
   createSubmitting.value = false
@@ -317,18 +333,32 @@ async function toggleRoom(roomId: string): Promise<void> {
   if (!roomRackSummaries.value.has(roomId)) {
     rackSummaryLoading.value.add(roomId)
 
-    const result = await request<{
-      racks: Array<{
-        id: string
-        code: string
-        heightU: number
-        brand: string | null
-        occupiedU: number
-        positions: Array<{ uNumber: number; occupied: boolean; serverName?: string; deviceType?: string; deviceHeight?: number }>
-      }>
-    }>(`/api/rooms/${roomId}/racks-summary`, { method: 'GET' })
+    const [result, racksResult] = await Promise.all([
+      request<{
+        racks: Array<{
+          id: string
+          code: string
+          heightU: number
+          brand: string | null
+          occupiedU: number
+          positions: Array<{ uNumber: number; occupied: boolean; serverName?: string; deviceType?: string; deviceHeight?: number }>
+        }>
+      }>(`/api/rooms/${roomId}/racks-summary`, { method: 'GET' }),
+      request<Array<{ id: string; status?: string }>>(
+        `/api/racks?roomId=${encodeURIComponent(roomId)}`,
+        { method: 'GET' },
+      ),
+    ])
 
     if (result.ok && result.data) {
+      const statusById = new Map<string, string>()
+      if (racksResult.ok && Array.isArray(racksResult.data)) {
+        for (const item of racksResult.data) {
+          if (typeof item.status === 'string') {
+            statusById.set(item.id, item.status)
+          }
+        }
+      }
       const map = new Map(roomRackSummaries.value)
       map.set(roomId, {
         racks: result.data.racks.map((rack) => ({
@@ -338,6 +368,7 @@ async function toggleRoom(roomId: string): Promise<void> {
           brand: rack.brand,
           occupiedU: rack.occupiedU,
           positions: buildUSlotsFromSummaryPositions(rack.positions, rack.heightU),
+          status: statusById.get(rack.id) ?? '未知',
         })),
       })
       roomRackSummaries.value = map
@@ -779,6 +810,10 @@ async function handleServerFileChange(event: Event): Promise<void> {
             <option value="停用">停用</option>
           </select>
         </label>
+        <label>
+          位置说明
+          <input v-model="roomLocation" name="roomLocation" type="text" />
+        </label>
         <button type="submit" class="btn btn--primary" :disabled="createSubmitting">
           {{ createSubmitting ? '保存中...' : '保存' }}
         </button>
@@ -798,6 +833,8 @@ async function handleServerFileChange(event: Event): Promise<void> {
             <span class="room-card__arrow">{{ expandedRoomIds.has(room.id) ? '▼' : '▶' }}</span>
             <span class="room-card__name">{{ room.name }}</span>
             <span class="room-card__status" :class="room.status === '启用' ? 'is-on' : 'is-off'">{{ room.status }}</span>
+            <span v-if="room.location" class="room-card__meta muted">{{ room.location }}</span>
+            <span class="room-card__meta muted">机柜 {{ room.rackCount }}</span>
             <button class="btn btn--small btn--muted" @click.stop="router.push(`/rooms/${room.id}/floorplan`)">平面图</button>
             <template v-if="isRoomAdmin && !createFormVisible">
               <button
@@ -836,6 +873,7 @@ async function handleServerFileChange(event: Event): Promise<void> {
               <option value="启用">启用</option>
               <option value="停用">停用</option>
             </select>
+            <input v-model="editLocation" name="editLocation" type="text" placeholder="位置说明" />
             <button type="button" class="btn btn--primary btn--small" :disabled="editSubmitting" @click="saveEdit(room)">
               {{ editSubmitting ? '保存中...' : '保存' }}
             </button>
@@ -850,16 +888,24 @@ async function handleServerFileChange(event: Event): Promise<void> {
               暂无导入的机柜
             </div>
             <div v-else class="mini-rack-grid">
-              <RackFrontPanel
+              <div
                 v-for="rack in roomRackSummaries.get(room.id)!.racks"
                 :key="rack.id"
-                :rack-code="rack.code"
-                :height-u="rack.heightU"
-                :u-slots="rack.positions"
-                :room-id="room.id"
-                compact
-                @click="goToRack(rack.id)"
-              />
+                class="mini-rack-item"
+              >
+                <span
+                  class="room-card__status"
+                  :class="rack.status === '启用' ? 'is-on' : 'is-off'"
+                >{{ rack.status }}</span>
+                <RackFrontPanel
+                  :rack-code="rack.code"
+                  :height-u="rack.heightU"
+                  :u-slots="rack.positions"
+                  :room-id="room.id"
+                  compact
+                  @click="goToRack(rack.id)"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -1036,6 +1082,17 @@ async function handleServerFileChange(event: Event): Promise<void> {
 .room-card__status.is-off {
   color: var(--color-danger);
   font-size: var(--font-sm);
+}
+
+.room-card__meta {
+  font-size: var(--font-sm);
+}
+
+.mini-rack-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
 }
 
 .edit-form {
