@@ -37,6 +37,9 @@ appsettings.*.local.json
 # Agent handoff (local only)
 .ai/
 
+# Playwright browser snapshots
+.playwright-cli/
+
 # Temporary files
 temp/
 tmp/
