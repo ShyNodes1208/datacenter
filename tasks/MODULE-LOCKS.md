@@ -6,17 +6,17 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 
 | Task ID | Module or Path | Owner | Claimed At | Status | Release Condition | Released At |
 |---|---|---|---|---|---|---|
-| TASK-20260810-000001 | src/backend/Datacenter.Api/Models/Room.cs | Cursor | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000001 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-20260810-000001 | src/backend/Datacenter.Api/Models/Rack.cs | Cursor | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000001 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-20260810-000001 | src/backend/Datacenter.Api/Controllers/RoomsController.cs | Cursor | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000001 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-20260810-000001 | src/backend/Datacenter.Api/Controllers/RacksController.cs | Cursor | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000001 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-20260810-000001 | src/backend/Datacenter.Api/Controllers/ServersController.cs | Cursor | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000001 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-20260810-000001 | src/backend/Datacenter.Api/Data/AppDbContext.cs | Cursor | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000001 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-20260810-000001 | src/backend/Datacenter.Api/Migrations/ | Cursor | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000001 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-20260810-000001 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RoomIntegrationTests.cs | Cursor | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000001 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-20260810-000001 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RackIntegrationTests.cs | Cursor | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000001 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-20260810-000001 | tests/backend/Datacenter.Api.Tests/IntegrationTests/ServerPositionIntegrationTests.cs | Cursor | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000001 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-20260810-000001 | tasks/MODULE-LOCKS.md | Cursor | 2026-08-10 +08:00 | HANDED_OFF | Reviewer：Codex；TASK-20260810-000001 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-20260810-000001 | src/backend/Datacenter.Api/Models/Room.cs | Cursor | 2026-08-10 +08:00 | RELEASED | TASK-20260810-000001 COMPLETED | 2026-08-10 (Claude) |
+| TASK-20260810-000001 | src/backend/Datacenter.Api/Models/Rack.cs | Cursor | 2026-08-10 +08:00 | RELEASED | TASK-20260810-000001 COMPLETED | 2026-08-10 (Claude) |
+| TASK-20260810-000001 | src/backend/Datacenter.Api/Controllers/RoomsController.cs | Cursor | 2026-08-10 +08:00 | RELEASED | TASK-20260810-000001 COMPLETED | 2026-08-10 (Claude) |
+| TASK-20260810-000001 | src/backend/Datacenter.Api/Controllers/RacksController.cs | Cursor | 2026-08-10 +08:00 | RELEASED | TASK-20260810-000001 COMPLETED | 2026-08-10 (Claude) |
+| TASK-20260810-000001 | src/backend/Datacenter.Api/Controllers/ServersController.cs | Cursor | 2026-08-10 +08:00 | RELEASED | TASK-20260810-000001 COMPLETED | 2026-08-10 (Claude) |
+| TASK-20260810-000001 | src/backend/Datacenter.Api/Data/AppDbContext.cs | Cursor | 2026-08-10 +08:00 | RELEASED | TASK-20260810-000001 COMPLETED | 2026-08-10 (Claude) |
+| TASK-20260810-000001 | src/backend/Datacenter.Api/Migrations/ | Cursor | 2026-08-10 +08:00 | RELEASED | TASK-20260810-000001 COMPLETED | 2026-08-10 (Claude) |
+| TASK-20260810-000001 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RoomIntegrationTests.cs | Cursor | 2026-08-10 +08:00 | RELEASED | TASK-20260810-000001 COMPLETED | 2026-08-10 (Claude) |
+| TASK-20260810-000001 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RackIntegrationTests.cs | Cursor | 2026-08-10 +08:00 | RELEASED | TASK-20260810-000001 COMPLETED | 2026-08-10 (Claude) |
+| TASK-20260810-000001 | tests/backend/Datacenter.Api.Tests/IntegrationTests/ServerPositionIntegrationTests.cs | Cursor | 2026-08-10 +08:00 | RELEASED | TASK-20260810-000001 COMPLETED | 2026-08-10 (Claude) |
+| TASK-20260810-000001 | tasks/MODULE-LOCKS.md | Cursor | 2026-08-10 +08:00 | RELEASED | TASK-20260810-000001 COMPLETED | 2026-08-10 (Claude) |
 | TASK-0020 | src/frontend/src/views/HomeView.vue | Cursor Frontend | 2026-07-23 +08:00 | RELEASED | TASK-0020 COMPLETED | 2026-08-10 (Claude：TASK-0020 已完成，释放过期锁) |
 | TASK-0020 | src/frontend/src/__tests__/router-and-views.test.ts | Cursor Frontend | 2026-07-23 +08:00 | RELEASED | TASK-0020 COMPLETED | 2026-08-10 (Claude：TASK-0020 已完成，释放过期锁) |
 | TASK-0020 | src/backend/Datacenter.Api/Datacenter.Api.csproj | Codex Backend | 2026-07-23 13:22:44 +08:00 | RELEASED | TASK-0020 COMPLETED | 2026-08-10 (Claude：TASK-0020 已完成，释放过期锁) |
