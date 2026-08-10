@@ -342,10 +342,26 @@ function drawScene(): void {
   layer.draw()
 }
 
+function computeStageSize(): { width: number; height: number } {
+  const viewW = konvaContainer.value?.clientWidth || 800
+  const viewH = konvaContainer.value?.clientHeight || 760
+  if (!topology.value || topology.value.rooms.length === 0) return { width: viewW, height: viewH }
+
+  const rooms = topology.value.rooms
+  const positions = autoLayoutRooms(rooms)
+  let maxX = 0
+  let maxY = 0
+  for (const room of rooms) {
+    const pos = positions.get(room.id) ?? { x: room.topologyX, y: room.topologyY }
+    maxX = Math.max(maxX, pos.x + ROOM_W + 80)
+    maxY = Math.max(maxY, pos.y + ROOM_H + 80)
+  }
+  return { width: Math.max(viewW, maxX), height: Math.max(viewH, maxY) }
+}
+
 function initStage(): void {
   if (!konvaContainer.value) return
-  const width = konvaContainer.value.clientWidth || 800
-  const height = konvaContainer.value.clientHeight || 560
+  const { width, height } = computeStageSize()
   stage = new Konva.Stage({ container: konvaContainer.value, width, height })
   layer = new Konva.Layer()
   stage.add(layer)
@@ -353,8 +369,9 @@ function initStage(): void {
 
   resizeObserver = new ResizeObserver(() => {
     if (!stage || !konvaContainer.value) return
-    stage.width(konvaContainer.value.clientWidth)
-    stage.height(konvaContainer.value.clientHeight)
+    const { width: w, height: h } = computeStageSize()
+    stage.width(w)
+    stage.height(h)
     drawScene()
   })
   resizeObserver.observe(konvaContainer.value)
@@ -439,7 +456,7 @@ onUnmounted(() => {
   min-height: 760px;
   border: 1px solid #cfd8e3;
   border-radius: 12px;
-  overflow: hidden;
+  overflow: auto;
   background:
     linear-gradient(90deg, rgba(31, 42, 55, 0.04) 1px, transparent 1px),
     linear-gradient(0deg, rgba(31, 42, 55, 0.04) 1px, transparent 1px);
