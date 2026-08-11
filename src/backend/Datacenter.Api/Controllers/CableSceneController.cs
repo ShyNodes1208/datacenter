@@ -52,11 +52,11 @@ public sealed class CableSceneController(AppDbContext dbContext) : ControllerBas
 
         var deviceIds = devices.Select(d => d.DeviceId).ToHashSet();
 
-        // 至少一端在机房内的线缆
+        // 两端设备均在当前机房内的线缆（跨机房线缆不可在本机房设备级画布渲染）
         var cables = await dbContext.Cables
             .AsNoTracking()
             .Where(c =>
-                deviceIds.Contains(c.SourcePort.ServerId) ||
+                deviceIds.Contains(c.SourcePort.ServerId) &&
                 deviceIds.Contains(c.TargetPort.ServerId))
             .Select(c => new
             {

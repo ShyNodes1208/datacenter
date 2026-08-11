@@ -475,6 +475,18 @@ export function buildCableScene(
   if (filters.cableTypes.length > 0) {
     visibleCables = visibleCables.filter(c => filters.cableTypes.includes(c.cableType))
   }
+  // Only cables whose both endpoint racks exist in the current room snapshot are renderable
+  // (AC-DEV-03 / AC-DEV-06). Cross-room cables are excluded from scene, legend, and filters.
+  visibleCables = visibleCables.filter(c => {
+    const srcRackId = c.source.rackId
+    const tgtRackId = c.target.rackId
+    return (
+      typeof srcRackId === 'string'
+      && typeof tgtRackId === 'string'
+      && rackMap.has(srcRackId)
+      && rackMap.has(tgtRackId)
+    )
+  })
 
   const resolvedRoomId = focus.level === 'room' ? focus.roomId : roomId
   const portSlots = buildPortSlotMap(visibleCables)
@@ -678,6 +690,44 @@ export function mapSnapshotToFloorplan(
       }
     }),
     cables: snapshot.cables,
+  }
+}
+
+/** Compute scale + offset so all racks fit inside a viewport (device-level canvas). */
+export function computeFitToScreenTransform(
+  racks: Array<{ x: number; y: number; width: number; height: number }>,
+  viewport: { width: number; height: number },
+  options?: { padding?: number; maxScale?: number; minScale?: number },
+): { scale: number; x: number; y: number } {
+  const padding = options?.padding ?? 40
+  const maxScale = options?.maxScale ?? 2
+  const minScale = options?.minScale ?? 0.2
+
+  if (racks.length === 0 || viewport.width <= 0 || viewport.height <= 0) {
+    return { scale: 1, x: 0, y: 0 }
+  }
+
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (const rack of racks) {
+    // Include rack chrome (label above, padding around) used by device layout.
+    minX = Math.min(minX, rack.x - 8)
+    minY = Math.min(minY, rack.y - 28)
+    maxX = Math.max(maxX, rack.x + rack.width + 8)
+    maxY = Math.max(maxY, rack.y + rack.height + 12)
+  }
+
+  const contentW = Math.max(1, maxX - minX + padding * 2)
+  const contentH = Math.max(1, maxY - minY + padding * 2)
+  const scale = Math.min(maxScale, Math.max(minScale, Math.min(viewport.width / contentW, viewport.height / contentH)))
+  const cx = (minX + maxX) / 2
+  const cy = (minY + maxY) / 2
+  return {
+    scale,
+    x: viewport.width / 2 - cx * scale,
+    y: viewport.height / 2 - cy * scale,
   }
 }
 

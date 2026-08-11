@@ -281,6 +281,106 @@ public sealed class RoomTopologyIntegrationTests(AuthTestFixture fixture)
         await ClearTopologyAsync();
     }
 
+    [Fact]
+    public async Task GetCableSceneExcludesCrossRoomCables()
+    {
+        var roomA = new Room { Name = "机房A", Status = "启用", TopologyX = 0, TopologyY = 0 };
+        var roomB = new Room { Name = "机房B", Status = "启用", TopologyX = 100, TopologyY = 0 };
+        var rackA = new Rack { RoomId = roomA.Id, Code = "A-01", HeightU = 42, X = 0, Y = 0, Z = 0 };
+        var rackB = new Rack { RoomId = roomB.Id, Code = "B-01", HeightU = 42, X = 0, Y = 0, Z = 0 };
+        var localServer = new Server
+        {
+            Name = "local-01",
+            ManagementIP = "10.0.3.1",
+            DeviceType = "服务器",
+            DeviceHeight = 1,
+            OperationalStatus = "正常",
+            PositionStatus = "在架"
+        };
+        var remoteServer = new Server
+        {
+            Name = "remote-01",
+            ManagementIP = "10.0.3.2",
+            DeviceType = "交换机",
+            DeviceHeight = 1,
+            OperationalStatus = "正常",
+            PositionStatus = "在架"
+        };
+        var peerServer = new Server
+        {
+            Name = "peer-01",
+            ManagementIP = "10.0.3.3",
+            DeviceType = "服务器",
+            DeviceHeight = 1,
+            OperationalStatus = "正常",
+            PositionStatus = "在架"
+        };
+        var localPort = new Port { ServerId = localServer.Id, PortName = "eth0", PortType = "RJ45", Speed = "10G" };
+        var localPort2 = new Port { ServerId = localServer.Id, PortName = "eth1", PortType = "RJ45", Speed = "1G" };
+        var remotePort = new Port { ServerId = remoteServer.Id, PortName = "GE0/1", PortType = "RJ45", Speed = "10G" };
+        var peerPort = new Port { ServerId = peerServer.Id, PortName = "eth1", PortType = "RJ45", Speed = "1G" };
+        var crossCable = new Cable
+        {
+            SourcePortId = localPort.Id,
+            TargetPortId = remotePort.Id,
+            CableType = "光纤",
+            Purpose = "上联"
+        };
+        var localCable = new Cable
+        {
+            SourcePortId = localPort2.Id,
+            TargetPortId = peerPort.Id,
+            CableType = "铜缆",
+            Purpose = "正常"
+        };
+
+        await SeedTopologyAsync(
+            [roomA, roomB],
+            [rackA, rackB],
+            [localServer, remoteServer, peerServer],
+            [
+                new ServerPosition
+                {
+                    ServerId = localServer.Id,
+                    RackId = rackA.Id,
+                    StartU = 1,
+                    EndU = 1,
+                    Status = "在架"
+                },
+                new ServerPosition
+                {
+                    ServerId = peerServer.Id,
+                    RackId = rackA.Id,
+                    StartU = 2,
+                    EndU = 2,
+                    Status = "在架"
+                },
+                new ServerPosition
+                {
+                    ServerId = remoteServer.Id,
+                    RackId = rackB.Id,
+                    StartU = 40,
+                    EndU = 40,
+                    Status = "在架"
+                }
+            ],
+            [localPort, localPort2, remotePort, peerPort],
+            [crossCable, localCable]);
+
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.ReadOnlyViewer);
+
+        using var response = await client.GetAsync($"/api/rooms/{roomA.Id}/cable-scene");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        var cables = document.RootElement.GetProperty("cables").EnumerateArray().ToArray();
+        Assert.Single(cables);
+        Assert.Equal("铜缆", cables[0].GetProperty("cableType").GetString());
+        Assert.Equal("正常", cables[0].GetProperty("purpose").GetString());
+        await ClearTopologyAsync();
+    }
+
     private async Task SeedTopologyAsync(
         IEnumerable<Room> rooms,
         IEnumerable<Rack> racks,

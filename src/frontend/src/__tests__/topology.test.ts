@@ -11,6 +11,7 @@ import {
   buildCableScene,
   buildPortSlotMap,
   cableTypeSceneColor,
+  computeFitToScreenTransform,
   deviceEdgePoint,
   parseCableSnapshot,
 } from '../composables/useCableScene'
@@ -45,22 +46,39 @@ vi.mock('konva', () => {
     add() {
       return this
     }
-    x() {
+    x(v?: number) {
+      if (typeof v === 'number') return this
       return 0
     }
-    y() {
+    y(v?: number) {
+      if (typeof v === 'number') return this
       return 0
     }
+    scale() {
+      return this
+    }
+    scaleX() {
+      return 1
+    }
+    position() {
+      return this
+    }
+    draggable() {
+      return this
+    }
+    batchDraw() {}
     id() {
       return ''
     }
     destroy() {}
     draw() {}
     destroyChildren() {}
-    width() {
+    width(v?: number) {
+      if (typeof v === 'number') return this
       return 0
     }
-    height() {
+    height(v?: number) {
+      if (typeof v === 'number') return this
       return 0
     }
     getPointerPosition() {
@@ -573,6 +591,68 @@ describe('device-level cable scene', () => {
     expect(`${start1.x},${start1.y}`).not.toBe(`${start2.x},${start2.y}`)
     expect(`${end1.x},${end1.y}`).not.toBe(`${end2.x},${end2.y}`)
   })
+
+  it('excludes cross-room cables from scene so remaining routes have arrows and anchors', () => {
+    const snapshot = parseCableSnapshot({
+      racks: [{ rackId: 'k1', code: 'R1', x: 0, y: 0, width: 60, height: 100 }],
+      devices: sampleCableScene.devices,
+      cables: [
+        ...sampleCableScene.cables,
+        {
+          cableId: 'c-cross',
+          cableType: '光纤',
+          purpose: '上联',
+          source: {
+            deviceId: 'd1',
+            deviceName: 'app-01',
+            portName: 'eth9',
+            speed: '10G',
+            rackId: 'k1',
+            rackCode: 'R1',
+          },
+          target: {
+            deviceId: 'd-remote',
+            deviceName: 'sw-remote',
+            portName: 'GE0/9',
+            speed: '10G',
+            rackId: 'k-other',
+            rackCode: 'OTHER',
+          },
+        },
+      ],
+    })!
+    const scene = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true },
+    )
+    expect(scene.bundles.map((b) => b.id)).toEqual(['c1'])
+    expect(scene.bundles).toHaveLength(1)
+    expect(scene.legend.every((item) => item.count === 1)).toBe(true)
+    for (const bundle of scene.bundles) {
+      expect(bundle.route.length).toBeGreaterThanOrEqual(2)
+    }
+  })
+
+  it('computes fit-to-screen transform so all racks fit the viewport', () => {
+    const transform = computeFitToScreenTransform(
+      [
+        { x: 60, y: 70, width: 160, height: 200 },
+        { x: 280, y: 70, width: 160, height: 200 },
+        { x: 60, y: 390, width: 160, height: 200 },
+        { x: 280, y: 390, width: 160, height: 200 },
+      ],
+      { width: 400, height: 300 },
+    )
+    expect(transform.scale).toBeGreaterThan(0)
+    expect(transform.scale).toBeLessThanOrEqual(1)
+    const fittedW = (280 + 160 + 8 - (60 - 8) + 80) * transform.scale
+    const fittedH = (390 + 200 + 12 - (70 - 28) + 80) * transform.scale
+    expect(fittedW).toBeLessThanOrEqual(400 + 1e-6)
+    expect(fittedH).toBeLessThanOrEqual(300 + 1e-6)
+  })
 })
 
 describe('TopologyView', () => {
@@ -592,6 +672,16 @@ describe('TopologyView', () => {
     expect(html).toContain('aria-label="拓扑视图"')
     expect(html).toContain('机房拓扑地图')
     expect(html).toContain('跨机房线缆聚合视图')
+  })
+
+  it('exposes fit-to-screen control in device-level template', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    expect(source).toContain('适应屏幕')
+    expect(source).toContain('fitDeviceToScreen')
+    expect(source).toContain('syncDeviceOverlay')
+    expect(source).toContain('wheel')
   })
 
   it('device-level scene exposes non-realtime notice and missing Speed as 未登记', async () => {

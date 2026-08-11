@@ -50,6 +50,15 @@
           <input v-model="animationEnabled" type="checkbox" />
           流向动画
         </label>
+        <button
+          v-if="topology?.mode === 'devices'"
+          type="button"
+          class="btn"
+          title="适应屏幕"
+          @click="fitDeviceToScreen"
+        >
+          适应屏幕
+        </button>
         <button type="button" class="btn" :disabled="loading" @click="reload">刷新</button>
       </div>
     </header>
@@ -84,7 +93,11 @@
     </div>
 
     <div class="topology-body" :class="{ 'topology-body--with-panel': !!selectedCable }">
-      <div ref="containerRef" class="topology-canvas">
+      <div
+        ref="containerRef"
+        class="topology-canvas"
+        :class="{ 'topology-canvas--devices': topology?.mode === 'devices' }"
+      >
         <div ref="konvaContainer" class="konva-stage"></div>
         <div
           v-if="topology?.mode === 'devices' && deviceCableScene"
@@ -193,6 +206,7 @@ import {
 import CableLayer from '../components/CableLayer.vue'
 import {
   buildCableScene,
+  computeFitToScreenTransform,
   type CableFocus,
   type CableInfo,
   type CableScene,
@@ -224,6 +238,10 @@ const selectedCableTypes = ref<string[]>([])
 const selectedPurposes = ref<string[]>([])
 const laidSnapshot = ref<CableSnapshot | null>(null)
 const stageSize = ref({ width: 800, height: 760 })
+const stagePos = ref({ x: 0, y: 0 })
+const stageScale = ref(1)
+/** Logical content size for the SVG cable overlay (matches laid device layout). */
+const overlayContentSize = ref({ width: 800, height: 760 })
 
 const tooltip = ref<{
   x: number
@@ -236,6 +254,9 @@ const tooltip = ref<{
 let stage: Konva.Stage | null = null
 let layer: Konva.Layer | null = null
 let resizeObserver: ResizeObserver | null = null
+let deviceViewportBound = false
+/** Avoid resetting user pan/zoom on every focus redraw in devices mode. */
+let deviceFitAppliedForSnapshot: string | null = null
 
 const subtitle = computed(() => {
   if (topology.value?.mode === 'devices') {
@@ -282,9 +303,96 @@ const deviceCableScene = computed<CableScene | null>(() => {
 })
 
 const cableOverlayStyle = computed(() => ({
-  width: `${stageSize.value.width}px`,
-  height: `${stageSize.value.height}px`,
+  width: `${overlayContentSize.value.width}px`,
+  height: `${overlayContentSize.value.height}px`,
+  transform: `translate(${stagePos.value.x}px, ${stagePos.value.y}px) scale(${stageScale.value})`,
+  transformOrigin: '0 0',
 }))
+
+function syncDeviceOverlay(): void {
+  if (!stage) return
+  stagePos.value = { x: stage.x(), y: stage.y() }
+  stageScale.value = stage.scaleX()
+}
+
+function resetDeviceViewport(): void {
+  if (!stage) return
+  stage.scale({ x: 1, y: 1 })
+  stage.position({ x: 0, y: 0 })
+  syncDeviceOverlay()
+  deviceFitAppliedForSnapshot = null
+}
+
+function fitDeviceToScreen(): void {
+  if (!stage || !laidSnapshot.value) return
+  const transform = computeFitToScreenTransform(laidSnapshot.value.racks, {
+    width: stage.width(),
+    height: stage.height(),
+  })
+  stage.scale({ x: transform.scale, y: transform.scale })
+  stage.position({ x: transform.x, y: transform.y })
+  syncDeviceOverlay()
+  stage.batchDraw()
+}
+
+function deviceSnapshotKey(snapshot: CableSnapshot): string {
+  return [
+    snapshot.racks.map((r) => r.rackId).join(','),
+    snapshot.devices.map((d) => d.deviceId).join(','),
+    snapshot.cables.map((c) => c.cableId).join(','),
+  ].join('|')
+}
+
+function bindDeviceViewportControls(): void {
+  if (!stage || deviceViewportBound) return
+  deviceViewportBound = true
+
+  stage.on('wheel', (event) => {
+    if (topology.value?.mode !== 'devices') return
+    event.evt.preventDefault()
+    const oldScale = stage!.scaleX()
+    const pointer = stage!.getPointerPosition()
+    if (!pointer) return
+    const zoomIn = event.evt.deltaY < 0
+    const newScale = Math.min(3, Math.max(0.2, oldScale * (zoomIn ? 1.1 : 1 / 1.1)))
+    stage!.scale({ x: newScale, y: newScale })
+    stage!.position({
+      x: pointer.x - (pointer.x - stage!.x()) * (newScale / oldScale),
+      y: pointer.y - (pointer.y - stage!.y()) * (newScale / oldScale),
+    })
+    syncDeviceOverlay()
+    stage!.batchDraw()
+  })
+
+  let panning = false
+  stage.on('mousedown.devicePan', (event) => {
+    if (topology.value?.mode !== 'devices') return
+    if (event.target === stage) panning = true
+  })
+  stage.on('mousemove.devicePan', (event) => {
+    if (!panning || topology.value?.mode !== 'devices') return
+    const pos = stage!.position()
+    stage!.position({
+      x: pos.x + event.evt.movementX,
+      y: pos.y + event.evt.movementY,
+    })
+    syncDeviceOverlay()
+    stage!.batchDraw()
+  })
+  stage.on('mouseup.devicePan', () => {
+    panning = false
+  })
+  stage.on('mouseleave.devicePan', () => {
+    panning = false
+  })
+}
+
+function applyDeviceViewportMode(enabled: boolean): void {
+  if (!stage) return
+  if (!enabled) {
+    resetDeviceViewport()
+  }
+}
 
 function formatSpeed(speed: string | null): string {
   return speed && speed.trim() ? speed : '未登记'
@@ -598,11 +706,31 @@ function drawDeviceScene(): void {
     drawPortAnchors(scene)
   }
 
+  const contentW = Math.max(
+    stageSize.value.width,
+    ...snapshot.racks.map((r) => r.x + r.width + 80),
+  )
+  const contentH = Math.max(
+    stageSize.value.height,
+    ...snapshot.racks.map((r) => r.y + r.height + 80),
+  )
+  overlayContentSize.value = { width: contentW, height: contentH }
+
   stage.on('click', (event) => {
     if (event.target === stage) {
       clearDeviceFocus()
     }
   })
+
+  applyDeviceViewportMode(true)
+  bindDeviceViewportControls()
+  const key = deviceSnapshotKey(originalSnapshot)
+  if (deviceFitAppliedForSnapshot !== key) {
+    fitDeviceToScreen()
+    deviceFitAppliedForSnapshot = key
+  } else {
+    syncDeviceOverlay()
+  }
 }
 
 function drawScene(): void {
@@ -619,6 +747,8 @@ function drawScene(): void {
   }
 
   laidSnapshot.value = null
+  applyDeviceViewportMode(false)
+  overlayContentSize.value = { width: stageSize.value.width, height: stageSize.value.height }
 
   if (current.mode === 'rooms') {
     const positions = autoLayoutRooms(current.rooms)
@@ -833,15 +963,9 @@ function computeStageSize(): { width: number; height: number } {
   const viewH = konvaContainer.value?.clientHeight || 760
   if (!topology.value || topology.value.rooms.length === 0) return { width: viewW, height: viewH }
 
-  if (topology.value.mode === 'devices' && topology.value.cableSnapshot) {
-    const laid = layoutDeviceSnapshot(topology.value.cableSnapshot)
-    let maxX = viewW
-    let maxY = viewH
-    for (const rack of laid.racks) {
-      maxX = Math.max(maxX, rack.x + rack.width + 80)
-      maxY = Math.max(maxY, rack.y + rack.height + 80)
-    }
-    return { width: maxX, height: maxY }
+  // Device level uses viewport-sized stage + pan/zoom (no content-sized scroll canvas).
+  if (topology.value.mode === 'devices') {
+    return { width: viewW, height: viewH }
   }
 
   const rooms = topology.value.rooms
@@ -1058,6 +1182,15 @@ onUnmounted(() => {
   background-color: #fbfcfe;
 }
 
+.topology-canvas--devices {
+  overflow: hidden;
+  cursor: grab;
+}
+
+.topology-canvas--devices:active {
+  cursor: grabbing;
+}
+
 .konva-stage {
   width: 100%;
   height: 100%;
@@ -1069,6 +1202,7 @@ onUnmounted(() => {
   inset: 0 auto auto 0;
   pointer-events: none;
   z-index: 4;
+  overflow: visible;
 }
 
 .device-legend {
