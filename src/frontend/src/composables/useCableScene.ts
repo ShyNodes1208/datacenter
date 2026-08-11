@@ -12,6 +12,12 @@ export type CableFocus =
 export interface CableFilters {
   purposes: string[]
   cableTypes: string[]
+  /** Substring match on either endpoint device name (case-insensitive). */
+  deviceNameQuery?: string
+  /** Match either endpoint device type; empty = no type filter. */
+  deviceTypes?: string[]
+  /** 正常 | 告警 — based on endpoint OperationalStatus = 异常. */
+  lineStatuses?: string[]
 }
 
 export interface RackInfo {
@@ -60,6 +66,8 @@ export interface CableBundle {
   id: string
   purpose: string
   cableType: string
+  /** Resolved display stroke (purpose / alert mapping). */
+  strokeColor: string
   count: number
   sourceRackId: string
   targetRackId: string
@@ -69,6 +77,8 @@ export interface CableBundle {
   /** Decorative flow animation; only selected cables may be true (VIS-003). */
   animated: boolean
   isAggregated: boolean
+  /** Registration direction only; bidirectional only when data provides it. */
+  direction: 'forward' | 'bidirectional'
 }
 
 export interface PortPath {
@@ -97,6 +107,9 @@ export interface DetailRow {
   purpose: string
   sourceRack: string
   targetRack: string
+  bandwidth: string
+  directionLabel: string
+  pathLabel: string
 }
 
 export interface BuildCableSceneOptions {
@@ -118,10 +131,18 @@ export interface CableScene {
   breadcrumbs: BreadcrumbItem[]
 }
 
+/** CR-002 purpose → network display colors (frontend-only mapping). */
+export const NETWORK_COLORS = {
+  management: '#39D9FF',
+  business: '#9567FF',
+  storage: '#FFB341',
+  alert: '#FF4D5A',
+} as const
+
 export const PURPOSE_COLORS: Record<string, string> = {
-  正常: '#3B82F6',
-  存储: '#F59E0B',
-  上联: '#10B981',
+  正常: NETWORK_COLORS.management,
+  存储: NETWORK_COLORS.storage,
+  上联: NETWORK_COLORS.business,
 }
 
 export const PURPOSE_DASH: Record<string, string> = {
@@ -130,7 +151,19 @@ export const PURPOSE_DASH: Record<string, string> = {
   上联: '2,4',
 }
 
-/** CableType → stroke color (field display semantics). */
+/** Unselected cable opacity when another cable/device is focused (FR-VIS-10). */
+export const UNSELECTED_OPACITY = 0.22
+
+/** Selected cable stroke width in canvas pixels (FR-VIS-10). */
+export const SELECTED_STROKE_WIDTH = 4
+
+/** Static arrow spacing along a route (FR-VIS-09). */
+export const ARROW_SPACING_PX = 80
+
+/** Decorative animation period in ms (FR-VIS-11). */
+export const ANIMATION_PERIOD_MS = 1400
+
+/** CableType → stroke color (legacy / room-level aggregation). */
 export const CABLE_TYPE_COLORS: Record<string, string> = {
   铜缆: '#e67e22',
   光纤: '#f1c40f',
@@ -140,6 +173,90 @@ export const CABLE_TYPE_COLORS: Record<string, string> = {
 
 export function cableTypeSceneColor(type: string): string {
   return CABLE_TYPE_COLORS[type] ?? '#95a5a6'
+}
+
+/** Map Cable.Purpose (+ CableType 网线) to display label. */
+export function purposeDisplayName(purpose: string, cableType?: string): string {
+  if (purpose === '上联') return '业务网络'
+  if (purpose === '存储') return '存储网络'
+  if (purpose === '正常' || cableType === '网线') return '管理网络'
+  return purpose || '管理网络'
+}
+
+/** Purpose → network color; 网线 falls back to management. */
+export function purposeNetworkColor(purpose: string, cableType?: string): string {
+  if (purpose === '上联') return NETWORK_COLORS.business
+  if (purpose === '存储') return NETWORK_COLORS.storage
+  if (purpose === '正常' || cableType === '网线') return NETWORK_COLORS.management
+  return PURPOSE_COLORS[purpose] ?? NETWORK_COLORS.management
+}
+
+/** Alert overrides purpose color when either endpoint device is 异常. */
+export function resolveCableStrokeColor(
+  purpose: string,
+  cableType: string,
+  sourceStatus?: string,
+  targetStatus?: string,
+): string {
+  if (sourceStatus === '异常' || targetStatus === '异常') return NETWORK_COLORS.alert
+  return purposeNetworkColor(purpose, cableType)
+}
+
+export function isPortInfoMissing(portName: string | null | undefined): boolean {
+  return !portName || !String(portName).trim()
+}
+
+export function formatPortLabel(portName: string | null | undefined): string {
+  return isPortInfoMissing(portName) ? '端口信息缺失' : String(portName).trim()
+}
+
+export interface ArrowMarker {
+  x: number
+  y: number
+  angle: number
+}
+
+export function routeLength(route: Point[]): number {
+  let total = 0
+  for (let i = 1; i < route.length; i++) {
+    total += Math.hypot(route[i].x - route[i - 1].x, route[i].y - route[i - 1].y)
+  }
+  return total
+}
+
+/** Place static direction arrows along the route (at least one; every spacing px). */
+export function staticArrowPositions(
+  route: Point[],
+  spacing: number = ARROW_SPACING_PX,
+): ArrowMarker[] {
+  if (route.length < 2) return []
+  const total = routeLength(route)
+  if (total <= 0) return []
+
+  const markers: ArrowMarker[] = []
+  const count = Math.max(1, Math.floor(total / spacing))
+  for (let n = 0; n < count; n++) {
+    const target = count === 1 ? total / 2 : (n + 1) * spacing
+    if (target > total && n > 0) break
+    const at = Math.min(target, total)
+    let acc = 0
+    for (let i = 1; i < route.length; i++) {
+      const dx = route[i].x - route[i - 1].x
+      const dy = route[i].y - route[i - 1].y
+      const segLen = Math.hypot(dx, dy)
+      if (acc + segLen >= at) {
+        const t = segLen > 0 ? (at - acc) / segLen : 0
+        markers.push({
+          x: route[i - 1].x + dx * t,
+          y: route[i - 1].y + dy * t,
+          angle: Math.atan2(dy, dx),
+        })
+        break
+      }
+      acc += segLen
+    }
+  }
+  return markers
 }
 
 const DEFAULT_DEVICE: DeviceInfo = {
@@ -244,9 +361,25 @@ export function routeBetweenRacks(
 
   const start = deviceEdgePoint(srcDevice, srcRack, startEdge, srcPort)
   const end = deviceEdgePoint(tgtDevice, tgtRack, endEdge, tgtPort)
-  const midX = (start.x + end.x) / 2
 
-  return [start, { x: midX, y: start.y }, { x: midX, y: end.y }, end]
+  // Exit into the inter-rack cable corridor, then travel vertically in the aisle.
+  const exitPad = 28
+  const exitStartX = startEdge === 'right' ? start.x + exitPad : start.x - exitPad
+  const exitEndX = endEdge === 'left' ? end.x - exitPad : end.x + exitPad
+  const leftRackRight = Math.min(srcRack.x + srcRack.width, tgtRack.x + tgtRack.width)
+  const rightRackLeft = Math.max(srcRack.x, tgtRack.x)
+  const midX = leftRackRight < rightRackLeft
+    ? (leftRackRight + rightRackLeft) / 2
+    : (exitStartX + exitEndX) / 2
+
+  return [
+    start,
+    { x: exitStartX, y: start.y },
+    { x: midX, y: start.y },
+    { x: midX, y: end.y },
+    { x: exitEndX, y: end.y },
+    end,
+  ]
 }
 
 export function sameRackRoute(
@@ -258,7 +391,8 @@ export function sameRackRoute(
 ): Point[] {
   const start = deviceEdgePoint(src, rack, 'left', srcPort)
   const end = deviceEdgePoint(tgt, rack, 'left', tgtPort)
-  const midX = rack.x - 30
+  // Stay in the left cable channel; avoid crossing the rack name band above.
+  const midX = rack.x - 40
   return [start, { x: midX, y: start.y }, { x: midX, y: end.y }, end]
 }
 
@@ -301,6 +435,20 @@ function routeForCable(
   return routeBetweenRacks(srcRack, srcDevice, tgtRack, tgtDevice, srcPort, tgtPort)
 }
 
+function strokeForCable(
+  c: CableInfo,
+  deviceMap: Map<string, DeviceInfo>,
+): string {
+  const src = deviceMap.get(c.source.deviceId)
+  const tgt = deviceMap.get(c.target.deviceId)
+  return resolveCableStrokeColor(
+    c.purpose,
+    c.cableType,
+    src?.operationalStatus,
+    tgt?.operationalStatus,
+  )
+}
+
 export function aggregateCables(
   cables: CableInfo[],
   rackMap: Map<string, RackInfo>,
@@ -331,6 +479,7 @@ export function aggregateCables(
       id: key,
       purpose,
       cableType,
+      strokeColor: sample ? strokeForCable(sample, deviceMap) : purposeNetworkColor(purpose, cableType),
       count: group.length,
       sourceRackId,
       targetRackId,
@@ -339,6 +488,7 @@ export function aggregateCables(
       highlighted: false,
       animated: false,
       isAggregated: group.length > 1,
+      direction: 'forward',
     })
   }
 
@@ -356,6 +506,7 @@ function cableToBundle(
     id: c.cableId,
     purpose: c.purpose,
     cableType: c.cableType,
+    strokeColor: strokeForCable(c, deviceMap),
     count: 1,
     sourceRackId: c.source.rackId ?? '__none__',
     targetRackId: c.target.rackId ?? '__none__',
@@ -364,6 +515,7 @@ function cableToBundle(
     highlighted: false,
     animated: false,
     isAggregated: false,
+    direction: 'forward',
     ...overrides,
   }
 }
@@ -384,15 +536,19 @@ export function formatPortId(deviceId: string, portName: string): string {
   return `${deviceId}|${portName}`
 }
 
-function buildLegend(visibleCables: CableInfo[]): LegendItem[] {
+function buildLegend(visibleCables: CableInfo[], deviceMap: Map<string, DeviceInfo>): LegendItem[] {
   const legendMap = new Map<string, LegendItem>()
   for (const c of visibleCables) {
-    const key = `${c.cableType}|${c.purpose}`
+    const color = strokeForCable(c, deviceMap)
+    const label = color === NETWORK_COLORS.alert
+      ? '告警/异常'
+      : purposeDisplayName(c.purpose, c.cableType)
+    const key = `${label}|${color}`
     if (!legendMap.has(key)) {
       legendMap.set(key, {
-        purpose: c.purpose,
+        purpose: label,
         cableType: c.cableType,
-        color: cableTypeSceneColor(c.cableType),
+        color,
         dashArray: PURPOSE_DASH[c.purpose] ?? 'none',
         count: 0,
       })
@@ -405,15 +561,18 @@ function buildLegend(visibleCables: CableInfo[]): LegendItem[] {
 function buildDetailRows(visibleCables: CableInfo[]): DetailRow[] {
   return visibleCables.map(c => ({
     sourceDevice: c.source.deviceName,
-    sourcePort: c.source.portName,
+    sourcePort: formatPortLabel(c.source.portName),
     sourceSpeed: c.source.speed,
     targetDevice: c.target.deviceName,
-    targetPort: c.target.portName,
+    targetPort: formatPortLabel(c.target.portName),
     targetSpeed: c.target.speed,
     cableType: c.cableType,
-    purpose: c.purpose,
+    purpose: purposeDisplayName(c.purpose, c.cableType),
     sourceRack: c.source.rackCode ?? '-',
     targetRack: c.target.rackCode ?? '-',
+    bandwidth: '未配置',
+    directionLabel: '单向',
+    pathLabel: `${c.source.rackCode ?? '-'} / ${c.source.deviceName} / ${formatPortLabel(c.source.portName)} → ${c.target.rackCode ?? '-'} / ${c.target.deviceName} / ${formatPortLabel(c.target.portName)}`,
   }))
 }
 
@@ -475,6 +634,30 @@ export function buildCableScene(
   if (filters.cableTypes.length > 0) {
     visibleCables = visibleCables.filter(c => filters.cableTypes.includes(c.cableType))
   }
+  const deviceNameQuery = filters.deviceNameQuery?.trim().toLowerCase() ?? ''
+  if (deviceNameQuery) {
+    visibleCables = visibleCables.filter(c =>
+      c.source.deviceName.toLowerCase().includes(deviceNameQuery)
+      || c.target.deviceName.toLowerCase().includes(deviceNameQuery),
+    )
+  }
+  if (filters.deviceTypes && filters.deviceTypes.length > 0) {
+    const types = new Set(filters.deviceTypes)
+    visibleCables = visibleCables.filter((c) => {
+      const srcType = deviceMap.get(c.source.deviceId)?.deviceType ?? ''
+      const tgtType = deviceMap.get(c.target.deviceId)?.deviceType ?? ''
+      return types.has(srcType) || types.has(tgtType)
+    })
+  }
+  if (filters.lineStatuses && filters.lineStatuses.length > 0) {
+    visibleCables = visibleCables.filter((c) => {
+      const src = deviceMap.get(c.source.deviceId)?.operationalStatus
+      const tgt = deviceMap.get(c.target.deviceId)?.operationalStatus
+      const alert = src === '异常' || tgt === '异常'
+      const status = alert ? '告警' : '正常'
+      return filters.lineStatuses!.includes(status)
+    })
+  }
   // Only cables whose both endpoint racks exist in the current room snapshot are renderable
   // (AC-DEV-03 / AC-DEV-06). Cross-room cables are excluded from scene, legend, and filters.
   visibleCables = visibleCables.filter(c => {
@@ -498,7 +681,7 @@ export function buildCableScene(
     if (selectedCableId) {
       for (const b of bundles) {
         const selected = b.id === selectedCableId
-        b.opacity = selected ? 1 : 0.2
+        b.opacity = selected ? 1 : UNSELECTED_OPACITY
         b.highlighted = selected
         b.animated = selected
       }
@@ -507,7 +690,7 @@ export function buildCableScene(
         const cable = visibleCables.find(c => c.cableId === b.id)
         const related = !!cable
           && (cable.source.deviceId === focus.deviceId || cable.target.deviceId === focus.deviceId)
-        b.opacity = related ? 1 : 0.2
+        b.opacity = related ? 1 : UNSELECTED_OPACITY
         b.highlighted = related
         b.animated = false
       }
@@ -516,7 +699,7 @@ export function buildCableScene(
     return {
       bundles,
       highlightedPath: null,
-      legend: buildLegend(visibleCables),
+      legend: buildLegend(visibleCables, deviceMap),
       detailRows: buildDetailRows(visibleCables),
       breadcrumbs: buildBreadcrumbs(snapshot, focus, resolvedRoomId),
     }
@@ -567,8 +750,8 @@ export function buildCableScene(
       if (portCable) {
         highlightedPath = {
           cableId: portCable.cableId,
-          sourceLabel: `${portCable.source.deviceName} / ${portCable.source.portName}`,
-          targetLabel: `${portCable.target.deviceName} / ${portCable.target.portName}`,
+          sourceLabel: `${portCable.source.deviceName} / ${formatPortLabel(portCable.source.portName)}`,
+          targetLabel: `${portCable.target.deviceName} / ${formatPortLabel(portCable.target.portName)}`,
           route: routeForCable(portCable, rackMap, deviceMap, portSlots),
         }
       }
@@ -582,7 +765,7 @@ export function buildCableScene(
   return {
     bundles,
     highlightedPath,
-    legend: buildLegend(visibleCables),
+    legend: buildLegend(visibleCables, deviceMap),
     detailRows: buildDetailRows(visibleCables),
     breadcrumbs: buildBreadcrumbs(snapshot, focus, resolvedRoomId),
   }

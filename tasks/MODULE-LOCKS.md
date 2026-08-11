@@ -6,11 +6,11 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 
 | Task ID | Module or Path | Owner | Claimed At | Status | Release Condition | Released At |
 |---|---|---|---|---|---|---|
-| TASK-20260810-000003 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-11 18:30:00 +08:00 | CLAIMED | CR-002 视觉保真修正 → 实施完成交审时 HANDED_OFF | |
-| TASK-20260810-000003 | src/frontend/src/components/CableLayer.vue | Cursor | 2026-08-11 18:30:00 +08:00 | CLAIMED | CR-002 视觉保真修正 → 实施完成交审时 HANDED_OFF | |
-| TASK-20260810-000003 | src/frontend/src/composables/useCableScene.ts | Cursor | 2026-08-11 18:30:00 +08:00 | CLAIMED | CR-002 视觉保真修正 → 实施完成交审时 HANDED_OFF | |
-| TASK-20260810-000003 | src/frontend/src/composables/useTopology.ts | Cursor | 2026-08-11 18:30:00 +08:00 | CLAIMED | CR-002 视觉保真修正 → 实施完成交审时 HANDED_OFF | |
-| TASK-20260810-000003 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-11 18:30:00 +08:00 | CLAIMED | CR-002 视觉保真修正 → 实施完成交审时 HANDED_OFF | |
+| TASK-20260810-000003 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-11 18:30:00 +08:00 | HANDED_OFF | READY_FOR_REVIEW → Codex Reviewer 审核 CR-002 | |
+| TASK-20260810-000003 | src/frontend/src/components/CableLayer.vue | Cursor | 2026-08-11 18:30:00 +08:00 | HANDED_OFF | READY_FOR_REVIEW → Codex Reviewer 审核 CR-002 | |
+| TASK-20260810-000003 | src/frontend/src/composables/useCableScene.ts | Cursor | 2026-08-11 18:30:00 +08:00 | HANDED_OFF | READY_FOR_REVIEW → Codex Reviewer 审核 CR-002 | |
+| TASK-20260810-000003 | src/frontend/src/composables/useTopology.ts | Cursor | 2026-08-11 18:30:00 +08:00 | HANDED_OFF | READY_FOR_REVIEW → Codex Reviewer 审核 CR-002 | |
+| TASK-20260810-000003 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-11 18:30:00 +08:00 | HANDED_OFF | READY_FOR_REVIEW → Codex Reviewer 审核 CR-002 | |
 | TASK-20260810-000003 | src/backend/Datacenter.Api/Models/Room.cs | Cursor | 2026-08-11 16:43:51 +08:00 | RELEASED | TASK-20260810-000003 COMPLETED（CR-001 设备级拓扑） | 2026-08-11 (Claude) |
 | TASK-20260810-000003 | src/backend/Datacenter.Api/Controllers/RoomsController.cs | Cursor | 2026-08-11 16:43:51 +08:00 | RELEASED | TASK-20260810-000003 COMPLETED（CR-001 设备级拓扑） | 2026-08-11 (Claude) |
 | TASK-20260810-000003 | src/backend/Datacenter.Api/Data/AppDbContext.cs | Cursor | 2026-08-11 16:43:51 +08:00 | RELEASED | TASK-20260810-000003 COMPLETED（CR-001 设备级拓扑） | 2026-08-11 (Claude) |
