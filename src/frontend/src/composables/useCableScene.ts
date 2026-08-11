@@ -28,6 +28,7 @@ export interface DeviceInfo {
   deviceName: string
   rackId: string
   deviceType: string
+  operationalStatus: string
   startU: number
   endU: number
 }
@@ -36,6 +37,7 @@ export interface EndpointInfo {
   deviceId: string
   deviceName: string
   portName: string
+  speed: string | null
   rackId: string | null
   rackCode: string | null
 }
@@ -64,6 +66,8 @@ export interface CableBundle {
   route: Point[]
   opacity: number
   highlighted: boolean
+  /** Decorative flow animation; only selected cables may be true (VIS-003). */
+  animated: boolean
   isAggregated: boolean
 }
 
@@ -85,12 +89,19 @@ export interface LegendItem {
 export interface DetailRow {
   sourceDevice: string
   sourcePort: string
+  sourceSpeed: string | null
   targetDevice: string
   targetPort: string
+  targetSpeed: string | null
   cableType: string
   purpose: string
   sourceRack: string
   targetRack: string
+}
+
+export interface BuildCableSceneOptions {
+  expandToCables?: boolean
+  selectedCableId?: string | null
 }
 
 export interface BreadcrumbItem {
@@ -119,11 +130,24 @@ export const PURPOSE_DASH: Record<string, string> = {
   上联: '2,4',
 }
 
+/** CableType → stroke color (field display semantics). */
+export const CABLE_TYPE_COLORS: Record<string, string> = {
+  铜缆: '#e67e22',
+  光纤: '#f1c40f',
+  DAC: '#3498db',
+  网线: '#2ecc71',
+}
+
+export function cableTypeSceneColor(type: string): string {
+  return CABLE_TYPE_COLORS[type] ?? '#95a5a6'
+}
+
 const DEFAULT_DEVICE: DeviceInfo = {
   deviceId: '',
   deviceName: '',
   rackId: '',
   deviceType: '',
+  operationalStatus: '',
   startU: 1,
   endU: 2,
 }
@@ -132,24 +156,78 @@ export function rackCenter(r: RackInfo): Point {
   return { x: r.x + r.width / 2, y: r.y + r.height / 2 }
 }
 
+/** Per-device connected port → stable edge slot (index among sorted port names). */
+export type PortSlotMap = Map<string, { index: number; count: number }>
+
+export function portSlotKey(deviceId: string, portName: string): string {
+  return `${deviceId}|${portName}`
+}
+
+/** Build stable port slots from connected endpoints so multi-port devices get distinct anchors. */
+export function buildPortSlotMap(cables: CableInfo[]): PortSlotMap {
+  const portsByDevice = new Map<string, Set<string>>()
+  for (const cable of cables) {
+    for (const endpoint of [cable.source, cable.target]) {
+      const set = portsByDevice.get(endpoint.deviceId) ?? new Set<string>()
+      set.add(endpoint.portName)
+      portsByDevice.set(endpoint.deviceId, set)
+    }
+  }
+
+  const slots: PortSlotMap = new Map()
+  for (const [deviceId, ports] of portsByDevice) {
+    const sorted = [...ports].sort((a, b) => a.localeCompare(b))
+    sorted.forEach((portName, index) => {
+      slots.set(portSlotKey(deviceId, portName), { index, count: sorted.length })
+    })
+  }
+  return slots
+}
+
+export interface DeviceEdgePortOptions {
+  portName?: string
+  slotIndex?: number
+  slotCount?: number
+}
+
 export function deviceEdgePoint(
   device: DeviceInfo,
   rack: RackInfo,
   direction: 'left' | 'right' | 'top' | 'bottom',
+  port?: DeviceEdgePortOptions,
 ): Point {
   const uHeight = device.endU - device.startU + 1
   const deviceTopY = rack.y + (device.startU - 1) * 20
-  const deviceCenterY = deviceTopY + uHeight * 10
+  const deviceHeight = uHeight * 20
+  const deviceWidth = rack.width
+
+  const slotCount = port?.slotCount ?? 0
+  const slotIndex = port?.slotIndex ?? 0
+  // Evenly distribute ports along the edge; single port stays centered.
+  const t = slotCount > 1 ? (slotIndex + 1) / (slotCount + 1) : 0.5
 
   switch (direction) {
     case 'left':
-      return { x: rack.x, y: deviceCenterY }
+      return { x: rack.x, y: deviceTopY + deviceHeight * t }
     case 'right':
-      return { x: rack.x + rack.width, y: deviceCenterY }
+      return { x: rack.x + deviceWidth, y: deviceTopY + deviceHeight * t }
     case 'top':
-      return { x: rackCenter(rack).x, y: deviceTopY }
+      return { x: rack.x + deviceWidth * t, y: deviceTopY }
     case 'bottom':
-      return { x: rackCenter(rack).x, y: deviceTopY + uHeight * 20 }
+      return { x: rack.x + deviceWidth * t, y: deviceTopY + deviceHeight }
+  }
+}
+
+function edgePortOptions(
+  deviceId: string,
+  portName: string,
+  portSlots: PortSlotMap,
+): DeviceEdgePortOptions {
+  const slot = portSlots.get(portSlotKey(deviceId, portName))
+  return {
+    portName,
+    slotIndex: slot?.index ?? 0,
+    slotCount: slot?.count ?? 1,
   }
 }
 
@@ -158,20 +236,28 @@ export function routeBetweenRacks(
   srcDevice: DeviceInfo,
   tgtRack: RackInfo,
   tgtDevice: DeviceInfo,
+  srcPort?: DeviceEdgePortOptions,
+  tgtPort?: DeviceEdgePortOptions,
 ): Point[] {
   const startEdge = srcRack.x + srcRack.width / 2 < tgtRack.x + tgtRack.width / 2 ? 'right' : 'left'
   const endEdge = srcRack.x + srcRack.width / 2 < tgtRack.x + tgtRack.width / 2 ? 'left' : 'right'
 
-  const start = deviceEdgePoint(srcDevice, srcRack, startEdge)
-  const end = deviceEdgePoint(tgtDevice, tgtRack, endEdge)
+  const start = deviceEdgePoint(srcDevice, srcRack, startEdge, srcPort)
+  const end = deviceEdgePoint(tgtDevice, tgtRack, endEdge, tgtPort)
   const midX = (start.x + end.x) / 2
 
   return [start, { x: midX, y: start.y }, { x: midX, y: end.y }, end]
 }
 
-export function sameRackRoute(rack: RackInfo, src: DeviceInfo, tgt: DeviceInfo): Point[] {
-  const start = deviceEdgePoint(src, rack, 'left')
-  const end = deviceEdgePoint(tgt, rack, 'left')
+export function sameRackRoute(
+  rack: RackInfo,
+  src: DeviceInfo,
+  tgt: DeviceInfo,
+  srcPort?: DeviceEdgePortOptions,
+  tgtPort?: DeviceEdgePortOptions,
+): Point[] {
+  const start = deviceEdgePoint(src, rack, 'left', srcPort)
+  const end = deviceEdgePoint(tgt, rack, 'left', tgtPort)
   const midX = rack.x - 30
   return [start, { x: midX, y: start.y }, { x: midX, y: end.y }, end]
 }
@@ -196,6 +282,7 @@ function routeForCable(
   cable: CableInfo,
   rackMap: Map<string, RackInfo>,
   deviceMap: Map<string, DeviceInfo>,
+  portSlots: PortSlotMap = new Map(),
 ): Point[] {
   const srcRackId = cable.source.rackId ?? '__none__'
   const tgtRackId = cable.target.rackId ?? '__none__'
@@ -205,11 +292,13 @@ function routeForCable(
 
   const srcDevice = resolveDevice(deviceMap, cable.source.deviceId, srcRackId, cable.source.deviceName)
   const tgtDevice = resolveDevice(deviceMap, cable.target.deviceId, tgtRackId, cable.target.deviceName)
+  const srcPort = edgePortOptions(cable.source.deviceId, cable.source.portName, portSlots)
+  const tgtPort = edgePortOptions(cable.target.deviceId, cable.target.portName, portSlots)
 
   if (srcRackId === tgtRackId) {
-    return sameRackRoute(srcRack, srcDevice, tgtDevice)
+    return sameRackRoute(srcRack, srcDevice, tgtDevice, srcPort, tgtPort)
   }
-  return routeBetweenRacks(srcRack, srcDevice, tgtRack, tgtDevice)
+  return routeBetweenRacks(srcRack, srcDevice, tgtRack, tgtDevice, srcPort, tgtPort)
 }
 
 export function aggregateCables(
@@ -218,6 +307,7 @@ export function aggregateCables(
   devices: DeviceInfo[] = [],
 ): CableBundle[] {
   const deviceMap = new Map(devices.map(d => [d.deviceId, d]))
+  const portSlots = buildPortSlotMap(cables)
   const groups = new Map<string, CableInfo[]>()
 
   for (const c of cables) {
@@ -235,7 +325,7 @@ export function aggregateCables(
     const cableType = parts[3] ?? ''
 
     const sample = group[0]
-    const route = sample ? routeForCable(sample, rackMap, deviceMap) : []
+    const route = sample ? routeForCable(sample, rackMap, deviceMap, portSlots) : []
 
     bundles.push({
       id: key,
@@ -247,6 +337,7 @@ export function aggregateCables(
       route,
       opacity: 1,
       highlighted: false,
+      animated: false,
       isAggregated: group.length > 1,
     })
   }
@@ -258,6 +349,7 @@ function cableToBundle(
   c: CableInfo,
   rackMap: Map<string, RackInfo>,
   deviceMap: Map<string, DeviceInfo>,
+  portSlots: PortSlotMap,
   overrides: Partial<CableBundle> = {},
 ): CableBundle {
   return {
@@ -267,9 +359,10 @@ function cableToBundle(
     count: 1,
     sourceRackId: c.source.rackId ?? '__none__',
     targetRackId: c.target.rackId ?? '__none__',
-    route: routeForCable(c, rackMap, deviceMap),
+    route: routeForCable(c, rackMap, deviceMap, portSlots),
     opacity: 1,
     highlighted: false,
+    animated: false,
     isAggregated: false,
     ...overrides,
   }
@@ -294,12 +387,12 @@ export function formatPortId(deviceId: string, portName: string): string {
 function buildLegend(visibleCables: CableInfo[]): LegendItem[] {
   const legendMap = new Map<string, LegendItem>()
   for (const c of visibleCables) {
-    const key = `${c.purpose}|${c.cableType}`
+    const key = `${c.cableType}|${c.purpose}`
     if (!legendMap.has(key)) {
       legendMap.set(key, {
         purpose: c.purpose,
         cableType: c.cableType,
-        color: PURPOSE_COLORS[c.purpose] ?? '#95a5a6',
+        color: cableTypeSceneColor(c.cableType),
         dashArray: PURPOSE_DASH[c.purpose] ?? 'none',
         count: 0,
       })
@@ -313,8 +406,10 @@ function buildDetailRows(visibleCables: CableInfo[]): DetailRow[] {
   return visibleCables.map(c => ({
     sourceDevice: c.source.deviceName,
     sourcePort: c.source.portName,
+    sourceSpeed: c.source.speed,
     targetDevice: c.target.deviceName,
     targetPort: c.target.portName,
+    targetSpeed: c.target.speed,
     cableType: c.cableType,
     purpose: c.purpose,
     sourceRack: c.source.rackCode ?? '-',
@@ -368,6 +463,7 @@ export function buildCableScene(
   focus: CableFocus,
   filters: CableFilters,
   roomId: string,
+  options?: BuildCableSceneOptions,
 ): CableScene {
   const rackMap = new Map(snapshot.racks.map(r => [r.rackId, r]))
   const deviceMap = new Map(snapshot.devices.map(d => [d.deviceId, d]))
@@ -378,6 +474,40 @@ export function buildCableScene(
   }
   if (filters.cableTypes.length > 0) {
     visibleCables = visibleCables.filter(c => filters.cableTypes.includes(c.cableType))
+  }
+
+  const resolvedRoomId = focus.level === 'room' ? focus.roomId : roomId
+  const portSlots = buildPortSlotMap(visibleCables)
+
+  if (options?.expandToCables) {
+    let bundles = visibleCables.map(c => cableToBundle(c, rackMap, deviceMap, portSlots))
+    const selectedCableId = options.selectedCableId ?? null
+
+    if (selectedCableId) {
+      for (const b of bundles) {
+        const selected = b.id === selectedCableId
+        b.opacity = selected ? 1 : 0.2
+        b.highlighted = selected
+        b.animated = selected
+      }
+    } else if (focus.level === 'device') {
+      for (const b of bundles) {
+        const cable = visibleCables.find(c => c.cableId === b.id)
+        const related = !!cable
+          && (cable.source.deviceId === focus.deviceId || cable.target.deviceId === focus.deviceId)
+        b.opacity = related ? 1 : 0.2
+        b.highlighted = related
+        b.animated = false
+      }
+    }
+
+    return {
+      bundles,
+      highlightedPath: null,
+      legend: buildLegend(visibleCables),
+      detailRows: buildDetailRows(visibleCables),
+      breadcrumbs: buildBreadcrumbs(snapshot, focus, resolvedRoomId),
+    }
   }
 
   const aggregatedBundles = aggregateCables(visibleCables, rackMap, snapshot.devices)
@@ -407,9 +537,9 @@ export function buildCableScene(
       )
       const unrelatedBundles = aggregatedBundles
         .filter(b => !bundleContainsDevice(b.id, visibleCables, focus.deviceId))
-        .map(b => ({ ...b, opacity: 0.15, highlighted: false }))
+        .map(b => ({ ...b, opacity: 0.15, highlighted: false, animated: false }))
       const deviceBundles = deviceCables.map(c =>
-        cableToBundle(c, rackMap, deviceMap, { opacity: 1, highlighted: true }),
+        cableToBundle(c, rackMap, deviceMap, portSlots, { opacity: 1, highlighted: true, animated: false }),
       )
       bundles = [...unrelatedBundles, ...deviceBundles]
       break
@@ -427,7 +557,7 @@ export function buildCableScene(
           cableId: portCable.cableId,
           sourceLabel: `${portCable.source.deviceName} / ${portCable.source.portName}`,
           targetLabel: `${portCable.target.deviceName} / ${portCable.target.portName}`,
-          route: routeForCable(portCable, rackMap, deviceMap),
+          route: routeForCable(portCable, rackMap, deviceMap, portSlots),
         }
       }
       for (const b of bundles) {
@@ -436,8 +566,6 @@ export function buildCableScene(
       break
     }
   }
-
-  const resolvedRoomId = focus.level === 'room' ? focus.roomId : roomId
 
   return {
     bundles,
@@ -456,6 +584,7 @@ function parseEndpoint(raw: unknown): EndpointInfo | null {
     deviceId: r.deviceId,
     deviceName: r.deviceName,
     portName: r.portName,
+    speed: typeof r.speed === 'string' ? r.speed : null,
     rackId: typeof r.rackId === 'string' ? r.rackId : null,
     rackCode: typeof r.rackCode === 'string' ? r.rackCode : null,
   }
@@ -493,6 +622,7 @@ export function parseCableSnapshot(raw: unknown): CableSnapshot | null {
       deviceName: d.deviceName,
       rackId: d.rackId,
       deviceType: typeof d.deviceType === 'string' ? d.deviceType : '',
+      operationalStatus: typeof d.operationalStatus === 'string' ? d.operationalStatus : '',
       startU: d.startU,
       endU: d.endU,
     })

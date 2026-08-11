@@ -202,6 +202,85 @@ public sealed class RoomTopologyIntegrationTests(AuthTestFixture fixture)
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Fact]
+    public async Task GetCableSceneReturnsAllMountedDevicesAndPortSpeed()
+    {
+        var room = new Room { Name = "机房C", Status = "启用", TopologyX = 0, TopologyY = 0 };
+        var rack = new Rack { RoomId = room.Id, Code = "C-01", HeightU = 42, X = 0, Y = 0, Z = 0 };
+        var switchServer = new Server
+        {
+            Name = "sw-core",
+            ManagementIP = "10.0.2.1",
+            DeviceType = "交换机",
+            DeviceHeight = 1,
+            OperationalStatus = "正常",
+            PositionStatus = "在架"
+        };
+        var appServer = new Server
+        {
+            Name = "app-01",
+            ManagementIP = "10.0.2.2",
+            DeviceType = "服务器",
+            DeviceHeight = 2,
+            OperationalStatus = "维护",
+            PositionStatus = "在架"
+        };
+        var switchPort = new Port { ServerId = switchServer.Id, PortName = "GE0/1", PortType = "RJ45", Speed = "10G" };
+        var appPort = new Port { ServerId = appServer.Id, PortName = "eth0", PortType = "RJ45", Speed = null };
+        var cable = new Cable
+        {
+            SourcePortId = switchPort.Id,
+            TargetPortId = appPort.Id,
+            CableType = "铜缆",
+            Purpose = "上联"
+        };
+
+        await SeedTopologyAsync(
+            [room],
+            [rack],
+            [switchServer, appServer],
+            [
+                new ServerPosition
+                {
+                    ServerId = switchServer.Id,
+                    RackId = rack.Id,
+                    StartU = 40,
+                    EndU = 40,
+                    Status = "在架"
+                },
+                new ServerPosition
+                {
+                    ServerId = appServer.Id,
+                    RackId = rack.Id,
+                    StartU = 1,
+                    EndU = 2,
+                    Status = "在架"
+                }
+            ],
+            [switchPort, appPort],
+            [cable]);
+
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.ReadOnlyViewer);
+
+        using var response = await client.GetAsync($"/api/rooms/{room.Id}/cable-scene");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        var root = document.RootElement;
+        var devices = root.GetProperty("devices").EnumerateArray().ToArray();
+        Assert.Equal(2, devices.Length);
+        Assert.Contains(devices, d => d.GetProperty("deviceName").GetString() == "app-01");
+        Assert.Contains(devices, d => d.GetProperty("deviceName").GetString() == "sw-core");
+        var appDevice = Assert.Single(devices, d => d.GetProperty("deviceName").GetString() == "app-01");
+        Assert.Equal("维护", appDevice.GetProperty("operationalStatus").GetString());
+
+        var cablePayload = Assert.Single(root.GetProperty("cables").EnumerateArray());
+        Assert.Equal("10G", cablePayload.GetProperty("source").GetProperty("speed").GetString());
+        Assert.Equal(JsonValueKind.Null, cablePayload.GetProperty("target").GetProperty("speed").ValueKind);
+        await ClearTopologyAsync();
+    }
+
     private async Task SeedTopologyAsync(
         IEnumerable<Room> rooms,
         IEnumerable<Rack> racks,

@@ -34,22 +34,16 @@ public sealed class CableSceneController(AppDbContext dbContext) : ControllerBas
 
         var rackIds = racks.Select(r => r.RackId).ToHashSet();
 
-        // 机柜内的网络设备（交换机/路由器等）
+        // 机房内全部在架设备（CR-001：不再限定网络设备）
         var devices = await dbContext.ServerPositions
             .AsNoTracking()
             .Where(sp => rackIds.Contains(sp.RackId) && sp.Status == "在架")
-            .Where(sp =>
-                sp.Server.DeviceType.Contains("交换") ||
-                sp.Server.DeviceType.Contains("switch") ||
-                sp.Server.DeviceType.Contains("路由") ||
-                sp.Server.DeviceType.Contains("router") ||
-                sp.Server.DeviceType.Contains("网络") ||
-                sp.Server.DeviceType.Contains("network"))
             .Select(sp => new
             {
                 DeviceId = sp.Server.Id,
                 DeviceName = sp.Server.Name,
                 sp.Server.DeviceType,
+                OperationalStatus = sp.Server.OperationalStatus,
                 RackId = sp.RackId,
                 sp.StartU,
                 sp.EndU
@@ -74,6 +68,7 @@ public sealed class CableSceneController(AppDbContext dbContext) : ControllerBas
                     DeviceId = c.SourcePort.Server.Id,
                     DeviceName = c.SourcePort.Server.Name,
                     PortName = c.SourcePort.PortName,
+                    Speed = c.SourcePort.Speed,
                     RackId = dbContext.ServerPositions
                         .Where(sp => sp.ServerId == c.SourcePort.ServerId && sp.Status == "在架")
                         .Select(sp => (Guid?)sp.RackId).FirstOrDefault(),
@@ -86,6 +81,7 @@ public sealed class CableSceneController(AppDbContext dbContext) : ControllerBas
                     DeviceId = c.TargetPort.Server.Id,
                     DeviceName = c.TargetPort.Server.Name,
                     PortName = c.TargetPort.PortName,
+                    Speed = c.TargetPort.Speed,
                     RackId = dbContext.ServerPositions
                         .Where(sp => sp.ServerId == c.TargetPort.ServerId && sp.Status == "在架")
                         .Select(sp => (Guid?)sp.RackId).FirstOrDefault(),

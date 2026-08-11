@@ -1,5 +1,9 @@
 import { ref } from 'vue'
 import { useApi } from './useApi'
+import {
+  parseCableSnapshot,
+  type CableSnapshot,
+} from './useCableScene'
 
 export interface TopologyCableDetail {
   cableId: string
@@ -50,8 +54,9 @@ export interface TopologyData {
   racks: TopologyRack[]
   roomConnections: TopologyRoomConnection[]
   rackConnections: TopologyRackConnection[]
-  mode: 'rooms' | 'racks'
+  mode: 'rooms' | 'racks' | 'devices'
   focusedRoomId: string | null
+  cableSnapshot: CableSnapshot | null
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -187,6 +192,7 @@ export function parseTopologyPayload(data: unknown, focusedRoomId: string | null
       rackConnections,
       mode: 'racks',
       focusedRoomId,
+      cableSnapshot: null,
     }
   }
 
@@ -217,6 +223,7 @@ export function parseTopologyPayload(data: unknown, focusedRoomId: string | null
     rackConnections: [],
     mode: 'rooms',
     focusedRoomId: null,
+    cableSnapshot: null,
   }
 }
 
@@ -265,6 +272,42 @@ export function useTopology() {
     loading.value = false
   }
 
+  async function loadDevices(roomId: string): Promise<void> {
+    loading.value = true
+    error.value = ''
+    const [topoResult, sceneResult] = await Promise.all([
+      request<unknown>(`/api/rooms/topology?roomId=${encodeURIComponent(roomId)}`, { method: 'GET' }),
+      request<unknown>(`/api/rooms/${encodeURIComponent(roomId)}/cable-scene`, { method: 'GET' }),
+    ])
+    if (!topoResult.ok) {
+      error.value = topoResult.error
+      data.value = null
+      loading.value = false
+      return
+    }
+    if (!sceneResult.ok) {
+      error.value = sceneResult.error
+      data.value = null
+      loading.value = false
+      return
+    }
+    const topo = parseTopologyPayload(topoResult.data, roomId)
+    const snapshot = parseCableSnapshot(sceneResult.data)
+    if (!topo || !snapshot) {
+      error.value = 'Request failed.'
+      data.value = null
+      loading.value = false
+      return
+    }
+    data.value = {
+      ...topo,
+      mode: 'devices',
+      focusedRoomId: roomId,
+      cableSnapshot: snapshot,
+    }
+    loading.value = false
+  }
+
   async function saveRoomPosition(
     room: TopologyRoom,
     topologyX: number,
@@ -288,5 +331,5 @@ export function useTopology() {
     return { ok: true }
   }
 
-  return { data, error, loading, load, saveRoomPosition }
+  return { data, error, loading, load, loadDevices, saveRoomPosition }
 }

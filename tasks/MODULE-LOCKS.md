@@ -6,18 +6,21 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 
 | Task ID | Module or Path | Owner | Claimed At | Status | Release Condition | Released At |
 |---|---|---|---|---|---|---|
-| TASK-20260810-000003 | src/backend/Datacenter.Api/Models/Room.cs | Cursor | 2026-08-10 17:45:36 +08:00 | CLAIMED | TASK-20260810-000003 交审或完成时释放 | |
-| TASK-20260810-000003 | src/backend/Datacenter.Api/Controllers/RoomsController.cs | Cursor | 2026-08-10 17:45:36 +08:00 | CLAIMED | TASK-20260810-000003 交审或完成时释放 | |
-| TASK-20260810-000003 | src/backend/Datacenter.Api/Data/AppDbContext.cs | Cursor | 2026-08-10 17:45:36 +08:00 | CLAIMED | TASK-20260810-000003 交审或完成时释放 | |
-| TASK-20260810-000003 | src/backend/Datacenter.Api/Migrations/ | Cursor | 2026-08-10 17:45:36 +08:00 | CLAIMED | TASK-20260810-000003 交审或完成时释放 | |
-| TASK-20260810-000003 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RoomIntegrationTests.cs | Cursor | 2026-08-10 17:45:36 +08:00 | CLAIMED | TASK-20260810-000003 交审或完成时释放 | |
-| TASK-20260810-000003 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RoomTopologyIntegrationTests.cs | Cursor | 2026-08-10 17:45:36 +08:00 | CLAIMED | TASK-20260810-000003 交审或完成时释放 | |
-| TASK-20260810-000003 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-10 17:45:36 +08:00 | CLAIMED | TASK-20260810-000003 交审或完成时释放 | |
-| TASK-20260810-000003 | src/frontend/src/composables/useTopology.ts | Cursor | 2026-08-10 17:45:36 +08:00 | CLAIMED | TASK-20260810-000003 交审或完成时释放 | |
-| TASK-20260810-000003 | src/frontend/src/router.ts | Cursor | 2026-08-10 17:45:36 +08:00 | CLAIMED | TASK-20260810-000003 交审或完成时释放 | |
-| TASK-20260810-000003 | src/frontend/src/App.vue | Cursor | 2026-08-10 17:45:36 +08:00 | CLAIMED | TASK-20260810-000003 交审或完成时释放 | |
-| TASK-20260810-000003 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-10 17:45:36 +08:00 | CLAIMED | TASK-20260810-000003 交审或完成时释放 | |
-| TASK-20260810-000003 | .ai/IMPLEMENTATION.md | Cursor | 2026-08-10 17:45:36 +08:00 | CLAIMED | TASK-20260810-000003 交审或完成时释放 | |
+| TASK-20260810-000003 | src/backend/Datacenter.Api/Models/Room.cs | Cursor | 2026-08-10 17:45:36 +08:00 | HANDED_OFF | READY_FOR_RETEST → Codex Reviewer 复审 | |
+| TASK-20260810-000003 | src/backend/Datacenter.Api/Controllers/RoomsController.cs | Cursor | 2026-08-10 17:45:36 +08:00 | HANDED_OFF | READY_FOR_RETEST → Codex Reviewer 复审 | |
+| TASK-20260810-000003 | src/backend/Datacenter.Api/Data/AppDbContext.cs | Cursor | 2026-08-10 17:45:36 +08:00 | HANDED_OFF | READY_FOR_RETEST → Codex Reviewer 复审 | |
+| TASK-20260810-000003 | src/backend/Datacenter.Api/Migrations/ | Cursor | 2026-08-10 17:45:36 +08:00 | HANDED_OFF | READY_FOR_RETEST → Codex Reviewer 复审 | |
+| TASK-20260810-000003 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RoomIntegrationTests.cs | Cursor | 2026-08-10 17:45:36 +08:00 | HANDED_OFF | READY_FOR_RETEST → Codex Reviewer 复审 | |
+| TASK-20260810-000003 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RoomTopologyIntegrationTests.cs | Cursor | 2026-08-10 17:45:36 +08:00 | HANDED_OFF | READY_FOR_RETEST → Codex Reviewer 复审 | |
+| TASK-20260810-000003 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-10 17:45:36 +08:00 | HANDED_OFF | READY_FOR_RETEST → Codex Reviewer 复审 | |
+| TASK-20260810-000003 | src/frontend/src/composables/useTopology.ts | Cursor | 2026-08-10 17:45:36 +08:00 | HANDED_OFF | READY_FOR_RETEST → Codex Reviewer 复审 | |
+| TASK-20260810-000003 | src/frontend/src/router.ts | Cursor | 2026-08-10 17:45:36 +08:00 | HANDED_OFF | READY_FOR_RETEST → Codex Reviewer 复审 | |
+| TASK-20260810-000003 | src/frontend/src/App.vue | Cursor | 2026-08-10 17:45:36 +08:00 | HANDED_OFF | READY_FOR_RETEST → Codex Reviewer 复审 | |
+| TASK-20260810-000003 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-10 17:45:36 +08:00 | HANDED_OFF | READY_FOR_RETEST → Codex Reviewer 复审 | |
+| TASK-20260810-000003 | .ai/IMPLEMENTATION.md | Cursor | 2026-08-10 17:45:36 +08:00 | HANDED_OFF | READY_FOR_RETEST → Codex Reviewer 复审 | |
+| TASK-20260810-000003 | src/backend/Datacenter.Api/Controllers/CableSceneController.cs | Cursor | 2026-08-11 12:00:10 +08:00 | HANDED_OFF | READY_FOR_RETEST → Codex Reviewer 复审；CR-001 设备级 | |
+| TASK-20260810-000003 | src/frontend/src/composables/useCableScene.ts | Cursor | 2026-08-11 12:00:10 +08:00 | HANDED_OFF | READY_FOR_RETEST → Codex Reviewer 复审；CR-001 设备级 | |
+| TASK-20260810-000003 | src/frontend/src/components/CableLayer.vue | Cursor | 2026-08-11 12:00:10 +08:00 | HANDED_OFF | READY_FOR_RETEST → Codex Reviewer 复审；CR-001 设备级 | |
 | TASK-20260810-000001 | src/backend/Datacenter.Api/Models/Room.cs | Cursor | 2026-08-10 +08:00 | RELEASED | TASK-20260810-000001 COMPLETED | 2026-08-10 (Claude) |
 | TASK-20260810-000001 | src/backend/Datacenter.Api/Models/Rack.cs | Cursor | 2026-08-10 +08:00 | RELEASED | TASK-20260810-000001 COMPLETED | 2026-08-10 (Claude) |
 | TASK-20260810-000001 | src/backend/Datacenter.Api/Controllers/RoomsController.cs | Cursor | 2026-08-10 +08:00 | RELEASED | TASK-20260810-000001 COMPLETED | 2026-08-10 (Claude) |
@@ -322,10 +325,10 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 - 规格锁及 CR 临时锁：三项 TASK-0007 规格锁和全部 CR 临时文档锁继续保持 RELEASED，未重新认领
 - 后续限制：不得继续修改 TASK-0007 实施路径；下一步只能进入独立合并门禁或分支合并流程
 
-| TASK-0021 | src/frontend/src/views/FloorplanView.vue | Cursor Frontend | 2026-08-06 +08:00 | CLAIMED | Reviewer：Codex Reviewer；TASK-0021 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-0021 | src/frontend/src/components/FloorplanCanvas.vue | Cursor Frontend | 2026-08-06 +08:00 | CLAIMED | Reviewer：Codex Reviewer；TASK-0021 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-0021 | src/frontend/src/components/CableLayer.vue | Cursor Frontend | 2026-08-06 +08:00 | CLAIMED | Reviewer：Codex Reviewer；TASK-0021 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-0021 | src/frontend/src/components/CableLegend.vue | Cursor Frontend | 2026-08-06 +08:00 | CLAIMED | Reviewer：Codex Reviewer；TASK-0021 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0021 | src/frontend/src/views/FloorplanView.vue | Cursor Frontend | 2026-08-06 +08:00 | RELEASED | TASK-0021 过期废弃（无任务文件，2026-08-11 Claude 释放） | 2026-08-11 (Claude) |
+| TASK-0021 | src/frontend/src/components/FloorplanCanvas.vue | Cursor Frontend | 2026-08-06 +08:00 | RELEASED | TASK-0021 过期废弃（无任务文件，2026-08-11 Claude 释放） | 2026-08-11 (Claude) |
+| TASK-0021 | src/frontend/src/components/CableLayer.vue | Cursor Frontend | 2026-08-06 +08:00 | RELEASED | TASK-0021 过期废弃（无任务文件，2026-08-11 Claude 释放） | 2026-08-11 (Claude) |
+| TASK-0021 | src/frontend/src/components/CableLegend.vue | Cursor Frontend | 2026-08-06 +08:00 | RELEASED | TASK-0021 过期废弃（无任务文件，2026-08-11 Claude 释放） | 2026-08-11 (Claude) |
 
 ## 冲突处理示例
 

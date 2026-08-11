@@ -2,16 +2,11 @@
 import { computed } from 'vue'
 import {
   PURPOSE_DASH,
+  cableTypeSceneColor,
   type CableBundle,
   type CableScene,
   type Point,
 } from '../composables/useCableScene'
-
-const PURPOSE_CSS_VARS: Record<string, string> = {
-  正常: 'var(--color-primary, #58a6ff)',
-  存储: 'var(--color-warning, #d2991d)',
-  上联: 'var(--color-success, #3fb950)',
-}
 
 const props = defineProps<{
   scene: CableScene
@@ -23,16 +18,22 @@ const emit = defineEmits<{
   'background-click': []
 }>()
 
-const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+const prefersReducedMotion = typeof window !== 'undefined'
+  && typeof window.matchMedia === 'function'
+  && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 const shouldAnimate = computed(() => props.animationEnabled && !prefersReducedMotion)
 
 function bundleStroke(bundle: CableBundle): string {
-  return PURPOSE_CSS_VARS[bundle.purpose] ?? 'var(--color-text-secondary, #8b949e)'
+  return cableTypeSceneColor(bundle.cableType)
 }
 
 function bundleDash(bundle: CableBundle): string | undefined {
   const dash = PURPOSE_DASH[bundle.purpose] ?? 'none'
   return dash === 'none' ? undefined : dash
+}
+
+function bundleAllowsAnimation(bundle: CableBundle): boolean {
+  return shouldAnimate.value && bundle.animated
 }
 
 function routeD(route: Point[]): string {
@@ -111,7 +112,7 @@ function highlightedLabelPosition(): { x: number; y: number } {
 <template>
   <svg class="cable-layer">
     <text x="10" y="14" class="disclaimer" font-size="10">
-      路径追踪效果，非实时流量
+      登记连接拓扑示意，非实时流量；箭头为登记端点方向
     </text>
 
     <g
@@ -128,9 +129,9 @@ function highlightedLabelPosition(): { x: number; y: number } {
         :d="routeD(bundle.route)"
         fill="none"
         :stroke="bundleStroke(bundle)"
-        :stroke-width="bundle.isAggregated ? 3 + Math.min(bundle.count, 10) : 2"
-        :stroke-dasharray="shouldAnimate && bundle.highlighted ? '8,4' : bundleDash(bundle)"
-        :class="{ 'animated-path': shouldAnimate && bundle.highlighted }"
+        :stroke-width="bundle.highlighted ? 3.5 : (bundle.isAggregated ? 3 + Math.min(bundle.count, 10) : 2)"
+        :stroke-dasharray="bundleAllowsAnimation(bundle) ? '8,4' : bundleDash(bundle)"
+        :class="{ 'animated-path': bundleAllowsAnimation(bundle) }"
         stroke-linecap="round"
         stroke-linejoin="round"
       />
@@ -146,7 +147,7 @@ function highlightedLabelPosition(): { x: number; y: number } {
         ×{{ bundle.count }}
       </text>
       <polygon
-        v-if="bundle.isAggregated && bundle.route.length >= 2"
+        v-if="bundle.route.length >= 2"
         :points="arrowPoints(bundle)"
         :fill="bundleStroke(bundle)"
       />
