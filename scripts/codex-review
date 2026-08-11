@@ -163,7 +163,7 @@ echo ""
 
 REVIEW_TMP=$(mktemp /tmp/codex-review-XXXXXX)
 set +e
-codex exec --sandbox writable --ephemeral -o "$REVIEW_TMP" "$REVIEW_PROMPT"
+codex exec --sandbox workspace-write --ephemeral -o "$REVIEW_TMP" "$REVIEW_PROMPT"
 CODEX_EXIT=$?
 set -e
 
