@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ai-workflow-init — 初始化项目的 Agent 协作文件
+#
+# 用法: cd ~/code/某项目 && ai-workflow-init
+#
+# 只创建缺失的文件，已存在的文件不覆盖（显示 SKIP）。
+# .ai/ 目录作为本地 Agent 交接目录加入 .gitignore。
+# AGENTS.md 和 CLAUDE.md 保留为正常项目规则文件，纳入 Git 跟踪。
+
+PROJECT_DIR="$(pwd)"
+PROJECT_NAME="$(basename "$PROJECT_DIR")"
+
+echo "=== ai-workflow-init ==="
+echo "项目目录: $PROJECT_DIR"
+echo "项目名称: $PROJECT_NAME"
+echo ""
+
+# === 1. AGENTS.md ===
+if [ -f AGENTS.md ]; then
+    echo "[SKIP] AGENTS.md 已存在"
+else
+    cat > AGENTS.md << 'AGENTSEOF'
+# AGENTS.md — 项目特有规则
+
+## 技术栈
+
+<!-- 填写：语言、框架、数据库等 -->
+
+## 架构约束
+
+<!-- 填写：不允许违反的架构规则 -->
+
+## 允许修改范围
+
+<!-- 填写：可以修改的目录/文件 -->
+
+## 禁止修改范围
+
+<!-- 填写：绝对不能修改的目录/文件 -->
+
+## 测试命令
+
+<!-- 填写：如何运行测试 -->
+```bash
+# 运行所有测试
+# 运行单个测试
+```
+
+## 部署要求
+
+<!-- 填写：部署前必须满足的条件 -->
+
+## 产品限制
+
+<!-- 填写：产品层面的硬性约束 -->
+AGENTSEOF
+    echo "[OK] AGENTS.md 已创建（请编辑填写项目信息）"
+fi
+
+# === 2. CLAUDE.md ===
+if [ -f CLAUDE.md ]; then
+    echo "[SKIP] CLAUDE.md 已存在"
+else
+    cat > CLAUDE.md << 'CLAUDE_EOF'
+# CLAUDE.md — 项目级 Claude 配置
+
+## 项目规则
+
+必须加载并遵守项目 `AGENTS.md` 中的所有规则。
+
+## 全局规则
+
+必须加载并遵守 `~/.ai-rules/UNIVERSAL_AGENT_RULES.md` 中的所有规则。
+
+## Claude 角色
+
+Claude 是本项目的 Orchestrator。调度流程见全局规则。
+CLAUDE_EOF
+    echo "[OK] CLAUDE.md 已创建"
+fi
+
+# === 3. .ai/ 目录 ===
+if [ -d .ai ]; then
+    echo "[SKIP] .ai/ 目录已存在"
+else
+    mkdir -p .ai
+    echo "[OK] .ai/ 目录已创建"
+fi
+
+# === 4. .gitignore（确保 .ai/ 不被 Git 跟踪） ===
+GITIGNORE_ENTRY=".ai/"
+if [ -f .gitignore ]; then
+    if grep -qxF "$GITIGNORE_ENTRY" .gitignore; then
+        echo "[SKIP] .gitignore 已包含 .ai/"
+    else
+        echo "" >> .gitignore
+        echo "# Agent 工作流交接目录（本地使用，不纳入版本控制）" >> .gitignore
+        echo "$GITIGNORE_ENTRY" >> .gitignore
+        echo "[OK] .gitignore 已追加 .ai/"
+    fi
+else
+    cat > .gitignore << 'GITIGNOREEOF'
+# Agent 工作流交接目录（本地使用，不纳入版本控制）
+.ai/
+GITIGNOREEOF
+    echo "[OK] .gitignore 已创建（含 .ai/）"
+fi
+
+# === 完成 ===
+echo ""
+echo "=== 初始化完成 ==="
+echo "请编辑 AGENTS.md 填写项目特定信息。"
+echo ""
+echo "注意："
+echo "  .ai/ 已在 .gitignore 中，不会被 Git 跟踪。"
+echo "  AGENTS.md 和 CLAUDE.md 是项目规则文件，应纳入版本控制。"
+echo ""
+echo "当前项目文件结构："
+ls -la AGENTS.md CLAUDE.md .gitignore 2>/dev/null || true
+ls -la .ai/ 2>/dev/null || true

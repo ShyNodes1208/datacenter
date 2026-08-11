@@ -1,0 +1,216 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# cursor-implement — 调用 Cursor Agent 执行 .ai/TASK.md 中的实现任务
+#
+# 用法: cursor-implement [--task-file .ai/TASK.md]
+
+TASK_FILE="${1:-.ai/TASK.md}"
+
+# === 前置检查 ===
+
+# 1. 确认是 Git 仓库并切换到 repo root
+if ! git rev-parse --git-dir >/dev/null 2>&1; then
+    echo "[ERROR] 当前目录不是 Git 仓库"
+    exit 1
+fi
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+# 2. 确认 AGENTS.md 存在
+if [ ! -f AGENTS.md ]; then
+    echo "[ERROR] AGENTS.md 不存在，请先运行 ai-workflow-init"
+    exit 1
+fi
+
+# 3. 确认 TASK.md 存在
+if [ ! -f "$TASK_FILE" ]; then
+    echo "[ERROR] $TASK_FILE 不存在"
+    exit 1
+fi
+
+# === Task-ID 验证 ===
+TASK_ID=$(grep -oP 'Task-ID:\s*\K\S+' "$TASK_FILE" 2>/dev/null || echo "")
+if [ -z "$TASK_ID" ]; then
+    echo "[ERROR] $TASK_FILE 缺少 Task-ID（格式: Task-ID: TASK-YYYYMMDD-HHMMSS）"
+    exit 1
+fi
+
+# === Clean Baseline Gate ===
+# 检查是否有来自上一任务的未提交业务修改
+TRACKED_CHANGES=$(git diff --name-only 2>/dev/null || true)
+STAGED_CHANGES=$(git diff --cached --name-only 2>/dev/null || true)
+# 排除工作流文件
+BUSINESS_CHANGES=$(echo "$TRACKED_CHANGES" | grep -v '^\.ai/' || true)
+STAGED_BUSINESS=$(echo "$STAGED_CHANGES" | grep -v '^\.ai/' || true)
+
+if [ -n "$BUSINESS_CHANGES" ] || [ -n "$STAGED_BUSINESS" ]; then
+    # 检查是否属于当前任务的 re-implement 循环
+    if [ -f .ai/IMPLEMENTATION.md ]; then
+        IMPL_TASK_ID=$(grep -oP 'Task-ID:\s*\K\S+' .ai/IMPLEMENTATION.md 2>/dev/null || echo "")
+        if [ "$TASK_ID" = "$IMPL_TASK_ID" ]; then
+            echo "[INFO] 检测到当前任务的 IMPLEMENTATION.md (Task-ID: $TASK_ID)"
+            echo "[INFO] 这是 re-implement 循环，允许继续。"
+        else
+            echo "[ERROR] 工作区存在上一任务 (Task-ID: $IMPL_TASK_ID) 的未提交修改"
+            echo "当前任务 Task-ID: $TASK_ID"
+            echo "请先 commit 或 stash 上一任务的变更，再开始新任务。"
+            echo ""
+            echo "未提交的业务文件:"
+            echo "$BUSINESS_CHANGES"
+            echo "$STAGED_BUSINESS"
+            exit 1
+        fi
+    else
+        echo "[ERROR] 工作区存在未提交的业务代码修改，且无当前任务的 IMPLEMENTATION.md"
+        echo "请先 commit 或 stash 这些变更，或确认它们是当前任务的 baseline。"
+        echo ""
+        echo "未提交的业务文件:"
+        echo "$BUSINESS_CHANGES"
+        echo "$STAGED_BUSINESS"
+        exit 1
+    fi
+fi
+
+# === 输出当前状态 ===
+echo "=== cursor-implement ==="
+echo "Task-ID: $TASK_ID"
+echo "cwd:     $(pwd)"
+echo "branch:  $(git branch --show-current)"
+echo "HEAD:    $(git rev-parse HEAD 2>/dev/null || echo '(no commits)')"
+echo ""
+echo "=== git status (before) ==="
+git status
+echo ""
+
+# 记录 before 状态用于事后比较
+BEFORE_BRANCH=$(git branch --show-current)
+BEFORE_HEAD=$(git rev-parse HEAD 2>/dev/null || echo "")
+
+# === 清理上一任务的残留文件 ===
+if [ -f .ai/IMPLEMENTATION.md ]; then
+    OLD_IMPL_ID=$(grep -oP 'Task-ID:\s*\K\S+' .ai/IMPLEMENTATION.md 2>/dev/null || echo "")
+    if [ "$OLD_IMPL_ID" != "$TASK_ID" ]; then
+        echo "[INFO] 发现旧 IMPLEMENTATION.md (Task-ID: $OLD_IMPL_ID)，已删除"
+        rm -f .ai/IMPLEMENTATION.md
+    fi
+fi
+if [ -f .ai/REVIEW.md ]; then
+    OLD_REVIEW_ID=$(grep -oP 'Task-ID:\s*\K\S+' .ai/REVIEW.md 2>/dev/null || echo "")
+    if [ "$OLD_REVIEW_ID" != "$TASK_ID" ]; then
+        echo "[INFO] 发现旧 REVIEW.md (Task-ID: $OLD_REVIEW_ID)，已删除"
+        rm -f .ai/REVIEW.md
+    fi
+fi
+if [ -f .ai/REVIEW_ROUND ]; then
+    echo "[INFO] 清理上一任务的 REVIEW_ROUND"
+    rm -f .ai/REVIEW_ROUND
+fi
+
+# === 构建 Cursor 提示词 ===
+CURSOR_PROMPT="你是 Cursor，本工作流中唯一的代码实现 Agent。
+
+Task-ID: ${TASK_ID}
+
+请按以下步骤执行：
+
+1. 读取项目 AGENTS.md
+2. 读取 ${TASK_FILE}
+3. 检查 git status
+4. 阅读相关代码
+5. 完成最小必要修改
+6. 修改或增加必要测试
+7. 执行测试
+8. 执行 git diff --check
+9. 检查自己的 diff
+10. 写 .ai/IMPLEMENTATION.md，必须包含 Task-ID: ${TASK_ID}，以及：
+    - 实现摘要
+    - 修改文件列表
+    - 实际执行的测试及结果
+    - 假设
+    - 已知风险
+    - Blocker（如有）
+
+禁止：
+- 自行改变需求
+- 扩大任务范围
+- 无关重构
+- 顺手清理代码
+- 无需求升级依赖
+- 自行改变架构
+- 调用 Codex
+- 宣布最终通过
+- commit
+- push
+
+如果遇到产品决策或架构决策无法确定：STOP，写清楚 blocker，交回 Claude。
+不允许猜。
+
+坚持最小可用实现。"
+
+# === 调用 Cursor ===
+echo "=== 调用 Cursor Agent ==="
+echo ""
+
+# 确保 cursor.sh 域名绕过代理（避免 MITM 证书劫持导致 TLS 失败）
+# .cursor.sh 后缀匹配覆盖所有 cursor.sh 子域名
+export no_proxy="${no_proxy:+$no_proxy,}api2.cursor.sh,.cursor.sh"
+export NO_PROXY="${NO_PROXY:+$NO_PROXY,}api2.cursor.sh,.cursor.sh"
+
+set +e
+agent -p --force "$CURSOR_PROMPT"
+CURSOR_EXIT=$?
+set -e
+
+echo ""
+echo "=== Cursor 退出码: $CURSOR_EXIT ==="
+
+# === 输出最终状态 ===
+echo ""
+echo "=== git status (after) ==="
+git status
+echo ""
+
+# === 事后验证 ===
+
+# 验证 branch 未变
+AFTER_BRANCH=$(git branch --show-current)
+if [ "$BEFORE_BRANCH" != "$AFTER_BRANCH" ]; then
+    echo "[ERROR] Cursor 执行期间 branch 发生了变化: $BEFORE_BRANCH → $AFTER_BRANCH"
+    echo "Cursor 不得切换 branch。"
+    exit 1
+fi
+
+# 验证 HEAD 未变（不允许 commit）
+if [ -n "$BEFORE_HEAD" ]; then
+    AFTER_HEAD=$(git rev-parse HEAD 2>/dev/null || echo "")
+    if [ "$BEFORE_HEAD" != "$AFTER_HEAD" ]; then
+        echo "[ERROR] Cursor 执行期间 HEAD 发生了变化"
+        echo "Before: $BEFORE_HEAD"
+        echo "After:  $AFTER_HEAD"
+        echo "Cursor 不得 commit。"
+        exit 1
+    fi
+fi
+
+if [ $CURSOR_EXIT -ne 0 ]; then
+    echo "[ERROR] Cursor 异常退出 (exit code: $CURSOR_EXIT)"
+    exit $CURSOR_EXIT
+fi
+
+# 验证 IMPLEMENTATION.md 已创建
+if [ ! -f .ai/IMPLEMENTATION.md ]; then
+    echo "[ERROR] Cursor 未创建 .ai/IMPLEMENTATION.md"
+    exit 2
+fi
+
+# 验证 IMPLEMENTATION.md Task-ID 正确
+IMPL_ID=$(grep -oP 'Task-ID:\s*\K\S+' .ai/IMPLEMENTATION.md 2>/dev/null || echo "")
+if [ "$TASK_ID" != "$IMPL_ID" ]; then
+    echo "[ERROR] IMPLEMENTATION.md Task-ID 不匹配"
+    echo "  期望: $TASK_ID"
+    echo "  实际: $IMPL_ID"
+    exit 1
+fi
+
+echo "[OK] cursor-implement 完成 (Task-ID: $TASK_ID)"
