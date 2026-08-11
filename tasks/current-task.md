@@ -1,9 +1,9 @@
 # Current Task
 
-- Status：READY（2026-08-11，CR-001 产品+技术双批准）
+- Status：COMPLETED（2026-08-11，CR-001 设备级拓扑已实现并审核）
 - Branch：feature/TASK-20260810-000003-topology-map
-- Backend：218 tests PASS
-- Frontend：107 tests PASS, typecheck clean
+- Backend：220 tests PASS
+- Frontend：117 tests PASS, typecheck clean
 
 ## 当前任务
 
@@ -11,7 +11,7 @@
 |------|------|------|
 | TASK-000001: Room.Location + Rack.Status | main ✅ | 已完成并合并 |
 | TASK-000002: 前端适配新字段 | main ✅ | 已完成并合并 |
-| TASK-20260810-000003: 拓扑地图（含 CR-001 设备级） | feature/TASK-20260810-000003-topology-map | DRAFT |
+| TASK-20260810-000003: 拓扑地图（含 CR-001 设备级） | feature/TASK-20260810-000003-topology-map | COMPLETED |
 
 ## CR-001：设备级拓扑
 
