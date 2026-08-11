@@ -594,4 +594,25 @@ describe('TopologyView', () => {
     expect(html).toContain('跨机房线缆聚合视图')
   })
 
+  it('device-level scene exposes non-realtime notice and missing Speed as 未登记', async () => {
+    const snapshot = parseCableSnapshot(sampleCableScene)!
+    const scene = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true, selectedCableId: 'c1' },
+    )
+    expect(scene.detailRows[0]?.targetSpeed).toBeNull()
+
+    const { default: CableLayer } = await import('../components/CableLayer.vue')
+    const app = createSSRApp(CableLayer, {
+      scene,
+      animationEnabled: true,
+    })
+    const html = await renderToString(app)
+    expect(html).toContain('非实时流量')
+    expect(html).toContain('登记端点方向')
+  })
+
 })
