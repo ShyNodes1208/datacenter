@@ -139,6 +139,7 @@ function highlightedLabelPosition(): { x: number; y: number } {
       v-for="bundle in scene.bundles"
       :key="bundle.id"
       class="bundle-group"
+      data-testid="device-cable-bundle"
       :class="{ 'bundle-group--hidden': bundle.opacity === 0 }"
       :opacity="bundle.opacity"
       :style="{ pointerEvents: bundle.opacity > 0 ? 'auto' : 'none' }"

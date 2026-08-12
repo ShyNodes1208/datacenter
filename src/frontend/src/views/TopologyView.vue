@@ -6,7 +6,7 @@
   >
     <header class="topology-header">
       <div>
-        <h1>机房拓扑地图</h1>
+        <h1>{{ pageTitle }}</h1>
         <p class="topology-subtitle">{{ subtitle }}</p>
         <nav class="topology-breadcrumb" aria-label="层级导航">
           <span>机房拓扑</span>
@@ -98,6 +98,61 @@
     <p v-else-if="loading && !topology">加载中…</p>
     <p v-else-if="topology && topology.rooms.length === 0">暂无机房</p>
 
+    <div v-if="topology?.mode === 'rooms'" class="topology-filters" aria-label="机房线缆筛选">
+      <span class="filter-label">2.5D视图</span>
+      <fieldset>
+        <legend>线路类型</legend>
+        <label v-for="type in availableRoomCableTypes" :key="type">
+          <input
+            type="checkbox"
+            :checked="roomCableTypes.includes(type)"
+            @change="toggleRoomCableType(type)"
+          />
+          {{ type }}
+        </label>
+      </fieldset>
+      <fieldset>
+        <legend>用途</legend>
+        <label v-for="purpose in availableRoomPurposes" :key="purpose">
+          <input
+            type="checkbox"
+            :checked="roomPurposes.includes(purpose)"
+            @change="toggleRoomPurpose(purpose)"
+          />
+          {{ purpose }}
+        </label>
+      </fieldset>
+      <fieldset>
+        <legend>状态</legend>
+        <label v-for="status in availableRoomStatuses" :key="status">
+          <input
+            type="checkbox"
+            :checked="roomStatuses.includes(status)"
+            @change="toggleRoomStatus(status)"
+          />
+          {{ status }}
+        </label>
+      </fieldset>
+      <label class="anim-toggle">
+        <input v-model="roomAnimationEnabled" type="checkbox" />
+        流动动画
+      </label>
+      <span
+        v-if="roomAnimationEnabled && !selectedRoomConnectionId"
+        class="non-realtime-badge"
+        data-testid="animation-notice"
+      >
+        请先选择线路
+      </span>
+      <span
+        v-if="roomAnimationEnabled"
+        class="non-realtime-badge"
+        data-testid="non-realtime-badge"
+      >
+        非实时流量：动画仅表示配置的线路方向，不代表实时带宽、实时流量或设备运行状态。
+      </span>
+    </div>
+
     <div v-if="topology?.mode === 'devices'" class="topology-filters" aria-label="线缆筛选">
       <label class="filter-text">
         设备名称
@@ -149,7 +204,7 @@
       </fieldset>
     </div>
 
-    <div class="topology-body" :class="{ 'topology-body--with-panel': !!selectedCable }">
+    <div class="topology-body" :class="{ 'topology-body--with-panel': !!selectedCable || !!selectedRoomConnection }">
       <div
         ref="containerRef"
         class="topology-canvas"
@@ -214,6 +269,41 @@
         </div>
       </div>
 
+      <aside v-if="selectedRoomConnection" class="cable-detail-panel" aria-label="链路详情">
+        <div class="cable-detail-panel__header">
+          <h2>链路详情</h2>
+          <button type="button" class="btn" @click="selectedRoomConnectionId = null">关闭</button>
+        </div>
+        <dl>
+          <dt>起点机房</dt>
+          <dd>
+            <span
+              class="dot"
+              :style="{ background: purposeLineColor(selectedRoomConnection.purpose, selectedRoomConnection.status) }"
+            />
+            {{ topology?.rooms.find((r) => r.id === selectedRoomConnection.sourceRoomId)?.name ?? '—' }}
+          </dd>
+          <dt>终点机房</dt>
+          <dd>
+            <span
+              class="dot"
+              :style="{ background: purposeLineColor(selectedRoomConnection.purpose, selectedRoomConnection.status) }"
+            />
+            {{ topology?.rooms.find((r) => r.id === selectedRoomConnection.targetRoomId)?.name ?? '—' }}
+          </dd>
+          <dt>线路类型</dt>
+          <dd>{{ selectedRoomConnection.cableType }}</dd>
+          <dt>聚合线缆数量</dt>
+          <dd>{{ selectedRoomConnection.cableCount }}</dd>
+          <dt>状态</dt>
+          <dd>{{ selectedRoomConnection.status }}</dd>
+          <dt>带宽</dt>
+          <dd>未配置</dd>
+          <dt>流向</dt>
+          <dd>聚合链路</dd>
+        </dl>
+      </aside>
+
       <aside v-if="selectedCable" class="cable-detail-panel" aria-label="线路详情">
         <div class="cable-detail-panel__header">
           <h2>线路详情</h2>
@@ -233,7 +323,7 @@
           <dt>线路用途</dt>
           <dd>{{ purposeLabel(selectedCable.purpose, selectedCable.cableType) }}</dd>
           <dt>线路状态</dt>
-          <dd>已登记</dd>
+          <dd>{{ selectedCable.status }}</dd>
           <dt>带宽</dt>
           <dd>未配置</dd>
           <dt>方向</dt>
@@ -256,25 +346,39 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import Konva from 'konva'
 import { useAuth } from '../composables/useAuth'
 import { useApi } from '../composables/useApi'
 import {
+  buildRoomGridLayout,
   cableTypeColor,
+  connectionBundleId,
+  filterRoomConnections,
   primaryCableType,
+  purposeLineColor,
+  roomPlatformEdgePoint,
+  routeRoomCable,
+  ROOM_PLATFORM_H,
+  ROOM_PLATFORM_W,
+  TOPOLOGY_PALETTE,
   useTopology,
   type TopologyCableDetail,
   type TopologyRoom,
+  type TopologyRoomConnection,
 } from '../composables/useTopology'
 import CableLayer from '../components/CableLayer.vue'
 import {
   buildCableScene,
   buildUniquePortLabelPlacements,
   computeFitToScreenTransform,
+  filterActiveDeviceSnapshot,
   filterVisibleDevices,
   formatPortLabel,
   portSlotKey,
   purposeDisplayName,
+  staticArrowPositions,
+  UNSELECTED_OPACITY,
   type CableFocus,
   type CableInfo,
   type CableScene,
@@ -283,9 +387,12 @@ import {
   type RackInfo,
 } from '../composables/useCableScene'
 
+const route = useRoute()
+const router = useRouter()
+
 const ROOM_ADMIN_ROLE = '机房管理员'
-const ROOM_W = 180
-const ROOM_H = 100
+const ROOM_W = ROOM_PLATFORM_W
+const ROOM_H = ROOM_PLATFORM_H
 const RACK_W = 90
 const RACK_H = 56
 const DEVICE_RACK_W = 168
@@ -293,9 +400,11 @@ const RACK_GAP_X = 280
 const RACK_GAP_Y = 360
 const RACK_DEPTH_X = 16
 const RACK_DEPTH_Y = 10
-const U_PX = 20
+const U_PX = 24
+const COMPACT_EMPTY_RACK_H = 240
 const PLATFORM_DEPTH_X = 28
 const PLATFORM_DEPTH_Y = 18
+const PLATFORM_STRIP_H = 28
 const PORT_RADIUS = 4
 const PORT_RADIUS_SELECTED = 6
 
@@ -308,6 +417,11 @@ const focusedRoomId = ref<string | null>(null)
 const containerRef = ref<HTMLDivElement>()
 const konvaContainer = ref<HTMLDivElement>()
 const saveError = ref('')
+const selectedRoomConnectionId = ref<string | null>(null)
+const roomCableTypes = ref<string[]>([])
+const roomPurposes = ref<string[]>([])
+const roomStatuses = ref<string[]>([])
+const roomAnimationEnabled = ref(false)
 const animationEnabled = ref(false)
 const focusDeviceId = ref<string | null>(null)
 const selectedCableId = ref<string | null>(null)
@@ -333,6 +447,7 @@ const tooltip = ref<{
 
 let stage: Konva.Stage | null = null
 let layer: Konva.Layer | null = null
+let roomCableAnimation: Konva.Animation | null = null
 let resizeObserver: ResizeObserver | null = null
 let deviceViewportBound = false
 /** Avoid resetting user pan/zoom on every focus redraw in devices mode. */
@@ -341,6 +456,44 @@ let deviceFitAppliedForSnapshot: string | null = null
 const focusedRoom = computed(() =>
   topology.value?.rooms.find((room) => room.id === (focusedRoomId.value ?? topology.value?.focusedRoomId)) ?? null,
 )
+
+const filteredRoomConnections = computed(() => {
+  if (!topology.value || topology.value.mode !== 'rooms') return [] as TopologyRoomConnection[]
+  return filterRoomConnections(topology.value.roomConnections, {
+    cableTypes: roomCableTypes.value.length ? roomCableTypes.value : undefined,
+    purposes: roomPurposes.value.length ? roomPurposes.value : undefined,
+    statuses: roomStatuses.value.length ? roomStatuses.value : undefined,
+  })
+})
+
+const selectedRoomConnection = computed(() => {
+  if (!selectedRoomConnectionId.value || !topology.value) return null
+  return topology.value.roomConnections.find(
+    (c) => connectionBundleId(c) === selectedRoomConnectionId.value,
+  ) ?? null
+})
+
+const availableRoomCableTypes = computed(() => {
+  if (!topology.value) return [] as string[]
+  return [...new Set(topology.value.roomConnections.map((c) => c.cableType))].sort()
+})
+
+const availableRoomPurposes = computed(() => {
+  if (!topology.value) return [] as string[]
+  return [...new Set(topology.value.roomConnections.map((c) => c.purpose))].sort()
+})
+
+const availableRoomStatuses = computed(() => {
+  if (!topology.value) return [] as string[]
+  return [...new Set(topology.value.roomConnections.map((c) => c.status))].sort()
+})
+
+const pageTitle = computed(() => {
+  if (topology.value?.mode === 'devices' && focusedRoom.value) {
+    return `${focusedRoom.value.name} / A区`
+  }
+  return '机房线缆拓扑'
+})
 
 const subtitle = computed(() => {
   if (topology.value?.mode === 'devices') {
@@ -552,12 +705,11 @@ async function reload(): Promise<void> {
 }
 
 async function exitRoomFocus(): Promise<void> {
-  focusedRoomId.value = null
   focusDeviceId.value = null
   selectedCableId.value = null
   clearDeviceFilters()
   laidSnapshot.value = null
-  await load(null)
+  await navigateToView(null, 'rooms')
 }
 
 async function enterRackLevel(): Promise<void> {
@@ -566,7 +718,7 @@ async function enterRackLevel(): Promise<void> {
   selectedCableId.value = null
   clearDeviceFilters()
   laidSnapshot.value = null
-  await load(focusedRoomId.value)
+  await navigateToView(focusedRoomId.value, 'racks')
 }
 
 async function enterDeviceLevel(): Promise<void> {
@@ -574,7 +726,7 @@ async function enterDeviceLevel(): Promise<void> {
   focusDeviceId.value = null
   selectedCableId.value = null
   clearDeviceFilters()
-  await loadDevices(focusedRoomId.value)
+  await navigateToView(focusedRoomId.value, 'devices')
 }
 
 function clearCableSelection(): void {
@@ -609,22 +761,7 @@ async function fetchCsrf(): Promise<string | null> {
 }
 
 function autoLayoutRooms(rooms: TopologyRoom[]): Map<string, { x: number; y: number }> {
-  const positions = new Map<string, { x: number; y: number }>()
-  const zeroRooms = rooms.filter((room) => room.topologyX === 0 && room.topologyY === 0)
-  const layoutZeros = zeroRooms.length > 1 || rooms.every((room) => room.topologyX === 0 && room.topologyY === 0)
-  let zeroIndex = 0
-  const cols = Math.min(4, Math.ceil(Math.sqrt(rooms.length)))
-  for (const room of rooms) {
-    if (layoutZeros && room.topologyX === 0 && room.topologyY === 0) {
-      const col = zeroIndex % cols
-      const row = Math.floor(zeroIndex / cols)
-      positions.set(room.id, { x: 40 + col * 220, y: 40 + row * 140 })
-      zeroIndex += 1
-      continue
-    }
-    positions.set(room.id, { x: room.topologyX, y: room.topologyY })
-  }
-  return positions
+  return buildRoomGridLayout(rooms)
 }
 
 function strokeWidthForCount(count: number): number {
@@ -632,41 +769,109 @@ function strokeWidthForCount(count: number): number {
 }
 
 function layoutDeviceSnapshot(snapshot: CableSnapshot): CableSnapshot {
+  const filtered = filterActiveDeviceSnapshot(snapshot)
+  const floorRack = filtered.racks.find((r) => r.code === 'FLOOR')
+  const rackRacks = filtered.racks
+    .filter((r) => r.code !== 'FLOOR' && !r.code.startsWith('STUB-'))
+    .sort((a, b) => a.code.localeCompare(b.code))
+  const floorDevices = floorRack
+    ? filtered.devices.filter((d) => d.rackId === floorRack.rackId)
+    : []
+
   const devicesByRack = new Map<string, DeviceInfo[]>()
-  for (const device of snapshot.devices) {
+  for (const device of filtered.devices) {
+    if (floorRack && device.rackId === floorRack.rackId) continue
     const list = devicesByRack.get(device.rackId) ?? []
     list.push(device)
     devicesByRack.set(device.rackId, list)
   }
 
-  const sortedRacks = [...snapshot.racks].sort((a, b) => a.x - b.x || a.y - b.y || a.code.localeCompare(b.code))
   const laidRacks: RackInfo[] = []
   const laidDevices: DeviceInfo[] = []
 
-  sortedRacks.forEach((rack, index) => {
+  // Row 1: racks (up to 4)
+  rackRacks.forEach((rack, index) => {
     const devices = (devicesByRack.get(rack.rackId) ?? [])
       .slice()
       .sort((a, b) => a.startU - b.startU || a.deviceName.localeCompare(b.deviceName))
+    const maxEndU = devices.length > 0 ? Math.max(...devices.map((d) => d.endU)) : 0
     const rackX = 80 + (index % 4) * RACK_GAP_X
     const rackY = 110 + Math.floor(index / 4) * RACK_GAP_Y
-    const maxEndU = Math.max(42, ...devices.map((d) => d.endU), 4)
+    const height = maxEndU > 0
+      ? Math.max(maxEndU * U_PX + 32, 120)
+      : COMPACT_EMPTY_RACK_H
     laidRacks.push({
       ...rack,
       x: rackX,
       y: rackY,
       width: DEVICE_RACK_W,
-      height: maxEndU * U_PX,
+      height,
     })
-    // Keep real U ranges so panel heights reflect registered U occupancy.
     for (const device of devices) {
       laidDevices.push({ ...device })
+    }
+  })
+
+  // Row 2/3: floor network + storage devices
+  if (floorDevices.length > 0) {
+    const baseY = 110 + RACK_GAP_Y
+    const network = floorDevices.filter((d) =>
+      d.deviceType.includes('交换') || d.deviceType.includes('防火') || d.deviceName.startsWith('SW-') || d.deviceName.startsWith('FW-'),
+    )
+    const storage = floorDevices.filter((d) =>
+      d.deviceType.includes('存储') || d.deviceType.includes('备份') || d.deviceName.startsWith('STORAGE') || d.deviceName.startsWith('BAK'),
+    )
+    const placeFloorDevice = (device: DeviceInfo, x: number, y: number, slotU: number) => {
+      const floorId = `floor-${device.deviceId}`
+      laidRacks.push({
+        rackId: floorId,
+        code: device.deviceName,
+        x,
+        y,
+        width: DEVICE_RACK_W,
+        height: Math.max(device.endU - device.startU + 1, 1) * U_PX + 16,
+      })
+      laidDevices.push({
+        ...device,
+        rackId: floorId,
+        startU: 1,
+        endU: Math.max(1, device.endU - device.startU + 1),
+      })
+    }
+    network.forEach((device, i) => {
+      const x = 80 + i * (RACK_GAP_X / Math.max(1, network.length - 1 || 1))
+      placeFloorDevice(device, x, baseY, i + 1)
+    })
+    storage.forEach((device, i) => {
+      const x = 80 + i * RACK_GAP_X
+      placeFloorDevice(device, x, baseY + 180, i + 1)
+    })
+  }
+
+  const deviceRackByDeviceId = new Map(laidDevices.map((d) => [d.deviceId, d.rackId]))
+  const rackCodeByRackId = new Map(laidRacks.map((r) => [r.rackId, r.code]))
+  const remappedCables = filtered.cables.map((c) => {
+    const srcRackId = deviceRackByDeviceId.get(c.source.deviceId) ?? c.source.rackId
+    const tgtRackId = deviceRackByDeviceId.get(c.target.deviceId) ?? c.target.rackId
+    return {
+      ...c,
+      source: {
+        ...c.source,
+        rackId: srcRackId,
+        rackCode: (srcRackId && rackCodeByRackId.get(srcRackId)) ?? c.source.rackCode,
+      },
+      target: {
+        ...c.target,
+        rackId: tgtRackId,
+        rackCode: (tgtRackId && rackCodeByRackId.get(tgtRackId)) ?? c.target.rackCode,
+      },
     }
   })
 
   return {
     racks: laidRacks,
     devices: laidDevices,
-    cables: snapshot.cables,
+    cables: remappedCables,
   }
 }
 
@@ -691,34 +896,34 @@ function drawIsoPlatform(
 ): void {
   if (!layer || racks.length === 0) return
   const minX = Math.min(...racks.map((r) => r.x)) - 48
-  const minY = Math.min(...racks.map((r) => r.y)) - 56
   const maxX = Math.max(...racks.map((r) => r.x + r.width)) + 48
+  const minY = Math.min(...racks.map((r) => r.y)) - 28
   const maxY = Math.max(...racks.map((r) => r.y + r.height)) + 48
+  const stripH = PLATFORM_STRIP_H
   const w = maxX - minX
-  const h = maxY - minY
   const dx = PLATFORM_DEPTH_X
   const dy = PLATFORM_DEPTH_Y
 
   // Shadow under platform
   layer.add(new Konva.Line({
     points: [
-      minX + 10, maxY + 8,
-      maxX + 10, maxY + 8,
-      maxX + dx + 10, maxY - dy + 8,
-      minX + dx + 10, maxY - dy + 8,
+      minX + 10, maxY + stripH + 8,
+      maxX + 10, maxY + stripH + 8,
+      maxX + dx + 10, maxY - dy + stripH + 8,
+      minX + dx + 10, maxY - dy + stripH + 8,
     ],
     closed: true,
     fill: 'rgba(0,0,0,0.35)',
     listening: false,
   }))
 
-  // Top face (brightest)
+  // Top face (brightest) — full rack footprint projected onto floor plane
   layer.add(new Konva.Line({
     points: [
-      minX, minY,
-      maxX, minY,
-      maxX + dx, minY - dy,
-      minX + dx, minY - dy,
+      minX, maxY,           // front-left
+      maxX, maxY,           // front-right
+      maxX + dx, minY - dy, // back-right
+      minX + dx, minY - dy, // back-left
     ],
     closed: true,
     fill: '#1A3354',
@@ -727,31 +932,36 @@ function drawIsoPlatform(
     listening: false,
   }))
 
-  // Perspective grid on top
+  // Perspective grid on top face
   for (let gx = 0; gx <= w; gx += 36) {
     layer.add(new Konva.Line({
-      points: [minX + gx, minY, minX + gx + dx, minY - dy],
+      points: [minX + gx, maxY, minX + gx + dx, minY - dy],
       stroke: 'rgba(91,118,152,0.22)',
       strokeWidth: 1,
       listening: false,
     }))
   }
-  for (let gy = 0; gy <= h; gy += 36) {
+  const depth = Math.max(maxY - minY, 1)
+  for (let gy = 0; gy <= depth; gy += 36) {
+    const t = gy / depth
     layer.add(new Konva.Line({
-      points: [minX, minY + gy, maxX, minY + gy],
+      points: [
+        minX + t * dx, maxY - gy,
+        maxX + t * dx, maxY - gy,
+      ],
       stroke: 'rgba(91,118,152,0.12)',
       strokeWidth: 1,
       listening: false,
     }))
   }
 
-  // Front face
+  // Front face — thin strip at bottom
   layer.add(new Konva.Line({
     points: [
-      minX, minY,
-      maxX, minY,
-      maxX, maxY,
       minX, maxY,
+      maxX, maxY,
+      maxX, maxY + stripH,
+      minX, maxY + stripH,
     ],
     closed: true,
     fill: '#12253F',
@@ -760,13 +970,13 @@ function drawIsoPlatform(
     listening: false,
   }))
 
-  // Right side face (darkest)
+  // Right side face (darkest) — thin strip, shares edge with top face
   layer.add(new Konva.Line({
     points: [
-      maxX, minY,
-      maxX + dx, minY - dy,
-      maxX + dx, maxY - dy,
       maxX, maxY,
+      maxX + dx, minY - dy,
+      maxX + dx, minY - dy + stripH,
+      maxX, maxY + stripH,
     ],
     closed: true,
     fill: '#0C1A2E',
@@ -778,7 +988,7 @@ function drawIsoPlatform(
   // Area nameplate on front face
   layer.add(new Konva.Rect({
     x: minX + w / 2 - 70,
-    y: maxY - 28,
+    y: maxY + stripH - 28,
     width: 140,
     height: 22,
     cornerRadius: 4,
@@ -789,7 +999,7 @@ function drawIsoPlatform(
   }))
   layer.add(new Konva.Text({
     x: minX + w / 2 - 70,
-    y: maxY - 24,
+    y: maxY + stripH - 24,
     width: 140,
     align: 'center',
     text: areaLabel || '设备区域',
@@ -1230,6 +1440,101 @@ function drawDeviceScene(): void {
   }
 }
 
+function drawRoomPlatform(group: Konva.Group, room: TopologyRoom, selected: boolean): void {
+  const w = ROOM_W
+  const h = ROOM_H
+  const dx = 24
+  const dy = 16
+
+  group.add(new Konva.Line({
+    points: [8, h + 8, w + 8, h + 8, w + dx + 8, h - dy + 8, dx + 8, h - dy + 8],
+    closed: true,
+    fill: 'rgba(0,0,0,0.35)',
+    listening: false,
+  }))
+
+  group.add(new Konva.Line({
+    points: [0, 0, w, 0, w + dx, -dy, dx, -dy],
+    closed: true,
+    fill: '#1a3354',
+    stroke: selected ? TOPOLOGY_PALETTE.accentBlue : '#2e4a6e',
+    strokeWidth: selected ? 2 : 1,
+    listening: false,
+  }))
+
+  for (let gx = 0; gx <= w; gx += 36) {
+    group.add(new Konva.Line({
+      points: [gx, 0, gx + dx, -dy],
+      stroke: 'rgba(91,118,152,0.22)',
+      strokeWidth: 1,
+      listening: false,
+    }))
+  }
+
+  group.add(new Konva.Line({
+    points: [0, 0, w, 0, w, h, 0, h],
+    closed: true,
+    fill: '#12253f',
+    stroke: '#2e4a6e',
+    strokeWidth: 1,
+    listening: false,
+  }))
+
+  group.add(new Konva.Line({
+    points: [w, 0, w + dx, -dy, w + dx, h - dy, w, h],
+    closed: true,
+    fill: '#0c1a2e',
+    stroke: '#2e4a6e',
+    strokeWidth: 1,
+    listening: false,
+  }))
+
+  // Mini rack blocks on top
+  for (let i = 0; i < Math.min(3, Math.max(1, room.rackCount)); i++) {
+    const rx = 40 + i * 28
+    group.add(new Konva.Rect({
+      x: rx,
+      y: -dy - 14,
+      width: 10,
+      height: 12,
+      fill: room.status === '启用' ? TOPOLOGY_PALETTE.statusGreen : TOPOLOGY_PALETTE.alertRed,
+      opacity: 0.85,
+      listening: false,
+    }))
+  }
+
+  group.add(new Konva.Text({
+    x: 8,
+    y: h - 52,
+    width: w - 16,
+    text: room.name,
+    fontSize: 13,
+    fontStyle: 'bold',
+    fill: TOPOLOGY_PALETTE.textPrimary,
+    ellipsis: true,
+    listening: false,
+  }))
+
+  group.add(new Konva.Text({
+    x: 8,
+    y: h - 36,
+    text: room.status,
+    fontSize: 11,
+    fill: room.status === '启用' ? TOPOLOGY_PALETTE.statusGreen : TOPOLOGY_PALETTE.alertOrange,
+    listening: false,
+  }))
+
+  group.add(new Konva.Text({
+    x: 8,
+    y: h - 22,
+    width: w - 16,
+    text: `机柜 ${room.rackCount} · 服务器 ${room.serverCount} · 线缆 ${room.cableCount}`,
+    fontSize: 10,
+    fill: TOPOLOGY_PALETTE.textSecondary,
+    listening: false,
+  }))
+}
+
 function drawScene(): void {
   if (!stage || !layer || !topology.value) return
   layer.destroyChildren()
@@ -1249,30 +1554,74 @@ function drawScene(): void {
 
   if (current.mode === 'rooms') {
     const positions = autoLayoutRooms(current.rooms)
-    const centerOf = (roomId: string) => {
-      const pos = positions.get(roomId) ?? { x: 0, y: 0 }
-      return { x: pos.x + ROOM_W / 2, y: pos.y + ROOM_H / 2 }
-    }
 
-    for (const connection of current.roomConnections) {
-      const from = centerOf(connection.sourceRoomId)
-      const to = centerOf(connection.targetRoomId)
-      const color = cableTypeColor(primaryCableType(connection.types))
+    const edgeSlots = new Map<string, number>()
+    const slotKey = (roomId: string, edge: string) => `${roomId}|${edge}`
+
+    for (const connection of filteredRoomConnections.value) {
+      const srcPos = positions.get(connection.sourceRoomId) ?? { x: 0, y: 0 }
+      const tgtPos = positions.get(connection.targetRoomId) ?? { x: 0, y: 0 }
+      const srcCenter = srcPos.x + ROOM_W / 2
+      const tgtCenter = tgtPos.x + ROOM_W / 2
+      const srcEdge = srcCenter <= tgtCenter ? 'right' : 'left'
+      const tgtEdge = srcCenter <= tgtCenter ? 'left' : 'right'
+      const srcSlot = edgeSlots.get(slotKey(connection.sourceRoomId, srcEdge)) ?? 0
+      const tgtSlot = edgeSlots.get(slotKey(connection.targetRoomId, tgtEdge)) ?? 0
+      edgeSlots.set(slotKey(connection.sourceRoomId, srcEdge), srcSlot + 1)
+      edgeSlots.set(slotKey(connection.targetRoomId, tgtEdge), tgtSlot + 1)
+
+      const from = roomPlatformEdgePoint(srcPos, srcEdge as 'left' | 'right', srcSlot, srcSlot + 1)
+      const to = roomPlatformEdgePoint(tgtPos, tgtEdge as 'left' | 'right', tgtSlot, tgtSlot + 1)
+      const route = routeRoomCable(from, to)
+      const flatPoints = route.flatMap((p) => [p.x, p.y])
+      const bundleId = connectionBundleId(connection)
+      const color = purposeLineColor(connection.purpose, connection.status, connection.cableType)
+      const highlighted = selectedRoomConnectionId.value === bundleId
+      const dimmed = selectedRoomConnectionId.value !== null && !highlighted
+
       const line = new Konva.Line({
-        points: [from.x, from.y, to.x, to.y],
+        points: flatPoints,
         stroke: color,
-        strokeWidth: strokeWidthForCount(connection.cableCount),
+        strokeWidth: highlighted ? 3 : 2,
         lineCap: 'round',
-        opacity: 0.85,
+        lineJoin: 'round',
+        opacity: dimmed ? UNSELECTED_OPACITY : 1,
         hitStrokeWidth: 18,
+        shadowColor: highlighted ? color : 'transparent',
+        shadowBlur: highlighted ? 12 : 0,
+        shadowOpacity: highlighted ? 0.7 : 0,
+        name: 'room-cable-bundle',
+        id: `room-cable-${bundleId}`,
+      })
+
+      for (const marker of staticArrowPositions(route, 80)) {
+        layer!.add(new Konva.RegularPolygon({
+          x: marker.x,
+          y: marker.y,
+          sides: 3,
+          radius: 5,
+          fill: color,
+          rotation: (marker.angle * 180) / Math.PI + 90,
+          opacity: dimmed ? UNSELECTED_OPACITY : 1,
+          listening: false,
+        }))
+      }
+
+      line.on('click', (event) => {
+        event.cancelBubble = true
+        selectedRoomConnectionId.value = bundleId
+        drawScene()
       })
       line.on('mouseenter', (event) => {
         const pointer = stage?.getPointerPosition()
         tooltip.value = {
           x: (pointer?.x ?? event.evt.offsetX) + 12,
           y: (pointer?.y ?? event.evt.offsetY) + 12,
-          title: `线缆 ${connection.cableCount} 条`,
-          lines: [`类型：${connection.types.join('、') || '无'}`],
+          title: `${connection.purpose} ×${connection.cableCount}`,
+          lines: [
+            `类型：${connection.cableType}`,
+            `状态：${connection.status}`,
+          ],
           cables: connection.cables,
         }
         document.body.style.cursor = 'pointer'
@@ -1286,11 +1635,12 @@ function drawScene(): void {
         tooltip.value = null
         document.body.style.cursor = 'default'
       })
-      layer.add(line)
+      layer!.add(line)
     }
 
     for (const room of current.rooms) {
       const pos = positions.get(room.id) ?? { x: room.topologyX, y: room.topologyY }
+      const selected = focusedRoomId.value === room.id
       const group = new Konva.Group({
         x: pos.x,
         y: pos.y,
@@ -1298,52 +1648,13 @@ function drawScene(): void {
         id: `room-${room.id}`,
       })
 
-      const body = new Konva.Rect({
-        width: ROOM_W,
-        height: ROOM_H,
-        cornerRadius: 12,
-        fillLinearGradientStartPoint: { x: 0, y: 0 },
-        fillLinearGradientEndPoint: { x: 0, y: ROOM_H },
-        fillLinearGradientColorStops:
-          room.status === '启用'
-            ? [0, '#3d5a80', 1, '#1b2838']
-            : [0, '#6c757d', 1, '#343a40'],
-        shadowColor: 'rgba(0,0,0,0.45)',
-        shadowBlur: 12,
-        shadowOffset: { x: 0, y: 6 },
-        shadowOpacity: 0.35,
-        stroke: room.status === '启用' ? '#78c2ff' : '#adb5bd',
-        strokeWidth: 1.5,
-      })
+      drawRoomPlatform(group, room, selected)
 
-      const title = new Konva.Text({
-        x: 12,
-        y: 12,
-        width: ROOM_W - 24,
-        text: room.name,
-        fontSize: 15,
-        fontStyle: 'bold',
-        fill: '#f8f9fa',
-        ellipsis: true,
+      group.on('click', () => {
+        focusedRoomId.value = room.id
+        router.replace({ query: { ...route.query, roomId: room.id, view: 'rooms' } })
+        drawScene()
       })
-      const status = new Konva.Text({
-        x: 12,
-        y: 34,
-        text: room.status,
-        fontSize: 12,
-        fill: room.status === '启用' ? '#8fecb0' : '#ffc9c9',
-      })
-      const stats = new Konva.Text({
-        x: 12,
-        y: 56,
-        width: ROOM_W - 24,
-        text: `机柜 ${room.rackCount} · 服务器 ${room.serverCount}\n线缆 ${room.cableCount}`,
-        fontSize: 11,
-        lineHeight: 1.35,
-        fill: '#d7dee7',
-      })
-
-      group.add(body, title, status, stats)
       group.on('dragend', async () => {
         const nextX = group.x()
         const nextY = group.y()
@@ -1363,10 +1674,17 @@ function drawScene(): void {
       })
       group.on('dblclick', async () => {
         focusedRoomId.value = room.id
-        await load(room.id)
+        await navigateToView(room.id, 'devices')
       })
-      layer.add(group)
+      layer!.add(group)
     }
+
+    stage!.on('click', (event) => {
+      if (event.target === stage) {
+        selectedRoomConnectionId.value = null
+        drawScene()
+      }
+    })
   } else {
     const racks = current.racks
     const rackPos = new Map<string, { x: number; y: number }>()
@@ -1453,6 +1771,36 @@ function drawScene(): void {
   }
 
   layer.draw()
+  syncRoomCableAnimation()
+}
+
+function stopRoomCableAnimation(): void {
+  roomCableAnimation?.stop()
+  roomCableAnimation = null
+}
+
+function syncRoomCableAnimation(): void {
+  stopRoomCableAnimation()
+  if (
+    !layer
+    || !roomAnimationEnabled.value
+    || !selectedRoomConnectionId.value
+    || topology.value?.mode !== 'rooms'
+  ) {
+    return
+  }
+
+  const line = layer.findOne(`#room-cable-${selectedRoomConnectionId.value}`) as Konva.Line | undefined
+  if (!line) return
+
+  line.dash([12, 8])
+  let offset = 0
+  roomCableAnimation = new Konva.Animation((frame) => {
+    if (!frame) return
+    offset = (offset + frame.timeDiff * 0.05) % 20
+    line.dashOffset(-offset)
+  }, layer)
+  roomCableAnimation.start()
 }
 
 function computeStageSize(): { width: number; height: number } {
@@ -1484,6 +1832,9 @@ function initStage(): void {
   stage = new Konva.Stage({ container: konvaContainer.value, width, height })
   layer = new Konva.Layer()
   stage.add(layer)
+  if (typeof window !== 'undefined') {
+    (window as unknown as { __topologyKonvaStage?: Konva.Stage }).__topologyKonvaStage = stage
+  }
   drawScene()
 
   resizeObserver = new ResizeObserver(() => {
@@ -1515,6 +1866,8 @@ watch([
   selectedLineStatuses,
   deviceNameQuery,
   animationEnabled,
+  roomAnimationEnabled,
+  selectedRoomConnectionId,
 ], () => {
   if (topology.value?.mode === 'devices') {
     // FR-VIS-12 / T-20: clear selection when selected cable is filtered out.
@@ -1537,17 +1890,81 @@ watch([
       }
     }
     drawScene()
+  } else if (topology.value?.mode === 'rooms') {
+    drawScene()
   }
 })
 
+async function navigateToView(roomId: string | null, view: 'rooms' | 'racks' | 'devices'): Promise<void> {
+  focusedRoomId.value = roomId
+  selectedRoomConnectionId.value = null
+  selectedCableId.value = null
+  const query: Record<string, string> = {}
+  if (roomId) query.roomId = roomId
+  if (view !== 'rooms' || roomId) query.view = view
+  await router.replace({ path: '/topology', query })
+
+  if (view === 'devices' && roomId) {
+    await loadDevices(roomId)
+  } else if (view === 'racks' && roomId) {
+    await load(roomId)
+  } else {
+    // Room-level: load(null) to stay in room mode
+    await load(null)
+  }
+}
+
+async function syncFromRoute(): Promise<void> {
+  const roomId = typeof route.query.roomId === 'string' ? route.query.roomId : null
+  const view = typeof route.query.view === 'string' ? route.query.view : 'rooms'
+  focusedRoomId.value = roomId
+  if (view === 'devices' && roomId) {
+    await loadDevices(roomId)
+  } else if (view === 'racks' && roomId) {
+    await load(roomId)
+  } else {
+    // Room-level: load(null) to stay in room mode; roomId is used for highlighting only
+    await load(null)
+  }
+}
+
+function toggleRoomCableType(type: string): void {
+  const set = new Set(roomCableTypes.value)
+  if (set.has(type)) set.delete(type)
+  else set.add(type)
+  roomCableTypes.value = [...set]
+}
+
+function toggleRoomPurpose(purpose: string): void {
+  const set = new Set(roomPurposes.value)
+  if (set.has(purpose)) set.delete(purpose)
+  else set.add(purpose)
+  roomPurposes.value = [...set]
+}
+
+function toggleRoomStatus(status: string): void {
+  const set = new Set(roomStatuses.value)
+  if (set.has(status)) set.delete(status)
+  else set.add(status)
+  roomStatuses.value = [...set]
+}
+
 onMounted(async () => {
-  await load(null)
+  await syncFromRoute()
   initStage()
 })
 
+watch(() => [route.query.roomId, route.query.view], () => {
+  syncFromRoute()
+})
+
 onUnmounted(() => {
+  stopRoomCableAnimation()
   resizeObserver?.disconnect()
   resizeObserver = null
+  if (typeof window !== 'undefined') {
+    delete (window as unknown as { __topologyKonvaStage?: Konva.Stage }).__topologyKonvaStage
+  }
   if (stage) {
     stage.off('wheel')
     stage.off('.devicePan')
@@ -1568,14 +1985,24 @@ onUnmounted(() => {
   gap: var(--space-md);
   padding: var(--space-md);
   min-height: calc(100vh - 48px);
-  background:
-    radial-gradient(circle at top left, rgba(61, 90, 128, 0.12), transparent 40%),
-    linear-gradient(180deg, #f4f7fb 0%, #e8eef5 100%);
+  background: linear-gradient(180deg, #06111f 0%, #071425 100%);
+  color: #e8f1ff;
 }
 
 .topology-page--devices {
   background: linear-gradient(180deg, #071426 0%, #0B1B31 100%);
   color: #F8F9FA;
+}
+
+.topology-page .topology-header h1,
+.topology-page .topology-subtitle,
+.topology-page .topology-breadcrumb,
+.topology-page .topology-hint {
+  color: #8fa4bd;
+}
+
+.topology-page .topology-header h1 {
+  color: #e8f1ff;
 }
 
 .topology-page--devices .topology-header h1,
@@ -1600,12 +2027,12 @@ onUnmounted(() => {
 .topology-header h1 {
   margin: 0;
   font-size: 1.4rem;
-  color: #1f2a37;
+  color: #e8f1ff;
 }
 
 .topology-subtitle {
   margin: 0.25rem 0 0;
-  color: #5c6b7a;
+  color: #8fa4bd;
   font-size: 0.9rem;
 }
 
@@ -1615,7 +2042,7 @@ onUnmounted(() => {
   gap: 0.35rem;
   margin-top: 0.5rem;
   font-size: 0.85rem;
-  color: #5c6b7a;
+  color: #8fa4bd;
 }
 
 .topology-hint {
@@ -1791,14 +2218,14 @@ onUnmounted(() => {
   position: relative;
   flex: 1;
   min-height: 760px;
-  border: 1px solid #cfd8e3;
+  border: 1px solid #203750;
   border-radius: 12px;
   overflow: auto;
-  background:
-    linear-gradient(90deg, rgba(31, 42, 55, 0.04) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(31, 42, 55, 0.04) 1px, transparent 1px);
-  background-size: 24px 24px;
-  background-color: #fbfcfe;
+  background-color: #071425;
+  background-image:
+    linear-gradient(30deg, rgba(91, 118, 152, 0.08) 1px, transparent 1px),
+    linear-gradient(150deg, rgba(91, 118, 152, 0.08) 1px, transparent 1px);
+  background-size: 28px 28px;
 }
 
 .topology-canvas--devices {
@@ -1889,6 +2316,21 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.75rem;
+}
+
+.filter-label {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #e8f1ff;
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 0.35rem;
+  vertical-align: middle;
 }
 
 .cable-detail-panel h2 {

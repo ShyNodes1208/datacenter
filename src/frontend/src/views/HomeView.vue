@@ -10,6 +10,7 @@ import DashboardSummaryCards, {
 } from '../components/DashboardSummaryCards.vue'
 import RackFrontPanel from '../components/RackFrontPanel.vue'
 import RackOperationDrawer from '../components/RackOperationDrawer.vue'
+import RoomThumbnail from '../components/RoomThumbnail.vue'
 import type { USlot } from '../components/RackFrontPanel.vue'
 
 type ImportRowResult = {
@@ -134,6 +135,14 @@ async function loadSummary(): Promise<void> {
     summary.value = null
     summaryError.value = 'Request failed.'
   }
+}
+
+function goToRoomTopology(roomId: string): void {
+  router.push({ path: '/topology', query: { roomId, view: 'rooms' } })
+}
+
+function goToDeviceTopology(roomId: string): void {
+  router.push({ path: '/topology', query: { roomId, view: 'devices' } })
 }
 
 async function refreshDashboard(): Promise<void> {
@@ -829,6 +838,27 @@ async function handleServerFileChange(event: Event): Promise<void> {
       <p v-else-if="rooms !== null && rooms.length === 0">暂无机房</p>
       <div v-else-if="rooms !== null" class="room-cards">
         <div v-for="room in rooms" :key="room.id" class="room-card">
+          <div class="room-card__thumb-row">
+            <RoomThumbnail :room-name="room.name" :status="room.status" />
+            <div class="room-card__topology-actions">
+              <button
+                type="button"
+                class="btn btn--small"
+                data-testid="view-room-topology"
+                @click="goToRoomTopology(room.id)"
+              >
+                查看机房拓扑
+              </button>
+              <button
+                type="button"
+                class="btn btn--small"
+                data-testid="view-device-topology"
+                @click="goToDeviceTopology(room.id)"
+              >
+                查看设备拓扑
+              </button>
+            </div>
+          </div>
           <div class="room-card__header" @click="toggleRoom(room.id)">
             <span class="room-card__arrow">{{ expandedRoomIds.has(room.id) ? '▼' : '▶' }}</span>
             <span class="room-card__name">{{ room.name }}</span>
@@ -1050,6 +1080,20 @@ async function handleServerFileChange(event: Event): Promise<void> {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   overflow: hidden;
+}
+
+.room-card__thumb-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.room-card__topology-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
 }
 
 .room-card__header {

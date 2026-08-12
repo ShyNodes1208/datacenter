@@ -90,7 +90,8 @@ public sealed class CablesController(AppDbContext dbContext, IAntiforgery antifo
                 c.Color,
                 c.Length,
                 c.Notes,
-                c.Purpose
+                c.Purpose,
+                c.Status
             })
             .ToListAsync(cancellationToken);
 
@@ -98,7 +99,7 @@ public sealed class CablesController(AppDbContext dbContext, IAntiforgery antifo
     }
 
     public sealed record CreateCableRequest(
-        Guid SourcePortId, Guid TargetPortId, string CableType, string? Color, string? Length, string? Purpose);
+        Guid SourcePortId, Guid TargetPortId, string CableType, string? Color, string? Length, string? Purpose, string? Status);
 
     [HttpPost("cables")]
     public async Task<IActionResult> Create(CreateCableRequest request, CancellationToken cancellationToken)
@@ -137,7 +138,8 @@ public sealed class CablesController(AppDbContext dbContext, IAntiforgery antifo
             CableType = request.CableType.Trim(),
             Color = request.Color?.Trim(),
             Length = request.Length?.Trim(),
-            Purpose = string.IsNullOrWhiteSpace(request.Purpose) ? "正常" : request.Purpose.Trim()
+            Purpose = string.IsNullOrWhiteSpace(request.Purpose) ? "正常" : request.Purpose.Trim(),
+            Status = string.IsNullOrWhiteSpace(request.Status) ? "正常" : request.Status.Trim()
         };
         dbContext.Cables.Add(cable);
         await dbContext.SaveChangesAsync(cancellationToken);

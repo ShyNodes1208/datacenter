@@ -52,6 +52,7 @@ export interface CableInfo {
   cableId: string
   cableType: string
   purpose: string
+  status: string
   source: EndpointInfo
   target: EndpointInfo
 }
@@ -131,12 +132,13 @@ export interface CableScene {
   breadcrumbs: BreadcrumbItem[]
 }
 
-/** CR-002 purpose → network display colors (frontend-only mapping). */
+/** CR-002 / TASK palette purpose → network display colors. */
 export const NETWORK_COLORS = {
-  management: '#39D9FF',
-  business: '#9567FF',
-  storage: '#FFB341',
-  alert: '#FF4D5A',
+  management: '#35e6ff',
+  business: '#9868ff',
+  storage: '#ffad3b',
+  alert: '#ff4d5f',
+  generic: '#3388ff',
 } as const
 
 export const PURPOSE_COLORS: Record<string, string> = {
@@ -175,30 +177,35 @@ export function cableTypeSceneColor(type: string): string {
   return CABLE_TYPE_COLORS[type] ?? '#95a5a6'
 }
 
-/** Map Cable.Purpose (+ CableType 网线) to display label. */
+/** Map Cable.Purpose (+ CableType legacy) to display label. */
 export function purposeDisplayName(purpose: string, cableType?: string): string {
+  if (purpose === '管理网络' || purpose === '业务网络' || purpose === '存储网络') return purpose
   if (purpose === '上联') return '业务网络'
   if (purpose === '存储') return '存储网络'
   if (purpose === '正常' || cableType === '网线') return '管理网络'
   return purpose || '管理网络'
 }
 
-/** Purpose → network color; 网线 falls back to management. */
+/** Purpose → network color; legacy 上联/存储/正常 supported. */
 export function purposeNetworkColor(purpose: string, cableType?: string): string {
-  if (purpose === '上联') return NETWORK_COLORS.business
-  if (purpose === '存储') return NETWORK_COLORS.storage
-  if (purpose === '正常' || cableType === '网线') return NETWORK_COLORS.management
-  return PURPOSE_COLORS[purpose] ?? NETWORK_COLORS.management
+  const label = purposeDisplayName(purpose, cableType)
+  if (label === '业务网络') return NETWORK_COLORS.business
+  if (label === '存储网络') return NETWORK_COLORS.storage
+  if (label === '管理网络') return NETWORK_COLORS.management
+  return NETWORK_COLORS.generic
 }
 
-/** Alert overrides purpose color when either endpoint device is 异常. */
+/** Alert from cable Status or endpoint OperationalStatus. */
 export function resolveCableStrokeColor(
   purpose: string,
   cableType: string,
   sourceStatus?: string,
   targetStatus?: string,
+  cableStatus?: string,
 ): string {
-  if (sourceStatus === '异常' || targetStatus === '异常') return NETWORK_COLORS.alert
+  if (cableStatus === '告警' || sourceStatus === '异常' || targetStatus === '异常') {
+    return NETWORK_COLORS.alert
+  }
   return purposeNetworkColor(purpose, cableType)
 }
 
@@ -314,8 +321,10 @@ export function deviceEdgePoint(
   port?: DeviceEdgePortOptions,
 ): Point {
   const uHeight = device.endU - device.startU + 1
-  const deviceTopY = rack.y + (device.startU - 1) * 20
-  const deviceHeight = uHeight * 20
+  // Use the same U_PX=24 as panel rendering for consistent port positioning
+  const unitPx = rack.height >= 120 ? 24 : (rack.height / Math.max(1, uHeight || 1))
+  const deviceTopY = rack.y + (device.startU - 1) * unitPx
+  const deviceHeight = Math.max(uHeight * unitPx, 16)
   const deviceWidth = rack.width
 
   const slotCount = port?.slotCount ?? 0
@@ -467,10 +476,11 @@ export function rectsOverlap(a: LabelRect, b: LabelRect, pad = 0): boolean {
 /** Matches TopologyView device-name text box (panel inset + name offset). */
 export function deviceNameLabelRect(device: DeviceInfo, rack: RackInfo): LabelRect {
   const uHeight = Math.max(1, device.endU - device.startU + 1)
-  const panelH = Math.max(16, uHeight * 20 - 4)
+  const unitPx = rack.height / Math.max(1, Math.ceil(rack.height / 24))
+  const panelH = Math.max(16, uHeight * unitPx - 4)
   const panelW = rack.width - 20
   const groupX = rack.x + 10
-  const groupY = rack.y + (device.startU - 1) * 20 + 2
+  const groupY = rack.y + (device.startU - 1) * unitPx + 2
   return {
     x: groupX + 8,
     y: groupY + Math.max(4, panelH / 2 - 7),
@@ -922,6 +932,7 @@ function strokeForCable(
     c.cableType,
     src?.operationalStatus,
     tgt?.operationalStatus,
+    c.status,
   )
 }
 
@@ -1128,10 +1139,11 @@ export function buildCableScene(
   }
   if (filters.lineStatuses && filters.lineStatuses.length > 0) {
     visibleCables = visibleCables.filter((c) => {
-      const src = deviceMap.get(c.source.deviceId)?.operationalStatus
-      const tgt = deviceMap.get(c.target.deviceId)?.operationalStatus
-      const alert = src === '异常' || tgt === '异常'
-      const status = alert ? '告警' : '正常'
+      // Use cable's own Status field first; fall back to endpoint operational status
+      const cableAlert = c.status === '告警'
+      const srcAlert = deviceMap.get(c.source.deviceId)?.operationalStatus === '异常'
+      const tgtAlert = deviceMap.get(c.target.deviceId)?.operationalStatus === '异常'
+      const status = (cableAlert || srcAlert || tgtAlert) ? '告警' : '正常'
       return filters.lineStatuses!.includes(status)
     })
   }
@@ -1316,11 +1328,30 @@ export function parseCableSnapshot(raw: unknown): CableSnapshot | null {
       cableId: c.cableId,
       cableType: c.cableType,
       purpose: typeof c.purpose === 'string' ? c.purpose : '正常',
+      status: typeof c.status === 'string' ? c.status : '正常',
       source,
       target,
     })
   }
 
+  return { racks, devices, cables }
+}
+
+const LEGACY_RACK_CODE_PREFIX = 'R-页面验证机房-'
+
+export function isExcludedDeviceRack(code: string): boolean {
+  return code.startsWith('STUB-') || code.startsWith(LEGACY_RACK_CODE_PREFIX)
+}
+
+/** Drop legacy/stub racks from device-level topology (停用 racks are excluded by API). */
+export function filterActiveDeviceSnapshot(snapshot: CableSnapshot): CableSnapshot {
+  const racks = snapshot.racks.filter((r) => !isExcludedDeviceRack(r.code))
+  const rackIds = new Set(racks.map((r) => r.rackId))
+  const devices = snapshot.devices.filter((d) => rackIds.has(d.rackId))
+  const deviceIds = new Set(devices.map((d) => d.deviceId))
+  const cables = snapshot.cables.filter(
+    (c) => deviceIds.has(c.source.deviceId) && deviceIds.has(c.target.deviceId),
+  )
   return { racks, devices, cables }
 }
 

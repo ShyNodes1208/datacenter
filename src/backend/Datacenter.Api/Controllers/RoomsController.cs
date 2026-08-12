@@ -81,6 +81,8 @@ public sealed class RoomsController(AppDbContext dbContext, IAntiforgery antifor
             {
                 cable.Id,
                 cable.CableType,
+                cable.Purpose,
+                cable.Status,
                 SourceServerId = cable.SourcePort.ServerId,
                 TargetServerId = cable.TargetPort.ServerId,
                 SourcePortName = cable.SourcePort.PortName,
@@ -91,7 +93,7 @@ public sealed class RoomsController(AppDbContext dbContext, IAntiforgery antifor
             .ToListAsync(cancellationToken);
 
         var cableCountByRoom = rooms.ToDictionary(room => room.Id, _ => 0);
-        var roomBundles = new Dictionary<(Guid Source, Guid Target), TopologyBundleAccumulator>();
+        var roomBundles = new Dictionary<(Guid Source, Guid Target, string CableType, string Purpose, string Status), TopologyBundleAccumulator>();
         var rackBundles = new Dictionary<(Guid Source, Guid Target), TopologyBundleAccumulator>();
 
         foreach (var cable in cables)
@@ -121,7 +123,8 @@ public sealed class RoomsController(AppDbContext dbContext, IAntiforgery antifor
                 }
 
                 var ordered = OrderPair(sourcePlacement.RoomId, targetPlacement.RoomId);
-                AccumulateBundle(roomBundles, ordered, cable.CableType, new TopologyCableDetailDto(
+                var bundleKey = (ordered.Source, ordered.Target, cable.CableType, cable.Purpose, cable.Status);
+                AccumulateBundle(roomBundles, bundleKey, cable.CableType, new TopologyCableDetailDto(
                     cable.Id,
                     cable.CableType,
                     cable.SourceDeviceName,
@@ -162,6 +165,9 @@ public sealed class RoomsController(AppDbContext dbContext, IAntiforgery antifor
                     pair.Key.Source,
                     pair.Key.Target,
                     pair.Value.CableCount,
+                    pair.Key.CableType,
+                    pair.Key.Purpose,
+                    pair.Key.Status,
                     pair.Value.OrderedTypes,
                     pair.Value.Cables))
                 .ToList();
@@ -356,11 +362,12 @@ public sealed class RoomsController(AppDbContext dbContext, IAntiforgery antifor
     private static (Guid Source, Guid Target) OrderPair(Guid left, Guid right) =>
         left.CompareTo(right) <= 0 ? (left, right) : (right, left);
 
-    private static void AccumulateBundle(
-        Dictionary<(Guid Source, Guid Target), TopologyBundleAccumulator> bundles,
-        (Guid Source, Guid Target) key,
+    private static void AccumulateBundle<TKey>(
+        Dictionary<TKey, TopologyBundleAccumulator> bundles,
+        TKey key,
         string cableType,
         TopologyCableDetailDto detail)
+        where TKey : notnull
     {
         if (!bundles.TryGetValue(key, out var accumulator))
         {
@@ -434,6 +441,9 @@ public sealed record TopologyRoomConnectionDto(
     Guid SourceRoomId,
     Guid TargetRoomId,
     int CableCount,
+    string CableType,
+    string Purpose,
+    string Status,
     string[] Types,
     IReadOnlyList<TopologyCableDetailDto> Cables);
 

@@ -37,6 +37,9 @@ export interface TopologyRoomConnection {
   sourceRoomId: string
   targetRoomId: string
   cableCount: number
+  cableType: string
+  purpose: string
+  status: string
   types: string[]
   cables: TopologyCableDetail[]
 }
@@ -211,6 +214,9 @@ export function parseTopologyPayload(data: unknown, focusedRoomId: string | null
       sourceRoomId: record.sourceRoomId,
       targetRoomId: record.targetRoomId,
       cableCount: record.cableCount,
+      cableType: typeof record.cableType === 'string' ? record.cableType : primaryCableType(parseTypes(record.types)),
+      purpose: typeof record.purpose === 'string' ? record.purpose : '正常',
+      status: typeof record.status === 'string' ? record.status : '正常',
       types: parseTypes(record.types),
       cables: parseCables(record.cables),
     })
@@ -231,11 +237,158 @@ export function primaryCableType(types: string[]): string {
   return types[0] ?? '未知'
 }
 
+export const TOPOLOGY_PALETTE = {
+  bgPage: '#06111f',
+  bgTopology: '#071425',
+  bgPanel: '#0b1c30',
+  borderPanel: '#203750',
+  textPrimary: '#e8f1ff',
+  textSecondary: '#8fa4bd',
+  accentBlue: '#3388ff',
+  statusGreen: '#54d17a',
+  alertOrange: '#ff9f32',
+  alertRed: '#ff4d5f',
+  mgmtCyan: '#35e6ff',
+  bizPurple: '#9868ff',
+  storageOrange: '#ffad3b',
+} as const
+
+export const SHANGHAI_ROOM_ID = '64D083F6-CFFB-408E-AE45-5EA0E1914A51'
+export const SHANGHAI_ROOM_NAMES = ['上海机房', '页面验证机房'] as const
+
+export function isShanghaiRoom(room: { id: string; name: string }): boolean {
+  return room.id.toUpperCase() === SHANGHAI_ROOM_ID
+    || SHANGHAI_ROOM_NAMES.includes(room.name as typeof SHANGHAI_ROOM_NAMES[number])
+}
+
+/** Map cable purpose (+ status) to stroke color per TASK palette. */
+export function purposeLineColor(purpose: string, status?: string, cableType?: string): string {
+  if (status === '告警') return TOPOLOGY_PALETTE.alertRed
+  switch (purpose) {
+    case '管理网络':
+      return TOPOLOGY_PALETTE.mgmtCyan
+    case '业务网络':
+    case '上联':
+      return TOPOLOGY_PALETTE.bizPurple
+    case '存储网络':
+    case '存储':
+      return TOPOLOGY_PALETTE.storageOrange
+    case '正常':
+      return cableType === '网线' ? TOPOLOGY_PALETTE.mgmtCyan : TOPOLOGY_PALETTE.accentBlue
+    default:
+      return TOPOLOGY_PALETTE.accentBlue
+  }
+}
+
+export function connectionBundleId(conn: TopologyRoomConnection): string {
+  return [
+    conn.sourceRoomId,
+    conn.targetRoomId,
+    conn.cableType,
+    conn.purpose,
+    conn.status,
+  ].join('|')
+}
+
+export interface RoomGridPosition {
+  roomId: string
+  x: number
+  y: number
+}
+
+/** Data-driven grid layout for room nodes (supports >6 rooms). */
+export function buildRoomGridLayout(
+  rooms: TopologyRoom[],
+  cellW = 320,
+  cellH = 200,
+  padding = 48,
+): Map<string, { x: number; y: number }> {
+  const positions = new Map<string, { x: number; y: number }>()
+  const cols = Math.max(2, Math.ceil(Math.sqrt(rooms.length)))
+  const occupied = new Set<string>()
+
+  // First pass: place rooms with saved coordinates, mark their grid cells as occupied
+  const sorted = [...rooms].sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
+  for (const room of sorted) {
+    if (room.topologyX !== 0 || room.topologyY !== 0) {
+      positions.set(room.id, { x: room.topologyX, y: room.topologyY })
+      // Approximate which cell this position falls into to avoid overlap
+      const col = Math.round((room.topologyX - padding) / cellW)
+      const row = Math.round((room.topologyY - padding) / cellH)
+      if (col >= 0 && row >= 0) occupied.add(`${col},${row}`)
+    }
+  }
+
+  // Second pass: place zero-coordinate rooms, skipping occupied cells
+  let autoIndex = 0
+  for (const room of sorted) {
+    if (room.topologyX !== 0 || room.topologyY !== 0) continue
+    let col: number, row: number
+    do {
+      col = autoIndex % cols
+      row = Math.floor(autoIndex / cols)
+      autoIndex++
+    } while (occupied.has(`${col},${row}`))
+    positions.set(room.id, { x: padding + col * cellW, y: padding + row * cellH })
+    occupied.add(`${col},${row}`)
+  }
+
+  return positions
+}
+
+export interface Point2D {
+  x: number
+  y: number
+}
+
+export const ROOM_PLATFORM_W = 280
+export const ROOM_PLATFORM_H = 150
+export const ROOM_PLATFORM_DEPTH = 20
+
+export type RoomEdge = 'left' | 'right' | 'top'
+
+export function roomPlatformEdgePoint(
+  pos: Point2D,
+  edge: RoomEdge,
+  slotIndex = 0,
+  slotCount = 1,
+): Point2D {
+  const w = ROOM_PLATFORM_W
+  const h = ROOM_PLATFORM_H
+  const t = slotCount > 1 ? (slotIndex + 1) / (slotCount + 1) : 0.5
+  switch (edge) {
+    case 'left':
+      return { x: pos.x, y: pos.y + h * t }
+    case 'right':
+      return { x: pos.x + w, y: pos.y + h * t }
+    case 'top':
+      return { x: pos.x + w * t, y: pos.y }
+  }
+}
+
+/** Orthogonal/bezier-friendly route between room platform edges. */
+export function routeRoomCable(from: Point2D, to: Point2D): Point2D[] {
+  const midX = (from.x + to.x) / 2
+  return [from, { x: midX, y: from.y }, { x: midX, y: to.y }, to]
+}
+
+export function filterRoomConnections(
+  connections: TopologyRoomConnection[],
+  filters: { cableTypes?: string[]; purposes?: string[]; statuses?: string[] },
+): TopologyRoomConnection[] {
+  return connections.filter((conn) => {
+    if (filters.cableTypes?.length && !filters.cableTypes.includes(conn.cableType)) return false
+    if (filters.purposes?.length && !filters.purposes.includes(conn.purpose)) return false
+    if (filters.statuses?.length && !filters.statuses.includes(conn.status)) return false
+    return true
+  })
+}
+
 export const CABLE_TYPE_COLORS: Record<string, string> = {
   铜缆: '#e67e22',
-  光纤: '#f1c40f',
-  DAC: '#3498db',
-  网线: '#2ecc71',
+  光纤: TOPOLOGY_PALETTE.bizPurple,
+  DAC: TOPOLOGY_PALETTE.storageOrange,
+  网线: TOPOLOGY_PALETTE.mgmtCyan,
 }
 
 export function cableTypeColor(type: string): string {

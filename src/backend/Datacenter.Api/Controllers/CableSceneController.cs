@@ -17,24 +17,23 @@ public sealed class CableSceneController(AppDbContext dbContext) : ControllerBas
         if (!roomExists)
             return NotFound(new { error = "机房不存在" });
 
-        // 机房内所有机柜
-        var racks = await dbContext.Racks
+        // 机房内启用机柜（停用机柜不出现在设备级拓扑）
+        var rackRows = await dbContext.Racks
             .AsNoTracking()
-            .Where(r => r.RoomId == roomId)
+            .Where(r => r.RoomId == roomId && r.Status != "停用")
             .Select(r => new
             {
                 RackId = r.Id,
                 r.Code,
                 r.X,
                 r.Y,
-                Width = 60,
-                Height = r.HeightU * 20
+                r.HeightU
             })
             .ToListAsync(cancellationToken);
 
-        var rackIds = racks.Select(r => r.RackId).ToHashSet();
+        var rackIds = rackRows.Select(r => r.RackId).ToHashSet();
 
-        // 机房内全部在架设备（CR-001：不再限定网络设备）
+        // 机房内全部在架设备
         var devices = await dbContext.ServerPositions
             .AsNoTracking()
             .Where(sp => rackIds.Contains(sp.RackId) && sp.Status == "在架")
@@ -50,6 +49,31 @@ public sealed class CableSceneController(AppDbContext dbContext) : ControllerBas
             })
             .ToListAsync(cancellationToken);
 
+        var maxEndUByRack = devices
+            .GroupBy(d => d.RackId)
+            .ToDictionary(g => g.Key, g => g.Max(d => d.EndU));
+
+        const int compactUnitPx = 24;
+        const int emptyRackPx = 240;
+        const int rackWidthPx = 168;
+
+        var racks = rackRows.Select(r =>
+        {
+            var occupiedMax = maxEndUByRack.GetValueOrDefault(r.RackId, 0);
+            var height = occupiedMax > 0
+                ? Math.Max(occupiedMax * compactUnitPx + 48, 120)
+                : emptyRackPx;
+            return new
+            {
+                r.RackId,
+                r.Code,
+                r.X,
+                r.Y,
+                Width = rackWidthPx,
+                Height = height
+            };
+        }).ToList();
+
         var deviceIds = devices.Select(d => d.DeviceId).ToHashSet();
 
         // 两端设备均在当前机房内的线缆（跨机房线缆不可在本机房设备级画布渲染）
@@ -63,6 +87,7 @@ public sealed class CableSceneController(AppDbContext dbContext) : ControllerBas
                 CableId = c.Id,
                 c.CableType,
                 c.Purpose,
+                c.Status,
                 Source = new
                 {
                     DeviceId = c.SourcePort.Server.Id,

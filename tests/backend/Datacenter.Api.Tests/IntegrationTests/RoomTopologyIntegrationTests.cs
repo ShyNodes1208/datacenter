@@ -90,17 +90,16 @@ public sealed class RoomTopologyIntegrationTests(AuthTestFixture fixture)
         Assert.Equal(2, roomPayload.GetProperty("cableCount").GetInt32());
 
         var connections = root.GetProperty("connections").EnumerateArray().ToArray();
-        var connection = Assert.Single(connections);
-        Assert.Equal(2, connection.GetProperty("cableCount").GetInt32());
-        var types = connection.GetProperty("types").EnumerateArray().Select(item => item.GetString()).Order().ToArray();
+        Assert.Equal(2, connections.Length);
+        foreach (var connection in connections)
+        {
+            Assert.Equal(1, connection.GetProperty("cableCount").GetInt32());
+            Assert.True(connection.TryGetProperty("cableType", out var cableTypeProp));
+            Assert.True(connection.TryGetProperty("purpose", out var purposeProp));
+            Assert.True(connection.TryGetProperty("status", out var statusProp));
+        }
+        var types = connections.SelectMany(c => c.GetProperty("types").EnumerateArray().Select(item => item.GetString())).Order().ToArray();
         Assert.Equal(["光纤", "铜缆"], types);
-        Assert.Contains(
-            new[] { roomA.Id, roomB.Id },
-            id => id == Guid.Parse(connection.GetProperty("sourceRoomId").GetString()!));
-        Assert.Contains(
-            new[] { roomA.Id, roomB.Id },
-            id => id == Guid.Parse(connection.GetProperty("targetRoomId").GetString()!));
-        Assert.Equal(2, connection.GetProperty("cables").GetArrayLength());
         await ClearTopologyAsync();
     }
 

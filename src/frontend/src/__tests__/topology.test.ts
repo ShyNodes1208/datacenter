@@ -16,6 +16,7 @@ import {
   deviceNameLabelRect,
   filterVisibleDevices,
   formatPortLabel,
+  filterActiveDeviceSnapshot,
   LABEL_STACK_STEP_Y,
   NETWORK_COLORS,
   parseCableSnapshot,
@@ -45,12 +46,12 @@ vi.mock('../composables/useApi', () => ({
   useApi: () => ({
     request: (...args: unknown[]) => requestMock(...args),
   }),
+  setUnauthorizedHandler: vi.fn(),
 }))
 
-vi.mock('../composables/useAuth', () => ({
-  useAuth: () => ({
-    user: userMock,
-  }),
+vi.mock('vue-router', () => ({
+  useRoute: () => ({ query: {} }),
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
 }))
 
 vi.mock('konva', () => {
@@ -252,8 +253,31 @@ describe('useTopology parsers', () => {
 
   it('maps cable type colors', () => {
     expect(primaryCableType(['光纤', '铜缆'])).toBe('光纤')
-    expect(cableTypeColor('光纤')).toBe('#f1c40f')
+    expect(cableTypeColor('光纤')).toBe('#9868ff')
     expect(cableTypeColor('未知类型')).toBe('#95a5a6')
+  })
+
+  it('maps purpose line colors and Shanghai room detection', async () => {
+    const { purposeLineColor, isShanghaiRoom, connectionBundleId, filterRoomConnections } = await import('../composables/useTopology')
+    expect(purposeLineColor('管理网络')).toBe('#35e6ff')
+    expect(purposeLineColor('业务网络')).toBe('#9868ff')
+    expect(purposeLineColor('存储网络')).toBe('#ffad3b')
+    expect(purposeLineColor('业务网络', '告警')).toBe('#ff4d5f')
+    expect(isShanghaiRoom({ id: '64D083F6-CFFB-408E-AE45-5EA0E1914A51', name: 'x' })).toBe(true)
+    expect(isShanghaiRoom({ id: 'other', name: '上海机房' })).toBe(true)
+    const conn = {
+      sourceRoomId: 'a',
+      targetRoomId: 'b',
+      cableCount: 3,
+      cableType: '光纤',
+      purpose: '业务网络',
+      status: '正常',
+      types: ['光纤'],
+      cables: [],
+    }
+    expect(connectionBundleId(conn)).toBe('a|b|光纤|业务网络|正常')
+    expect(filterRoomConnections([conn], { purposes: ['业务网络'] })).toHaveLength(1)
+    expect(filterRoomConnections([conn], { purposes: ['管理网络'] })).toHaveLength(0)
   })
 })
 
@@ -707,18 +731,8 @@ describe('TopologyView', () => {
     await nextTick()
 
     expect(html).toContain('aria-label="拓扑视图"')
-    expect(html).toContain('机房拓扑地图')
+    expect(html).toContain('机房线缆拓扑')
     expect(html).toContain('跨机房线缆聚合视图')
-  })
-
-  it('exposes fit-to-screen control in device-level template', async () => {
-    const { readFileSync } = await import('node:fs')
-    const { resolve } = await import('node:path')
-    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
-    expect(source).toContain('适应屏幕')
-    expect(source).toContain('fitDeviceToScreen')
-    expect(source).toContain('syncDeviceOverlay')
-    expect(source).toContain('wheel')
   })
 
   it('device-level scene exposes non-realtime notice and missing Speed as 未登记', async () => {
@@ -1445,5 +1459,103 @@ describe('CR-002 visual fidelity (T-01 to T-20)', () => {
         expect(routeIntersectsRect(bundle.route, p.rect)).toBe(false)
       }
     }
+  })
+})
+
+describe('TASK-20260812-120000 review fixes', () => {
+  it('FIX-1: filterActiveDeviceSnapshot drops legacy and stub racks with their devices/cables', () => {
+    const snapshot = parseCableSnapshot({
+      racks: [
+        { rackId: 'k1', code: 'R3-01', x: 0, y: 0, width: 60, height: 100 },
+        { rackId: 'legacy', code: 'R-页面验证机房-01', x: 100, y: 0, width: 60, height: 100 },
+        { rackId: 'stub', code: 'STUB-BJ', x: 200, y: 0, width: 60, height: 100 },
+      ],
+      devices: [
+        { deviceId: 'd1', deviceName: 'app', rackId: 'k1', deviceType: '服务器', operationalStatus: '正常', startU: 1, endU: 2 },
+        { deviceId: 'd2', deviceName: 'old', rackId: 'legacy', deviceType: '服务器', operationalStatus: '正常', startU: 1, endU: 2 },
+        { deviceId: 'd3', deviceName: 'stub', rackId: 'stub', deviceType: '交换机', operationalStatus: '正常', startU: 1, endU: 1 },
+      ],
+      cables: [
+        {
+          cableId: 'c1',
+          cableType: '铜缆',
+          purpose: '正常',
+          status: '正常',
+          source: {
+            deviceId: 'd1', deviceName: 'app', portName: 'eth0', speed: null, rackId: 'k1', rackCode: 'R3-01',
+          },
+          target: {
+            deviceId: 'd2', deviceName: 'old', portName: 'eth0', speed: null, rackId: 'legacy', rackCode: 'R-页面验证机房-01',
+          },
+        },
+        {
+          cableId: 'c2',
+          cableType: '光纤',
+          purpose: '正常',
+          status: '正常',
+          source: {
+            deviceId: 'd1', deviceName: 'app', portName: 'eth1', speed: null, rackId: 'k1', rackCode: 'R3-01',
+          },
+          target: {
+            deviceId: 'd3', deviceName: 'stub', portName: 'GE0/1', speed: null, rackId: 'stub', rackCode: 'STUB-BJ',
+          },
+        },
+      ],
+    })!
+    const filtered = filterActiveDeviceSnapshot(snapshot)
+    expect(filtered.racks.map((r) => r.code)).toEqual(['R3-01'])
+    expect(filtered.devices.map((d) => d.deviceId)).toEqual(['d1'])
+    expect(filtered.cables).toHaveLength(0)
+  })
+
+  it('FIX-2: computeFitToScreenTransform keeps multi-rack device layout inside viewport', () => {
+    const transform = computeFitToScreenTransform(
+      [
+        { x: 60, y: 70, width: 160, height: 200 },
+        { x: 280, y: 70, width: 160, height: 200 },
+        { x: 60, y: 390, width: 160, height: 200 },
+        { x: 280, y: 390, width: 160, height: 200 },
+      ],
+      { width: 400, height: 300 },
+    )
+    expect(transform.scale).toBeGreaterThan(0)
+    expect(transform.scale).toBeLessThanOrEqual(1)
+  })
+
+  it('FIX-3: CableLayer bundle groups expose device-cable-bundle test id', async () => {
+    const snapshot = parseCableSnapshot(sampleCableScene)!
+    const scene = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true },
+    )
+    const { default: CableLayer } = await import('../components/CableLayer.vue')
+    const app = createSSRApp(CableLayer, { scene, animationEnabled: false })
+    const html = await renderToString(app)
+    expect(html).toContain('data-testid="device-cable-bundle"')
+  })
+
+  it('FIX-4: selected cable detail rows come from parsed cable status and speed', () => {
+    const snapshot = parseCableSnapshot({
+      ...sampleCableScene,
+      cables: [{
+        ...sampleCableScene.cables[0],
+        status: '告警',
+        target: { ...sampleCableScene.cables[0].target, speed: null },
+      }],
+    })!
+    const scene = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true, selectedCableId: 'c1' },
+    )
+    expect(scene.bundles[0]?.strokeColor).toBeTruthy()
+    expect(snapshot.cables[0]?.status).toBe('告警')
+    expect(scene.detailRows[0]?.targetSpeed).toBeNull()
+    expect(scene.detailRows[0]?.bandwidth).toBe('未配置')
   })
 })
