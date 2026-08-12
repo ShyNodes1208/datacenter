@@ -761,7 +761,8 @@ async function fetchCsrf(): Promise<string | null> {
 }
 
 function autoLayoutRooms(rooms: TopologyRoom[]): Map<string, { x: number; y: number }> {
-  return buildRoomGridLayout(rooms)
+  const canvasW = konvaContainer.value?.clientWidth || stageSize.value.width || 1536
+  return buildRoomGridLayout(rooms, 320, 200, 48, canvasW)
 }
 
 function strokeWidthForCount(count: number): number {

@@ -296,42 +296,36 @@ export interface RoomGridPosition {
   y: number
 }
 
-/** Data-driven grid layout for room nodes (supports >6 rooms). */
+/**
+ * Data-driven grid layout for room nodes.
+ * All rooms are placed on a fresh grid — saved topologyX/topologyY are ignored
+ * for the default layout to prevent overlap. Admin drag-to-save is still supported
+ * but the initial view always shows a clean, evenly-spaced grid.
+ *
+ * Column count adapts to room count and available canvas width (default 1536px).
+ */
 export function buildRoomGridLayout(
   rooms: TopologyRoom[],
   cellW = 320,
   cellH = 200,
   padding = 48,
+  canvasWidth = 1536,
 ): Map<string, { x: number; y: number }> {
   const positions = new Map<string, { x: number; y: number }>()
-  const cols = Math.max(2, Math.ceil(Math.sqrt(rooms.length)))
-  const occupied = new Set<string>()
+  if (rooms.length === 0) return positions
 
-  // First pass: place rooms with saved coordinates, mark their grid cells as occupied
+  // Dynamically pick columns so the grid fits the canvas without excessive scrolling.
+  // Target: 3–6 columns, preferring wider grids for fewer rooms.
+  const maxCols = Math.max(2, Math.floor((canvasWidth - padding * 2) / cellW))
+  const idealCols = Math.ceil(Math.sqrt(rooms.length * (canvasWidth / (cellH * 4))))
+  const cols = Math.min(maxCols, Math.max(2, idealCols))
+
   const sorted = [...rooms].sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
-  for (const room of sorted) {
-    if (room.topologyX !== 0 || room.topologyY !== 0) {
-      positions.set(room.id, { x: room.topologyX, y: room.topologyY })
-      // Approximate which cell this position falls into to avoid overlap
-      const col = Math.round((room.topologyX - padding) / cellW)
-      const row = Math.round((room.topologyY - padding) / cellH)
-      if (col >= 0 && row >= 0) occupied.add(`${col},${row}`)
-    }
-  }
-
-  // Second pass: place zero-coordinate rooms, skipping occupied cells
-  let autoIndex = 0
-  for (const room of sorted) {
-    if (room.topologyX !== 0 || room.topologyY !== 0) continue
-    let col: number, row: number
-    do {
-      col = autoIndex % cols
-      row = Math.floor(autoIndex / cols)
-      autoIndex++
-    } while (occupied.has(`${col},${row}`))
+  sorted.forEach((room, index) => {
+    const col = index % cols
+    const row = Math.floor(index / cols)
     positions.set(room.id, { x: padding + col * cellW, y: padding + row * cellH })
-    occupied.add(`${col},${row}`)
-  }
+  })
 
   return positions
 }
