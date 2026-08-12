@@ -360,10 +360,83 @@ export function roomPlatformEdgePoint(
   }
 }
 
-/** Orthogonal/bezier-friendly route between room platform edges. */
-export function routeRoomCable(from: Point2D, to: Point2D): Point2D[] {
-  const midX = (from.x + to.x) / 2
-  return [from, { x: midX, y: from.y }, { x: midX, y: to.y }, to]
+/**
+ * Route a cable between two room platform edge points through the corridor
+ * BETWEEN rooms, avoiding the room bodies. Routes travel in the gaps.
+ *
+ * @param from   Start point on source room edge
+ * @param to     End point on target room edge
+ * @param srcPos Top-left corner of source room platform
+ * @param tgtPos Top-left corner of target room platform
+ */
+export function routeRoomCable(
+  from: Point2D,
+  to: Point2D,
+  srcPos?: Point2D,
+  tgtPos?: Point2D,
+): Point2D[] {
+  if (!srcPos || !tgtPos) {
+    // Fallback: simple orthogonal route
+    const midX = (from.x + to.x) / 2
+    return [from, { x: midX, y: from.y }, { x: midX, y: to.y }, to]
+  }
+
+  const w = ROOM_PLATFORM_W
+  const h = ROOM_PLATFORM_H
+  const gap = 40 // corridor padding outside room edges
+
+  // Determine relative position
+  const srcRight = from.x >= srcPos.x + w / 2
+  const tgtRight = to.x >= tgtPos.x + w / 2
+  const sameRow = Math.abs(srcPos.y - tgtPos.y) < h
+  const sameCol = Math.abs(srcPos.x - tgtPos.x) < w
+
+  if (sameRow) {
+    // Horizontal neighbors — route through the vertical gap between them
+    const corridorX = srcRight
+      ? Math.min(srcPos.x + w, tgtPos.x) + gap / 2
+      : Math.max(srcPos.x, tgtPos.x + w) - gap / 2
+    const midY = (from.y + to.y) / 2
+    return [
+      from,
+      { x: corridorX, y: from.y },
+      { x: corridorX, y: midY },
+      { x: corridorX, y: to.y },
+      to,
+    ]
+  }
+
+  if (sameCol) {
+    // Vertical neighbors — route through the horizontal gap between them
+    const srcBelow = from.y >= srcPos.y + h / 2
+    const corridorY = srcBelow
+      ? Math.min(srcPos.y + h, tgtPos.y) + gap / 2
+      : Math.max(srcPos.y, tgtPos.y + h) - gap / 2
+    const midX = (from.x + to.x) / 2
+    return [
+      from,
+      { x: from.x, y: corridorY },
+      { x: midX, y: corridorY },
+      { x: to.x, y: corridorY },
+      to,
+    ]
+  }
+
+  // Diagonal: route through both horizontal and vertical corridors
+  const corridorX = srcRight
+    ? srcPos.x + w + gap
+    : srcPos.x - gap
+  const tgtCorridorY = tgtPos.y > srcPos.y
+    ? tgtPos.y - gap
+    : tgtPos.y + h + gap
+
+  return [
+    from,
+    { x: corridorX, y: from.y },
+    { x: corridorX, y: tgtCorridorY },
+    { x: to.x, y: tgtCorridorY },
+    to,
+  ]
 }
 
 export function filterRoomConnections(
