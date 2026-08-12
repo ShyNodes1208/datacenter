@@ -762,7 +762,7 @@ async function fetchCsrf(): Promise<string | null> {
 
 function autoLayoutRooms(rooms: TopologyRoom[]): Map<string, { x: number; y: number }> {
   const canvasW = konvaContainer.value?.clientWidth || stageSize.value.width || 1536
-  return buildRoomGridLayout(rooms, 320, 200, 48, canvasW)
+  return buildRoomGridLayout(rooms, 380, 260, 48, canvasW)
 }
 
 function strokeWidthForCount(count: number): number {
@@ -1556,6 +1556,49 @@ function drawScene(): void {
   if (current.mode === 'rooms') {
     const positions = autoLayoutRooms(current.rooms)
 
+    // 1. Draw rooms FIRST (bottom layer)
+    for (const room of current.rooms) {
+      const pos = positions.get(room.id) ?? { x: room.topologyX, y: room.topologyY }
+      const selected = focusedRoomId.value === room.id
+      const group = new Konva.Group({
+        x: pos.x,
+        y: pos.y,
+        draggable: isRoomAdmin.value,
+        id: `room-${room.id}`,
+      })
+
+      drawRoomPlatform(group, room, selected)
+
+      group.on('click', () => {
+        focusedRoomId.value = room.id
+        router.replace({ query: { ...route.query, roomId: room.id, view: 'rooms' } })
+        drawScene()
+      })
+      group.on('dragend', async () => {
+        const nextX = group.x()
+        const nextY = group.y()
+        room.topologyX = nextX
+        room.topologyY = nextY
+        drawScene()
+        if (!isRoomAdmin.value) return
+        const token = await fetchCsrf()
+        if (!token) {
+          error.value = saveError.value || '保存失败'
+          return
+        }
+        const result = await saveRoomPosition(room, nextX, nextY, token)
+        if (!result.ok) {
+          error.value = result.error
+        }
+      })
+      group.on('dblclick', async () => {
+        focusedRoomId.value = room.id
+        await navigateToView(room.id, 'devices')
+      })
+      layer!.add(group)
+    }
+
+    // 2. Draw cables SECOND (on top of rooms)
     const edgeSlots = new Map<string, number>()
     const slotKey = (roomId: string, edge: string) => `${roomId}|${edge}`
 
@@ -1637,47 +1680,6 @@ function drawScene(): void {
         document.body.style.cursor = 'default'
       })
       layer!.add(line)
-    }
-
-    for (const room of current.rooms) {
-      const pos = positions.get(room.id) ?? { x: room.topologyX, y: room.topologyY }
-      const selected = focusedRoomId.value === room.id
-      const group = new Konva.Group({
-        x: pos.x,
-        y: pos.y,
-        draggable: isRoomAdmin.value,
-        id: `room-${room.id}`,
-      })
-
-      drawRoomPlatform(group, room, selected)
-
-      group.on('click', () => {
-        focusedRoomId.value = room.id
-        router.replace({ query: { ...route.query, roomId: room.id, view: 'rooms' } })
-        drawScene()
-      })
-      group.on('dragend', async () => {
-        const nextX = group.x()
-        const nextY = group.y()
-        room.topologyX = nextX
-        room.topologyY = nextY
-        drawScene()
-        if (!isRoomAdmin.value) return
-        const token = await fetchCsrf()
-        if (!token) {
-          error.value = saveError.value || '保存失败'
-          return
-        }
-        const result = await saveRoomPosition(room, nextX, nextY, token)
-        if (!result.ok) {
-          error.value = result.error
-        }
-      })
-      group.on('dblclick', async () => {
-        focusedRoomId.value = room.id
-        await navigateToView(room.id, 'devices')
-      })
-      layer!.add(group)
     }
 
     stage!.on('click', (event) => {
