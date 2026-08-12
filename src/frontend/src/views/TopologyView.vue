@@ -1898,7 +1898,11 @@ watch([
   }
 })
 
+/** Guard to prevent watch-triggered syncFromRoute while navigateToView is in progress. */
+let navigating = false
+
 async function navigateToView(roomId: string | null, view: 'rooms' | 'racks' | 'devices'): Promise<void> {
+  navigating = true
   focusedRoomId.value = roomId
   selectedRoomConnectionId.value = null
   selectedCableId.value = null
@@ -1915,9 +1919,11 @@ async function navigateToView(roomId: string | null, view: 'rooms' | 'racks' | '
     // Room-level: load(null) to stay in room mode
     await load(null)
   }
+  navigating = false
 }
 
 async function syncFromRoute(): Promise<void> {
+  if (navigating) return  // navigateToView is in progress, skip
   const roomId = typeof route.query.roomId === 'string' ? route.query.roomId : null
   const view = typeof route.query.view === 'string' ? route.query.view : 'rooms'
   focusedRoomId.value = roomId
