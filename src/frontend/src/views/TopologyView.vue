@@ -1764,6 +1764,11 @@ function drawScene(): void {
         fontSize: 13,
         fill: '#f8f9fa',
       }))
+      group.on('click', () => {
+        // Restore focusedRoomId from topology data so level switcher stays enabled
+        focusedRoomId.value = current.focusedRoomId ?? focusedRoomId.value
+        drawScene()
+      })
       group.on('dblclick', async () => {
         if (!current.focusedRoomId) return
         focusedRoomId.value = current.focusedRoomId
@@ -1852,6 +1857,10 @@ function initStage(): void {
 }
 
 watch(topology, () => {
+  // Keep focusedRoomId in sync with topology data (safety for rack/device mode)
+  if (topology.value?.focusedRoomId) {
+    focusedRoomId.value = topology.value.focusedRoomId
+  }
   if (!stage || !konvaContainer.value) return
   const { width, height } = computeStageSize()
   stageSize.value = { width, height }
