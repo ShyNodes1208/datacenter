@@ -269,8 +269,11 @@ import {
 import CableLayer from '../components/CableLayer.vue'
 import {
   buildCableScene,
+  buildUniquePortLabelPlacements,
   computeFitToScreenTransform,
+  filterVisibleDevices,
   formatPortLabel,
+  portSlotKey,
   purposeDisplayName,
   type CableFocus,
   type CableInfo,
@@ -1021,14 +1024,23 @@ function drawPortAnchors(
     ? snapshot.cables.find((c) => c.cableId === selectedId) ?? null
     : null
 
+  const drawnPorts = new Set<string>()
   for (const bundle of scene.bundles) {
     if (bundle.opacity <= 0 || bundle.route.length < 2) continue
     const cable = snapshot.cables.find((c) => c.cableId === bundle.id)
+    if (!cable) continue
     const endpoints = [
-      { point: bundle.route[0], portName: cable?.source.portName, deviceId: cable?.source.deviceId },
-      { point: bundle.route[bundle.route.length - 1], portName: cable?.target.portName, deviceId: cable?.target.deviceId },
+      { point: bundle.route[0], portName: cable.source.portName, deviceId: cable.source.deviceId },
+      {
+        point: bundle.route[bundle.route.length - 1],
+        portName: cable.target.portName,
+        deviceId: cable.target.deviceId,
+      },
     ]
     for (const endpoint of endpoints) {
+      const key = portSlotKey(endpoint.deviceId, endpoint.portName)
+      if (drawnPorts.has(key)) continue
+      drawnPorts.add(key)
       const selectedEndpoint = !!selected && (
         (selected.source.deviceId === endpoint.deviceId && selected.source.portName === endpoint.portName)
         || (selected.target.deviceId === endpoint.deviceId && selected.target.portName === endpoint.portName)
@@ -1044,24 +1056,32 @@ function drawPortAnchors(
         listening: false,
         name: 'port-anchor',
       }))
-      const label = formatPortLabel(endpoint.portName)
-      const labelOffsetX = endpoint.point.x < (snapshot.racks.find((r) =>
-        cable && (r.rackId === cable.source.rackId || r.rackId === cable.target.rackId),
-      )?.x ?? 0) + DEVICE_RACK_W / 2
-        ? -8
-        : 8
-      layer.add(new Konva.Text({
-        x: labelOffsetX < 0 ? endpoint.point.x - 72 : endpoint.point.x + 8,
-        y: endpoint.point.y - 8,
-        width: 64,
-        align: labelOffsetX < 0 ? 'right' : 'left',
-        text: label,
-        fontSize: 10,
-        fill: '#C5D4E8',
-        listening: false,
-        name: 'port-label',
-      }))
     }
+  }
+
+  const canvasHeight = Math.max(
+    stageSize.value.height,
+    ...snapshot.racks.map((r) => r.y + r.height + 100),
+  )
+  const placements = buildUniquePortLabelPlacements(
+    scene.bundles,
+    snapshot.cables,
+    snapshot.devices,
+    snapshot.racks,
+    { canvasHeight },
+  )
+  for (const placement of placements) {
+    layer.add(new Konva.Text({
+      x: placement.rect.x,
+      y: placement.rect.y,
+      width: placement.rect.width,
+      align: placement.side === 'left' ? 'right' : 'left',
+      text: formatPortLabel(placement.portName),
+      fontSize: 10,
+      fill: '#C5D4E8',
+      listening: false,
+      name: 'port-label',
+    }))
   }
 }
 
@@ -1115,12 +1135,18 @@ function drawDeviceScene(): void {
     devicesByRack.set(device.rackId, list)
   }
 
+  // Empty-rack chrome uses the full device inventory; panels respect name/type filters.
+  const visibleDevices = filterVisibleDevices(snapshot.devices, {
+    deviceNameQuery: deviceNameQuery.value,
+    deviceTypes: selectedDeviceTypes.value,
+  })
+
   for (const rack of snapshot.racks) {
     const rackDevices = devicesByRack.get(rack.rackId) ?? []
     drawIsoRack(rack, rackDevices.length === 0)
   }
 
-  for (const device of snapshot.devices) {
+  for (const device of visibleDevices) {
     const rack = snapshot.racks.find((r) => r.rackId === device.rackId)
     if (!rack) continue
     const uHeight = Math.max(1, device.endU - device.startU + 1)

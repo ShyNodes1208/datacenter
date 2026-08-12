@@ -355,12 +355,15 @@ export function routeBetweenRacks(
   tgtDevice: DeviceInfo,
   srcPort?: DeviceEdgePortOptions,
   tgtPort?: DeviceEdgePortOptions,
+  exitOffsets?: { src: number; tgt: number },
 ): Point[] {
   const startEdge = srcRack.x + srcRack.width / 2 < tgtRack.x + tgtRack.width / 2 ? 'right' : 'left'
   const endEdge = srcRack.x + srcRack.width / 2 < tgtRack.x + tgtRack.width / 2 ? 'left' : 'right'
 
   const start = deviceEdgePoint(srcDevice, srcRack, startEdge, srcPort)
   const end = deviceEdgePoint(tgtDevice, tgtRack, endEdge, tgtPort)
+  const srcY = start.y + (exitOffsets?.src ?? 0) * SAME_PORT_EXIT_STEP_PX
+  const tgtY = end.y + (exitOffsets?.tgt ?? 0) * SAME_PORT_EXIT_STEP_PX
 
   // Exit into the inter-rack cable corridor, then travel vertically in the aisle.
   const exitPad = 28
@@ -374,12 +377,463 @@ export function routeBetweenRacks(
 
   return [
     start,
-    { x: exitStartX, y: start.y },
-    { x: midX, y: start.y },
-    { x: midX, y: end.y },
-    { x: exitEndX, y: end.y },
+    { x: exitStartX, y: srcY },
+    { x: midX, y: srcY },
+    { x: midX, y: tgtY },
+    { x: exitEndX, y: tgtY },
     end,
   ]
+}
+
+/** Per-index exit-channel step for same-port multi-cable fan-out (FR-VIS-08). */
+export const SAME_PORT_EXIT_STEP_PX = 6
+
+export type PortLabelSide = 'left' | 'right'
+
+/** Fixed vertical pitch for same-device / same-side port label stacks (FIX Round 3). */
+export const LABEL_STACK_STEP_Y = 14
+
+export const LABEL_DEFAULT_HEIGHT = 14
+export const LABEL_DEFAULT_WIDTH = 64
+
+export interface LabelRect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/**
+ * Place the port label outside the device panel (further outward from the port edge).
+ * Same-rack left exits → label on the left corridor side (not inside the panel/name).
+ */
+export function portLabelSide(route: Point[], endpoint: 'start' | 'end'): PortLabelSide {
+  if (route.length < 2) return 'left'
+  if (endpoint === 'start') {
+    const dx = route[1]!.x - route[0]!.x
+    return dx < 0 ? 'left' : 'right'
+  }
+  const last = route[route.length - 1]!
+  const prev = route[route.length - 2]!
+  // Cable approaches from the left → port is on the left edge → label further left.
+  return prev.x <= last.x ? 'left' : 'right'
+}
+
+/**
+ * Outward clearance so the label sits beyond the cable corridor for this endpoint
+ * (all route X on the outward side), not into fan-out / mid channels.
+ */
+export function routeLocalOutwardClearance(
+  route: Point[],
+  endpoint: 'start' | 'end',
+  side: PortLabelSide,
+  point: Point,
+): number {
+  const xs = route.map((p) => p.x)
+  const pad = 8
+  if (side === 'left') {
+    return Math.max(52, point.x - Math.min(...xs) + pad)
+  }
+  return Math.max(52, Math.max(...xs) - point.x + pad)
+}
+
+export function portLabelRect(
+  point: Point,
+  side: PortLabelSide,
+  options?: { width?: number; height?: number; gap?: number; outwardClearance?: number },
+): LabelRect {
+  const width = options?.width ?? LABEL_DEFAULT_WIDTH
+  const height = options?.height ?? LABEL_DEFAULT_HEIGHT
+  // Clear the exit channel (~40px) plus a small gap so labels sit outside both
+  // the device panel and the cable corridor.
+  const outward = options?.outwardClearance ?? options?.gap ?? 52
+  return {
+    x: side === 'left' ? point.x - outward - width : point.x + outward,
+    y: point.y - height / 2,
+    width,
+    height,
+  }
+}
+
+export function rectsOverlap(a: LabelRect, b: LabelRect, pad = 0): boolean {
+  return !(
+    a.x + a.width + pad <= b.x
+    || b.x + b.width + pad <= a.x
+    || a.y + a.height + pad <= b.y
+    || b.y + b.height + pad <= a.y
+  )
+}
+
+/** Matches TopologyView device-name text box (panel inset + name offset). */
+export function deviceNameLabelRect(device: DeviceInfo, rack: RackInfo): LabelRect {
+  const uHeight = Math.max(1, device.endU - device.startU + 1)
+  const panelH = Math.max(16, uHeight * 20 - 4)
+  const panelW = rack.width - 20
+  const groupX = rack.x + 10
+  const groupY = rack.y + (device.startU - 1) * 20 + 2
+  return {
+    x: groupX + 8,
+    y: groupY + Math.max(4, panelH / 2 - 7),
+    width: Math.max(0, panelW - 28),
+    height: 14,
+  }
+}
+
+export interface PortLabelPlacement {
+  key: string
+  deviceId: string
+  portName: string
+  point: Point
+  side: PortLabelSide
+  rect: LabelRect
+}
+
+export interface PortLabelLayoutOptions {
+  /** Inclusive canvas height in scene coordinates; labels clamp to [0, canvasHeight]. */
+  canvasHeight?: number
+}
+
+/**
+ * Deterministically stack labels that share the same device edge side with a fixed
+ * vertical step. Prefer centering on port Y, then shift as a block to clear the
+ * device-name band and stay inside the canvas. No retry/random search.
+ */
+function stackGroupVertically(
+  group: PortLabelPlacement[],
+  nameRect: LabelRect | null,
+  canvasHeight: number,
+): void {
+  if (group.length === 0) return
+  group.sort((a, b) => (
+    a.point.y - b.point.y
+    || a.portName.localeCompare(b.portName)
+    || a.key.localeCompare(b.key)
+  ))
+
+  const n = group.length
+  const span = (n - 1) * LABEL_STACK_STEP_Y
+  const meanY = group.reduce((sum, p) => sum + p.point.y, 0) / n
+  let startTop = meanY - span / 2 - LABEL_DEFAULT_HEIGHT / 2
+
+  const applyStart = (top: number) => {
+    for (let i = 0; i < n; i++) {
+      const p = group[i]!
+      p.rect = { ...p.rect, y: top + i * LABEL_STACK_STEP_Y }
+    }
+  }
+
+  applyStart(startTop)
+
+  if (nameRect) {
+    const hitsName = group.some((p) => rectsOverlap(p.rect, nameRect, 2))
+    if (hitsName) {
+      const below = nameRect.y + nameRect.height + 2
+      const above = nameRect.y - 2 - LABEL_DEFAULT_HEIGHT - span
+      // Prefer the side with more room relative to the ports' natural band.
+      const belowDist = Math.abs(below - startTop)
+      const aboveDist = Math.abs(above - startTop)
+      startTop = belowDist <= aboveDist ? below : above
+      applyStart(startTop)
+    }
+  }
+
+  const maxStart = Math.max(0, canvasHeight - LABEL_DEFAULT_HEIGHT - span)
+  startTop = Math.min(Math.max(0, startTop), maxStart)
+  applyStart(startTop)
+}
+
+/**
+ * One label per physical port (deviceId+portName). Same-device same-side labels are
+ * stacked with LABEL_STACK_STEP_Y (deterministic; no retry cap).
+ */
+export function buildUniquePortLabelPlacements(
+  bundles: Array<{ id: string; opacity: number; route: Point[] }>,
+  cables: CableInfo[],
+  devices: DeviceInfo[],
+  racks: RackInfo[],
+  options?: PortLabelLayoutOptions,
+): PortLabelPlacement[] {
+  const cableById = new Map(cables.map((c) => [c.cableId, c]))
+  const rackById = new Map(racks.map((r) => [r.rackId, r]))
+  const deviceById = new Map(devices.map((d) => [d.deviceId, d]))
+  const seen = new Map<string, PortLabelPlacement>()
+  const clearanceByKey = new Map<string, number>()
+
+  for (const bundle of bundles) {
+    if (bundle.opacity <= 0 || bundle.route.length < 2) continue
+    const cable = cableById.get(bundle.id)
+    if (!cable) continue
+    const endpoints: Array<{
+      kind: 'start' | 'end'
+      point: Point
+      deviceId: string
+      portName: string
+    }> = [
+      {
+        kind: 'start',
+        point: bundle.route[0]!,
+        deviceId: cable.source.deviceId,
+        portName: cable.source.portName,
+      },
+      {
+        kind: 'end',
+        point: bundle.route[bundle.route.length - 1]!,
+        deviceId: cable.target.deviceId,
+        portName: cable.target.portName,
+      },
+    ]
+    for (const ep of endpoints) {
+      const key = portSlotKey(ep.deviceId, ep.portName)
+      const side = portLabelSide(bundle.route, ep.kind)
+      const clearance = routeLocalOutwardClearance(bundle.route, ep.kind, side, ep.point)
+      const prevClearance = clearanceByKey.get(key) ?? 0
+      clearanceByKey.set(key, Math.max(prevClearance, clearance))
+
+      const existing = seen.get(key)
+      if (existing) {
+        existing.rect = portLabelRect(existing.point, existing.side, {
+          outwardClearance: clearanceByKey.get(key),
+        })
+        continue
+      }
+      seen.set(key, {
+        key,
+        deviceId: ep.deviceId,
+        portName: ep.portName,
+        point: ep.point,
+        side,
+        rect: portLabelRect(ep.point, side, { outwardClearance: clearance }),
+      })
+    }
+  }
+
+  const placements = [...seen.values()]
+  const inferredHeight = Math.max(
+    options?.canvasHeight ?? 0,
+    ...racks.map((r) => r.y + r.height + 100),
+    LABEL_DEFAULT_HEIGHT,
+  )
+
+  // Assign each label an X column per device, placed outside that device's
+  // cable corridor extent so different devices form independent stacks.
+  // We collect the furthest route X for each device+side from the bundles.
+  const deviceRouteMinX = new Map<string, number>()
+  const deviceRouteMaxX = new Map<string, number>()
+  const cableForBundle = new Map(bundles.map((b) => [b.id, cableById.get(b.id)].filter(Boolean) as [string, CableInfo]))
+  for (const bundle of bundles) {
+    if (bundle.opacity <= 0 || bundle.route.length < 2) continue
+    const cable = cableForBundle.get(bundle.id)
+    if (!cable) continue
+    for (const ep of [
+      { deviceId: cable.source.deviceId, kind: 'start' as const },
+      { deviceId: cable.target.deviceId, kind: 'end' as const },
+    ]) {
+      const side = portLabelSide(bundle.route, ep.kind)
+      const routeXs = bundle.route.map((p) => p.x)
+      const routeMin = Math.min(...routeXs)
+      const routeMax = Math.max(...routeXs)
+      const dk = `${ep.deviceId}|${side}`
+      deviceRouteMinX.set(dk, Math.min(deviceRouteMinX.get(dk) ?? Infinity, routeMin))
+      deviceRouteMaxX.set(dk, Math.max(deviceRouteMaxX.get(dk) ?? -Infinity, routeMax))
+    }
+  }
+  const ROUTE_GAP = 8
+  for (const p of placements) {
+    const dk = `${p.deviceId}|${p.side}`
+    if (p.side === 'left') {
+      const minX = deviceRouteMinX.get(dk)
+      if (minX !== undefined && minX < Infinity) {
+        p.rect.x = minX - ROUTE_GAP - p.rect.width
+      }
+    } else {
+      const maxX = deviceRouteMaxX.get(dk)
+      if (maxX !== undefined && maxX > -Infinity) {
+        p.rect.x = maxX + ROUTE_GAP
+      }
+    }
+  }
+
+  // Primary: equal stack per device edge side.
+  const byDeviceSide = new Map<string, PortLabelPlacement[]>()
+  for (const p of placements) {
+    const gkey = `${p.deviceId}|${p.side}`
+    const list = byDeviceSide.get(gkey) ?? []
+    list.push(p)
+    byDeviceSide.set(gkey, list)
+  }
+  for (const [gkey, group] of byDeviceSide) {
+    const deviceId = gkey.slice(0, gkey.lastIndexOf('|'))
+    const device = deviceById.get(deviceId)
+    const rack = device ? rackById.get(device.rackId) : undefined
+    const nameRect = device && rack ? deviceNameLabelRect(device, rack) : null
+    stackGroupVertically(group, nameRect, inferredHeight)
+  }
+
+  // Secondary: same-side labels that share an X column (typical same-rack corridor)
+  // must remain non-overlapping after per-device stacks.
+  const bySideColumn = new Map<string, PortLabelPlacement[]>()
+  for (const p of placements) {
+    const col = Math.round(p.rect.x / 8)
+    const ckey = `${p.side}|${col}`
+    const list = bySideColumn.get(ckey) ?? []
+    list.push(p)
+    bySideColumn.set(ckey, list)
+  }
+  for (const [, group] of bySideColumn) {
+    if (group.length < 2) continue
+    const stillOverlap = group.some((a, i) =>
+      group.some((b, j) => i < j && rectsOverlap(a.rect, b.rect, 0)),
+    )
+    if (!stillOverlap) continue
+    stackGroupVertically(group, null, inferredHeight)
+  }
+
+  // Tertiary: push labels outward if ANY visible route crosses them, then
+  // re-stack the affected column.  A label column keyed to device A's route
+  // extents can still be crossed by device B's longer route.
+  const allRoutes = bundles
+    .filter((b) => b.opacity > 0 && b.route.length >= 2)
+    .map((b) => b.route)
+  const COL_PUSH_STEP = 8
+  const MAX_PUSH_PASSES = 20
+  for (let pass = 0; pass < MAX_PUSH_PASSES; pass++) {
+    let pushed = false
+    for (const p of placements) {
+      const hit = allRoutes.some((r) => routeIntersectsRect(r, p.rect))
+      if (!hit) continue
+      pushed = true
+      if (p.side === 'left') {
+        p.rect.x -= COL_PUSH_STEP
+      } else {
+        p.rect.x += COL_PUSH_STEP
+      }
+    }
+    if (!pushed) break
+    // Re-stack any columns that drifted after the push.
+    const cols = new Map<string, PortLabelPlacement[]>()
+    for (const p of placements) {
+      const col = Math.round(p.rect.x / 8)
+      const ck = `${p.side}|${col}`
+      const list = cols.get(ck) ?? []
+      list.push(p)
+      cols.set(ck, list)
+    }
+    for (const [, group] of cols) {
+      if (group.length < 2) continue
+      const overlap = group.some((a, i) =>
+        group.some((b, j) => i < j && rectsOverlap(a.rect, b.rect, 0)),
+      )
+      if (!overlap) continue
+      stackGroupVertically(group, null, inferredHeight)
+    }
+  }
+
+  for (const p of placements) {
+    const maxY = Math.max(0, inferredHeight - p.rect.height)
+    p.rect = {
+      ...p.rect,
+      y: Math.min(Math.max(0, p.rect.y), maxY),
+    }
+  }
+
+  return placements
+}
+
+function orient(a: Point, b: Point, c: Point): number {
+  return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+}
+
+function onSegment(a: Point, b: Point, c: Point): boolean {
+  return (
+    Math.min(a.x, b.x) <= c.x + 1e-9
+    && c.x <= Math.max(a.x, b.x) + 1e-9
+    && Math.min(a.y, b.y) <= c.y + 1e-9
+    && c.y <= Math.max(a.y, b.y) + 1e-9
+  )
+}
+
+function segmentsIntersect(a1: Point, a2: Point, b1: Point, b2: Point): boolean {
+  const o1 = orient(a1, a2, b1)
+  const o2 = orient(a1, a2, b2)
+  const o3 = orient(b1, b2, a1)
+  const o4 = orient(b1, b2, a2)
+  if (o1 === 0 && onSegment(a1, a2, b1)) return true
+  if (o2 === 0 && onSegment(a1, a2, b2)) return true
+  if (o3 === 0 && onSegment(b1, b2, a1)) return true
+  if (o4 === 0 && onSegment(b1, b2, a2)) return true
+  return (o1 > 0) !== (o2 > 0) && (o3 > 0) !== (o4 > 0)
+}
+
+/** True when any route segment crosses or touches the label rectangle. */
+export function routeIntersectsRect(route: Point[], rect: LabelRect): boolean {
+  if (route.length < 2) return false
+  const corners: Point[] = [
+    { x: rect.x, y: rect.y },
+    { x: rect.x + rect.width, y: rect.y },
+    { x: rect.x + rect.width, y: rect.y + rect.height },
+    { x: rect.x, y: rect.y + rect.height },
+  ]
+  const edges: Array<[Point, Point]> = [
+    [corners[0]!, corners[1]!],
+    [corners[1]!, corners[2]!],
+    [corners[2]!, corners[3]!],
+    [corners[3]!, corners[0]!],
+  ]
+  for (let i = 1; i < route.length; i++) {
+    const a = route[i - 1]!
+    const b = route[i]!
+    const midInside =
+      a.x >= rect.x && a.x <= rect.x + rect.width && a.y >= rect.y && a.y <= rect.y + rect.height
+    const endInside =
+      b.x >= rect.x && b.x <= rect.x + rect.width && b.y >= rect.y && b.y <= rect.y + rect.height
+    if (midInside || endInside) return true
+    for (const [e1, e2] of edges) {
+      if (segmentsIntersect(a, b, e1, e2)) return true
+    }
+  }
+  return false
+}
+
+/**
+ * Devices matching name/type filters. Empty filters → all devices.
+ * Used by device-level drawing so node visibility tracks the filter bar (FIX-2).
+ */
+export function filterVisibleDevices(
+  devices: DeviceInfo[],
+  filters: Pick<CableFilters, 'deviceNameQuery' | 'deviceTypes'>,
+): DeviceInfo[] {
+  const nameQuery = filters.deviceNameQuery?.trim().toLowerCase() ?? ''
+  const types = filters.deviceTypes ?? []
+  if (!nameQuery && types.length === 0) return devices
+  return devices.filter((d) => {
+    const nameOk = !nameQuery || d.deviceName.toLowerCase().includes(nameQuery)
+    const typeOk = types.length === 0 || types.includes(d.deviceType)
+    return nameOk && typeOk
+  })
+}
+
+/**
+ * Centered exit-offset index per cable at each endpoint port.
+ * Key: `${cableId}|${portSlotKey(deviceId, portName)}` → index (…,-1,0,1,…).
+ */
+export function buildSamePortExitOffsets(cables: CableInfo[]): Map<string, number> {
+  const groups = new Map<string, string[]>()
+  for (const cable of cables) {
+    for (const endpoint of [cable.source, cable.target]) {
+      const key = portSlotKey(endpoint.deviceId, endpoint.portName)
+      const list = groups.get(key) ?? []
+      if (!list.includes(cable.cableId)) list.push(cable.cableId)
+      groups.set(key, list)
+    }
+  }
+  const offsets = new Map<string, number>()
+  for (const [portKey, cableIds] of groups) {
+    cableIds.forEach((cableId, index) => {
+      const centered = index - (cableIds.length - 1) / 2
+      offsets.set(`${cableId}|${portKey}`, centered)
+    })
+  }
+  return offsets
 }
 
 export function sameRackRoute(
@@ -388,12 +842,27 @@ export function sameRackRoute(
   tgt: DeviceInfo,
   srcPort?: DeviceEdgePortOptions,
   tgtPort?: DeviceEdgePortOptions,
+  exitOffsets?: { src: number; tgt: number },
 ): Point[] {
   const start = deviceEdgePoint(src, rack, 'left', srcPort)
   const end = deviceEdgePoint(tgt, rack, 'left', tgtPort)
-  // Stay in the left cable channel; avoid crossing the rack name band above.
-  const midX = rack.x - 40
-  return [start, { x: midX, y: start.y }, { x: midX, y: end.y }, end]
+  // Stay in the left cable channel; fan same-port cables by exit-channel X offset.
+  const srcOff = (exitOffsets?.src ?? 0) * SAME_PORT_EXIT_STEP_PX
+  const tgtOff = (exitOffsets?.tgt ?? 0) * SAME_PORT_EXIT_STEP_PX
+  const midXSrc = rack.x - 40 - srcOff
+  const midXTgt = rack.x - 40 - tgtOff
+  if (Math.abs(midXSrc - midXTgt) < 0.5) {
+    return [start, { x: midXSrc, y: start.y }, { x: midXSrc, y: end.y }, end]
+  }
+  const midY = (start.y + end.y) / 2
+  return [
+    start,
+    { x: midXSrc, y: start.y },
+    { x: midXSrc, y: midY },
+    { x: midXTgt, y: midY },
+    { x: midXTgt, y: end.y },
+    end,
+  ]
 }
 
 function bundleKey(c: CableInfo): string {
@@ -417,6 +886,7 @@ function routeForCable(
   rackMap: Map<string, RackInfo>,
   deviceMap: Map<string, DeviceInfo>,
   portSlots: PortSlotMap = new Map(),
+  exitOffsets: Map<string, number> = new Map(),
 ): Point[] {
   const srcRackId = cable.source.rackId ?? '__none__'
   const tgtRackId = cable.target.rackId ?? '__none__'
@@ -428,11 +898,17 @@ function routeForCable(
   const tgtDevice = resolveDevice(deviceMap, cable.target.deviceId, tgtRackId, cable.target.deviceName)
   const srcPort = edgePortOptions(cable.source.deviceId, cable.source.portName, portSlots)
   const tgtPort = edgePortOptions(cable.target.deviceId, cable.target.portName, portSlots)
+  const srcKey = `${cable.cableId}|${portSlotKey(cable.source.deviceId, cable.source.portName)}`
+  const tgtKey = `${cable.cableId}|${portSlotKey(cable.target.deviceId, cable.target.portName)}`
+  const offsets = {
+    src: exitOffsets.get(srcKey) ?? 0,
+    tgt: exitOffsets.get(tgtKey) ?? 0,
+  }
 
   if (srcRackId === tgtRackId) {
-    return sameRackRoute(srcRack, srcDevice, tgtDevice, srcPort, tgtPort)
+    return sameRackRoute(srcRack, srcDevice, tgtDevice, srcPort, tgtPort, offsets)
   }
-  return routeBetweenRacks(srcRack, srcDevice, tgtRack, tgtDevice, srcPort, tgtPort)
+  return routeBetweenRacks(srcRack, srcDevice, tgtRack, tgtDevice, srcPort, tgtPort, offsets)
 }
 
 function strokeForCable(
@@ -456,6 +932,7 @@ export function aggregateCables(
 ): CableBundle[] {
   const deviceMap = new Map(devices.map(d => [d.deviceId, d]))
   const portSlots = buildPortSlotMap(cables)
+  const exitOffsets = buildSamePortExitOffsets(cables)
   const groups = new Map<string, CableInfo[]>()
 
   for (const c of cables) {
@@ -473,7 +950,7 @@ export function aggregateCables(
     const cableType = parts[3] ?? ''
 
     const sample = group[0]
-    const route = sample ? routeForCable(sample, rackMap, deviceMap, portSlots) : []
+    const route = sample ? routeForCable(sample, rackMap, deviceMap, portSlots, exitOffsets) : []
 
     bundles.push({
       id: key,
@@ -500,6 +977,7 @@ function cableToBundle(
   rackMap: Map<string, RackInfo>,
   deviceMap: Map<string, DeviceInfo>,
   portSlots: PortSlotMap,
+  exitOffsets: Map<string, number> = new Map(),
   overrides: Partial<CableBundle> = {},
 ): CableBundle {
   return {
@@ -510,7 +988,7 @@ function cableToBundle(
     count: 1,
     sourceRackId: c.source.rackId ?? '__none__',
     targetRackId: c.target.rackId ?? '__none__',
-    route: routeForCable(c, rackMap, deviceMap, portSlots),
+    route: routeForCable(c, rackMap, deviceMap, portSlots, exitOffsets),
     opacity: 1,
     highlighted: false,
     animated: false,
@@ -634,20 +1112,19 @@ export function buildCableScene(
   if (filters.cableTypes.length > 0) {
     visibleCables = visibleCables.filter(c => filters.cableTypes.includes(c.cableType))
   }
-  const deviceNameQuery = filters.deviceNameQuery?.trim().toLowerCase() ?? ''
-  if (deviceNameQuery) {
-    visibleCables = visibleCables.filter(c =>
-      c.source.deviceName.toLowerCase().includes(deviceNameQuery)
-      || c.target.deviceName.toLowerCase().includes(deviceNameQuery),
+  // Device name/type: keep a cable only when BOTH endpoints stay visible (no dangling ends).
+  const hasDeviceNameFilter = !!(filters.deviceNameQuery?.trim())
+  const hasDeviceTypeFilter = !!(filters.deviceTypes && filters.deviceTypes.length > 0)
+  if (hasDeviceNameFilter || hasDeviceTypeFilter) {
+    const visibleIds = new Set(
+      filterVisibleDevices(snapshot.devices, {
+        deviceNameQuery: filters.deviceNameQuery,
+        deviceTypes: filters.deviceTypes,
+      }).map((d) => d.deviceId),
     )
-  }
-  if (filters.deviceTypes && filters.deviceTypes.length > 0) {
-    const types = new Set(filters.deviceTypes)
-    visibleCables = visibleCables.filter((c) => {
-      const srcType = deviceMap.get(c.source.deviceId)?.deviceType ?? ''
-      const tgtType = deviceMap.get(c.target.deviceId)?.deviceType ?? ''
-      return types.has(srcType) || types.has(tgtType)
-    })
+    visibleCables = visibleCables.filter(
+      (c) => visibleIds.has(c.source.deviceId) && visibleIds.has(c.target.deviceId),
+    )
   }
   if (filters.lineStatuses && filters.lineStatuses.length > 0) {
     visibleCables = visibleCables.filter((c) => {
@@ -673,9 +1150,10 @@ export function buildCableScene(
 
   const resolvedRoomId = focus.level === 'room' ? focus.roomId : roomId
   const portSlots = buildPortSlotMap(visibleCables)
+  const exitOffsets = buildSamePortExitOffsets(visibleCables)
 
   if (options?.expandToCables) {
-    let bundles = visibleCables.map(c => cableToBundle(c, rackMap, deviceMap, portSlots))
+    let bundles = visibleCables.map(c => cableToBundle(c, rackMap, deviceMap, portSlots, exitOffsets))
     const selectedCableId = options.selectedCableId ?? null
 
     if (selectedCableId) {
@@ -734,7 +1212,11 @@ export function buildCableScene(
         .filter(b => !bundleContainsDevice(b.id, visibleCables, focus.deviceId))
         .map(b => ({ ...b, opacity: 0.15, highlighted: false, animated: false }))
       const deviceBundles = deviceCables.map(c =>
-        cableToBundle(c, rackMap, deviceMap, portSlots, { opacity: 1, highlighted: true, animated: false }),
+        cableToBundle(c, rackMap, deviceMap, portSlots, exitOffsets, {
+          opacity: 1,
+          highlighted: true,
+          animated: false,
+        }),
       )
       bundles = [...unrelatedBundles, ...deviceBundles]
       break
@@ -752,7 +1234,7 @@ export function buildCableScene(
           cableId: portCable.cableId,
           sourceLabel: `${portCable.source.deviceName} / ${formatPortLabel(portCable.source.portName)}`,
           targetLabel: `${portCable.target.deviceName} / ${formatPortLabel(portCable.target.portName)}`,
-          route: routeForCable(portCable, rackMap, deviceMap, portSlots),
+          route: routeForCable(portCable, rackMap, deviceMap, portSlots, exitOffsets),
         }
       }
       for (const b of bundles) {

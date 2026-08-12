@@ -10,13 +10,24 @@ import {
 import {
   buildCableScene,
   buildPortSlotMap,
+  buildSamePortExitOffsets,
+  buildUniquePortLabelPlacements,
   deviceEdgePoint,
+  deviceNameLabelRect,
+  filterVisibleDevices,
   formatPortLabel,
+  LABEL_STACK_STEP_Y,
   NETWORK_COLORS,
   parseCableSnapshot,
+  portLabelRect,
+  portLabelSide,
+  portSlotKey,
   purposeDisplayName,
   purposeNetworkColor,
   resolveCableStrokeColor,
+  rectsOverlap,
+  routeIntersectsRect,
+  sameRackRoute,
   staticArrowPositions,
   UNSELECTED_OPACITY,
   ANIMATION_PERIOD_MS,
@@ -1068,5 +1079,371 @@ describe('CR-002 visual fidelity (T-01 to T-20)', () => {
       { expandToCables: true, selectedCableId: 'c1' },
     )
     expect(byName.bundles).toHaveLength(0)
+  })
+
+  it('T-21: device name/type filters hide non-matching device nodes', () => {
+    const snapshot = parseCableSnapshot(sampleCableScene)!
+    const byName = filterVisibleDevices(snapshot.devices, { deviceNameQuery: 'app' })
+    expect(byName.map((d) => d.deviceId)).toEqual(['d1'])
+    const byType = filterVisibleDevices(snapshot.devices, { deviceTypes: ['交换机'] })
+    expect(byType.map((d) => d.deviceId)).toEqual(['d2'])
+    const both = filterVisibleDevices(snapshot.devices, {
+      deviceNameQuery: 'sw',
+      deviceTypes: ['服务器'],
+    })
+    expect(both).toHaveLength(0)
+    const unfiltered = filterVisibleDevices(snapshot.devices, {})
+    expect(unfiltered).toHaveLength(2)
+  })
+
+  it('T-22: same-port cables get distinct exit offsets; labels outside panels clear routes', () => {
+    const snapshot = parseCableSnapshot({
+      ...sampleCableScene,
+      cables: [
+        sampleCableScene.cables[0],
+        {
+          cableId: 'c2',
+          cableType: '光纤',
+          purpose: '正常',
+          source: {
+            deviceId: 'd1',
+            deviceName: 'app-01',
+            portName: 'eth0',
+            speed: null,
+            rackId: 'k1',
+            rackCode: 'R1',
+          },
+          target: {
+            deviceId: 'd2',
+            deviceName: 'sw-01',
+            portName: 'GE0/1',
+            speed: null,
+            rackId: 'k1',
+            rackCode: 'R1',
+          },
+        },
+      ],
+    })!
+    const offsets = buildSamePortExitOffsets(snapshot.cables)
+    const srcKey1 = `c1|${portSlotKey('d1', 'eth0')}`
+    const srcKey2 = `c2|${portSlotKey('d1', 'eth0')}`
+    expect(offsets.get(srcKey1)).not.toBe(offsets.get(srcKey2))
+
+    const scene = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true },
+    )
+    const routes = scene.bundles.map((b) => b.route)
+    expect(routes[0]?.[1]?.x).not.toBe(routes[1]?.[1]?.x)
+
+    for (const bundle of scene.bundles) {
+      const startSide = portLabelSide(bundle.route, 'start')
+      const endSide = portLabelSide(bundle.route, 'end')
+      expect(startSide).toBe('left')
+      expect(endSide).toBe('left')
+      const startRect = portLabelRect(bundle.route[0]!, startSide)
+      const endRect = portLabelRect(bundle.route[bundle.route.length - 1]!, endSide)
+      expect(routeIntersectsRect(bundle.route, startRect)).toBe(false)
+      expect(routeIntersectsRect(bundle.route, endRect)).toBe(false)
+    }
+
+    const rack = snapshot.racks[0]!
+    const src = snapshot.devices[0]!
+    const tgt = snapshot.devices[1]!
+    const overlapping = sameRackRoute(rack, src, tgt)
+    // A label only 8px outside the port sits inside the left cable channel.
+    const badLabel = portLabelRect(overlapping[0]!, 'left', { outwardClearance: 8 })
+    expect(routeIntersectsRect(overlapping, badLabel)).toBe(true)
+  })
+
+  it('T-23: port labels dedupe by physical port and do not overlap names or each other', () => {
+    const snapshot = parseCableSnapshot({
+      ...sampleCableScene,
+      racks: [{ rackId: 'k1', code: 'R1', x: 100, y: 0, width: 168, height: 800 }],
+      cables: [
+        sampleCableScene.cables[0],
+        {
+          cableId: 'c2',
+          cableType: '光纤',
+          purpose: '正常',
+          source: {
+            deviceId: 'd1',
+            deviceName: 'app-01',
+            portName: 'eth0',
+            speed: null,
+            rackId: 'k1',
+            rackCode: 'R1',
+          },
+          target: {
+            deviceId: 'd2',
+            deviceName: 'sw-01',
+            portName: 'GE0/1',
+            speed: null,
+            rackId: 'k1',
+            rackCode: 'R1',
+          },
+        },
+      ],
+    })!
+    const scene = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true },
+    )
+    expect(scene.bundles).toHaveLength(2)
+    const placements = buildUniquePortLabelPlacements(
+      scene.bundles,
+      snapshot.cables,
+      snapshot.devices,
+      snapshot.racks,
+      { canvasHeight: 900 },
+    )
+    // Two cables share eth0 and GE0/1 → still one label per physical port.
+    expect(placements).toHaveLength(2)
+    expect(placements.map((p) => p.key).sort()).toEqual(['d1|eth0', 'd2|GE0/1'])
+
+    const nameRects = snapshot.devices.map((d) =>
+      deviceNameLabelRect(d, snapshot.racks[0]!),
+    )
+    for (const placement of placements) {
+      for (const nameRect of nameRects) {
+        expect(rectsOverlap(placement.rect, nameRect)).toBe(false)
+      }
+    }
+    for (let i = 0; i < placements.length; i++) {
+      for (let j = i + 1; j < placements.length; j++) {
+        expect(rectsOverlap(placements[i]!.rect, placements[j]!.rect)).toBe(false)
+      }
+    }
+  })
+
+  it('T-25: dense same-side labels stack deterministically inside canvas without overlaps or route hits', () => {
+    const portCount = 56
+    const devices = [
+      {
+        deviceId: 'sw-dense',
+        deviceName: 'sw-dense',
+        rackId: 'k1',
+        deviceType: '交换机',
+        operationalStatus: '正常',
+        startU: 10,
+        endU: 11,
+      },
+      {
+        deviceId: 'srv-dense',
+        deviceName: 'srv-dense',
+        rackId: 'k1',
+        deviceType: '服务器',
+        operationalStatus: '正常',
+        startU: 1,
+        endU: 2,
+      },
+    ]
+    // Many unique switch ports → one shared server port (matches dense same-rack left labels).
+    const cables = Array.from({ length: portCount }, (_, i) => ({
+      cableId: `cd-${i}`,
+      cableType: '光纤',
+      purpose: '正常',
+      source: {
+        deviceId: 'sw-dense',
+        deviceName: 'sw-dense',
+        portName: `GE0/${i}`,
+        speed: null,
+        rackId: 'k1',
+        rackCode: 'R1',
+      },
+      target: {
+        deviceId: 'srv-dense',
+        deviceName: 'srv-dense',
+        portName: 'eth0',
+        speed: null,
+        rackId: 'k1',
+        rackCode: 'R1',
+      },
+    }))
+    const snapshot = parseCableSnapshot({
+      ...sampleCableScene,
+      racks: [{ rackId: 'k1', code: 'R1', x: 160, y: 40, width: 168, height: 900 }],
+      devices,
+      cables,
+    })!
+    const canvasHeight = 960
+    const scene = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true },
+    )
+    const placements = buildUniquePortLabelPlacements(
+      scene.bundles,
+      snapshot.cables,
+      snapshot.devices,
+      snapshot.racks,
+      { canvasHeight },
+    )
+    const swLeft = placements.filter((p) => p.deviceId === 'sw-dense' && p.side === 'left')
+    expect(swLeft.length).toBeGreaterThanOrEqual(50)
+
+    const sortedY = [...swLeft].map((p) => p.rect.y).sort((a, b) => a - b)
+    for (let i = 1; i < sortedY.length; i++) {
+      expect(sortedY[i]! - sortedY[i - 1]!).toBe(LABEL_STACK_STEP_Y)
+    }
+
+    for (const p of placements) {
+      expect(p.rect.y).toBeGreaterThanOrEqual(0)
+      expect(p.rect.y + p.rect.height).toBeLessThanOrEqual(canvasHeight)
+    }
+    for (let i = 0; i < placements.length; i++) {
+      for (let j = i + 1; j < placements.length; j++) {
+        expect(rectsOverlap(placements[i]!.rect, placements[j]!.rect)).toBe(false)
+      }
+    }
+    for (const bundle of scene.bundles) {
+      for (const p of placements) {
+        expect(routeIntersectsRect(bundle.route, p.rect)).toBe(false)
+      }
+    }
+
+    const again = buildUniquePortLabelPlacements(
+      scene.bundles,
+      snapshot.cables,
+      snapshot.devices,
+      snapshot.racks,
+      { canvasHeight },
+    )
+    expect(again.map((p) => `${p.key}:${p.rect.x},${p.rect.y}`)).toEqual(
+      placements.map((p) => `${p.key}:${p.rect.x},${p.rect.y}`),
+    )
+  })
+
+  it('T-24: visible cables never reference hidden device endpoints', () => {
+    const snapshot = parseCableSnapshot(sampleCableScene)!
+    const byName = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [], deviceNameQuery: 'app' },
+      'r1',
+      { expandToCables: true },
+    )
+    const visibleDevices = filterVisibleDevices(snapshot.devices, { deviceNameQuery: 'app' })
+    const visibleIds = new Set(visibleDevices.map((d) => d.deviceId))
+    // app↔sw: only app matches → cable hidden (no dangling switch endpoint).
+    expect(byName.bundles).toHaveLength(0)
+    expect(visibleIds.has('d1')).toBe(true)
+    expect(visibleIds.has('d2')).toBe(false)
+
+    const byType = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [], deviceTypes: ['服务器'] },
+      'r1',
+      { expandToCables: true },
+    )
+    expect(byType.bundles).toHaveLength(0)
+
+    const bothEnds = parseCableSnapshot({
+      ...sampleCableScene,
+      devices: [
+        ...sampleCableScene.devices,
+        {
+          deviceId: 'd3',
+          deviceName: 'app-02',
+          rackId: 'k1',
+          deviceType: '服务器',
+          operationalStatus: '正常',
+          startU: 10,
+          endU: 11,
+        },
+      ],
+      cables: [
+        {
+          cableId: 'c-srv',
+          cableType: '铜缆',
+          purpose: '正常',
+          source: {
+            deviceId: 'd1',
+            deviceName: 'app-01',
+            portName: 'eth1',
+            speed: null,
+            rackId: 'k1',
+            rackCode: 'R1',
+          },
+          target: {
+            deviceId: 'd3',
+            deviceName: 'app-02',
+            portName: 'eth1',
+            speed: null,
+            rackId: 'k1',
+            rackCode: 'R1',
+          },
+        },
+      ],
+    })!
+    const serverOnly = buildCableScene(
+      bothEnds,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [], deviceTypes: ['服务器'] },
+      'r1',
+      { expandToCables: true },
+    )
+    const serverIds = new Set(
+      filterVisibleDevices(bothEnds.devices, { deviceTypes: ['服务器'] }).map((d) => d.deviceId),
+    )
+    expect(serverOnly.bundles).toHaveLength(1)
+    for (const bundle of serverOnly.bundles) {
+      const cable = bothEnds.cables.find((c) => c.cableId === bundle.id)!
+      expect(serverIds.has(cable.source.deviceId)).toBe(true)
+      expect(serverIds.has(cable.target.deviceId)).toBe(true)
+    }
+  })
+
+  it('T-26: cross-device route that passes through another label column is avoided', () => {
+    const cableId = 'cross-cable'
+    const snapshot = parseCableSnapshot({
+      ...sampleCableScene,
+      racks: [
+        { rackId: 'kA', code: 'A1', x: 40, y: 40, width: 120, height: 200 },
+        { rackId: 'kB', code: 'B1', x: 360, y: 40, width: 120, height: 200 },
+      ],
+      devices: [
+        { deviceId: 'dA', deviceName: 'dev-A', deviceType: '服务器', rackId: 'kA', startU: 1, endU: 4 },
+        { deviceId: 'dB', deviceName: 'dev-B', deviceType: '服务器', rackId: 'kB', startU: 1, endU: 4 },
+      ],
+      cables: [
+        {
+          cableId,
+          cableType: '光纤',
+          purpose: '正常',
+          source: { deviceId: 'dA', deviceName: 'dev-A', portName: 'GE0/0', speed: null, rackId: 'kA', rackCode: 'A1' },
+          target: { deviceId: 'dB', deviceName: 'dev-B', portName: 'GE0/0', speed: null, rackId: 'kB', rackCode: 'B1' },
+        },
+      ],
+    })!
+    const scene = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true },
+    )
+    const placements = buildUniquePortLabelPlacements(
+      scene.bundles,
+      snapshot.cables,
+      snapshot.devices,
+      snapshot.racks,
+      { canvasHeight: 960 },
+    )
+    expect(placements.length).toBeGreaterThanOrEqual(2)
+    for (const bundle of scene.bundles) {
+      for (const p of placements) {
+        expect(routeIntersectsRect(bundle.route, p.rect)).toBe(false)
+      }
+    }
   })
 })
