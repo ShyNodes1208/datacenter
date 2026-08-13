@@ -33,8 +33,8 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 | TASK-20260812-120000 | scripts/screenshot-topology.ts | Cursor | 2026-08-12 +08:00 | RELEASED | Codex 复审 PASS（2026-08-12 会话，f554bff 实现审核通过，2.5D 全链路已推送） | 2026-08-13 (Claude，释放过期锁：复审已于 2026-08-12 PASS) |
 | TASK-20260813-085046 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-13 +08:00 | RELEASED | Codex Reviewer 审核 PASS（2026-08-13，提交 875dc11 已推送） | 2026-08-13 (Claude) |
 | TASK-20260813-085046 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-13 +08:00 | RELEASED | Codex Reviewer 审核 PASS（2026-08-13，提交 875dc11 已推送） | 2026-08-13 (Claude) |
-| TASK-20260813-170555 | scripts/seed-acceptance-data.py | Cursor | 2026-08-13 +08:00 | CLAIMED | 种子数据重构：3 机房 × 10 机柜 + 设备填充 | |
-| TASK-20260813-170555 | scripts/screenshot-topology.ts | Cursor | 2026-08-13 +08:00 | CLAIMED | 种子数据重构：截图脚本引用更新（如被删机房导致报错） | |
+| TASK-20260813-170555 | scripts/seed-acceptance-data.py | Cursor | 2026-08-13 +08:00 | HANDED_OFF | 种子数据重构实现完成，等待 Codex Reviewer 审核 | |
+| TASK-20260813-170555 | scripts/screenshot-topology.ts | Cursor | 2026-08-13 +08:00 | HANDED_OFF | 种子数据重构实现完成，等待 Codex Reviewer 审核 | |
 | TASK-20260813-164147 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-13 +08:00 | RELEASED | 项目负责人豁免本轮审核（2026-08-13 用户指示）；173/173 tests + 浏览器实测通过 | 2026-08-13 (Claude) |
 | TASK-20260813-164147 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-13 +08:00 | RELEASED | 项目负责人豁免本轮审核（2026-08-13 用户指示）；173/173 tests + 浏览器实测通过 | 2026-08-13 (Claude) |
 | TASK-20260813-153018 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-13 +08:00 | RELEASED | Codex Reviewer 复审 PASS（2026-08-13，无 findings） | 2026-08-13 (Claude) |
