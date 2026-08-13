@@ -1774,9 +1774,11 @@ function drawScene(): void {
     const racks = current.racks
     const rackPos = new Map<string, { x: number; y: number }>()
     racks.forEach((rack, index) => {
+      const positioned = Number.isFinite(rack.x) && Number.isFinite(rack.y)
+        && !(rack.x === 0 && rack.y === 0)
       rackPos.set(rack.id, {
-        x: 80 + (Number.isFinite(rack.x) ? rack.x * 120 : index * 120),
-        y: 100 + (Number.isFinite(rack.y) ? rack.y * 90 : 0),
+        x: 80 + (positioned ? rack.x * 120 : index * 120),
+        y: 100 + (positioned ? rack.y * 90 : 0),
       })
     })
 

@@ -2028,3 +2028,37 @@ describe('TASK-20260813-133241 device UI', () => {
     expect(rect.width).toBeLessThan(longNameDevice.deviceName.length * 6)
   })
 })
+
+describe('TASK-20260813-164147 rack origin fallback', () => {
+  function rackCanvasPos(x: number, y: number, index: number) {
+    const positioned = Number.isFinite(x) && Number.isFinite(y) && !(x === 0 && y === 0)
+    return {
+      x: 80 + (positioned ? x * 120 : index * 120),
+      y: 100 + (positioned ? y * 90 : 0),
+    }
+  }
+
+  it('uses index fallback for (0,0) racks and stored coords when positioned', () => {
+    expect(rackCanvasPos(0, 0, 0)).toEqual({ x: 80, y: 100 })
+    expect(rackCanvasPos(0, 0, 1)).toEqual({ x: 200, y: 100 })
+    expect(rackCanvasPos(4.15, 2.75, 0)).toEqual({ x: 80 + 4.15 * 120, y: 100 + 2.75 * 90 })
+    expect(rackCanvasPos(6.5, 8, 2)).toEqual({ x: 80 + 6.5 * 120, y: 100 + 8 * 90 })
+    expect(rackCanvasPos(NaN, 0, 3)).toEqual({ x: 80 + 3 * 120, y: 100 })
+  })
+
+  it('drawScene rackPos uses positioned check and index fallback expressions', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const racksElse = source.indexOf('} else {\n    const racks = current.racks')
+    expect(racksElse).toBeGreaterThanOrEqual(0)
+    const focusedIdx = source.indexOf('const focused = current.rooms.find', racksElse)
+    expect(focusedIdx).toBeGreaterThan(racksElse)
+    const rackPosBlock = source.slice(racksElse, focusedIdx)
+    expect(rackPosBlock).toContain('const positioned = Number.isFinite(rack.x) && Number.isFinite(rack.y)')
+    expect(rackPosBlock).toContain('!(rack.x === 0 && rack.y === 0)')
+    expect(rackPosBlock).toContain('x: 80 + (positioned ? rack.x * 120 : index * 120)')
+    expect(rackPosBlock).toContain('y: 100 + (positioned ? rack.y * 90 : 0)')
+    expect(rackPosBlock).not.toMatch(/Number\.isFinite\(rack\.x\)\s*\?\s*rack\.x \* 120\s*:\s*index \* 120/)
+  })
+})
