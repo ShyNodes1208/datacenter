@@ -33,9 +33,9 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 | TASK-20260812-120000 | scripts/screenshot-topology.ts | Cursor | 2026-08-12 +08:00 | RELEASED | Codex 复审 PASS（2026-08-12 会话，f554bff 实现审核通过，2.5D 全链路已推送） | 2026-08-13 (Claude，释放过期锁：复审已于 2026-08-12 PASS) |
 | TASK-20260813-085046 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-13 +08:00 | RELEASED | Codex Reviewer 审核 PASS（2026-08-13，提交 875dc11 已推送） | 2026-08-13 (Claude) |
 | TASK-20260813-085046 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-13 +08:00 | RELEASED | Codex Reviewer 审核 PASS（2026-08-13，提交 875dc11 已推送） | 2026-08-13 (Claude) |
-| TASK-20260813-153018 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-13 +08:00 | CLAIMED | 1U 设备名称重叠修复（drawDevicePanel 紧凑布局 + 名称区） | |
-| TASK-20260813-153018 | src/frontend/src/composables/useCableScene.ts | Cursor | 2026-08-13 +08:00 | CLAIMED | 1U 设备名称重叠修复（deviceNameLabelRect 同步紧凑名称区） | |
-| TASK-20260813-153018 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-13 +08:00 | CLAIMED | 1U 设备名称重叠修复（紧凑布局回归测试） | |
+| TASK-20260813-153018 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-13 +08:00 | RELEASED | Codex Reviewer 复审 PASS（2026-08-13，无 findings） | 2026-08-13 (Claude) |
+| TASK-20260813-153018 | src/frontend/src/composables/useCableScene.ts | Cursor | 2026-08-13 +08:00 | RELEASED | Codex Reviewer 复审 PASS（2026-08-13，无 findings） | 2026-08-13 (Claude) |
+| TASK-20260813-153018 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-13 +08:00 | RELEASED | Codex Reviewer 复审 PASS（2026-08-13，无 findings） | 2026-08-13 (Claude) |
 | TASK-20260813-133241 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-13 +08:00 | RELEASED | Codex Reviewer 复审 PASS（2026-08-13，无 findings） | 2026-08-13 (Claude) |
 | TASK-20260813-133241 | src/frontend/src/components/CableLayer.vue | Cursor | 2026-08-13 +08:00 | RELEASED | Codex Reviewer 复审 PASS（2026-08-13，无 findings） | 2026-08-13 (Claude) |
 | TASK-20260813-133241 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-13 +08:00 | RELEASED | Codex Reviewer 复审 PASS（2026-08-13，无 findings） | 2026-08-13 (Claude) |

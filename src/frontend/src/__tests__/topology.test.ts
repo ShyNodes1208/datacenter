@@ -1891,4 +1891,140 @@ describe('TASK-20260813-133241 device UI', () => {
       expect(xs[i]! - xs[i - 1]!).toBeGreaterThanOrEqual(240)
     }
   })
+
+  it('TASK-20260813-153018: compact 1U panel uses right name area and narrow body', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const viewSrc = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const sceneSrc = readFileSync(resolve(__dirname, '../composables/useCableScene.ts'), 'utf8')
+
+    const drawStart = viewSrc.indexOf('function drawDevicePanel(')
+    expect(drawStart).toBeGreaterThanOrEqual(0)
+    const drawEnd = viewSrc.indexOf('\nfunction', drawStart + 1)
+    const drawBody = viewSrc.slice(drawStart, drawEnd > drawStart ? drawEnd : undefined)
+    expect(drawBody).toMatch(/panelH\s*<\s*24/)
+    expect(drawBody).toMatch(/compact\s*\?\s*120\s*:\s*panelW/)
+    expect(drawBody).toMatch(/fill:\s*'transparent'/)
+    expect(drawBody).toContain("name: 'device-panel'")
+    expect(drawBody).toMatch(/compact\s*\?\s*bodyW\s*\+\s*4\s*:\s*8/)
+    expect(drawBody).toMatch(/compact\s*\?\s*2\s*:\s*Math\.max\(4,\s*panelH\s*\/\s*2\s*-\s*7\)/)
+    expect(drawBody).toMatch(/panelW\s*-\s*bodyW\s*-\s*4/)
+    const hitIdx = drawBody.indexOf("fill: 'transparent'")
+    const panelIdx = drawBody.indexOf("name: 'device-panel'")
+    expect(hitIdx).toBeGreaterThanOrEqual(0)
+    expect(panelIdx).toBeGreaterThan(hitIdx)
+
+    const rectStart = sceneSrc.indexOf('export function deviceNameLabelRect(')
+    expect(rectStart).toBeGreaterThanOrEqual(0)
+    const rectEnd = sceneSrc.indexOf('\nexport ', rectStart + 1)
+    const rectBody = sceneSrc.slice(rectStart, rectEnd > rectStart ? rectEnd : undefined)
+    expect(rectBody).toMatch(/panelH\s*<\s*24/)
+    expect(rectBody).toMatch(/const bodyW = 120/)
+    expect(rectBody).toMatch(/groupX\s*\+\s*bodyW\s*\+\s*4/)
+    expect(rectBody).toMatch(/groupY\s*\+\s*2/)
+    expect(rectBody).toMatch(/panelW\s*-\s*bodyW\s*-\s*4/)
+  })
+
+  it('TASK-20260813-153018: deviceNameLabelRect compact numbers match drawDevicePanel', () => {
+    const rack = {
+      rackId: 'k-ac',
+      code: 'AC-03d5ef',
+      x: 80,
+      y: 110,
+      width: 240,
+      height: 42 * DEVICE_U_PX + 32,
+    }
+    const compactDevice = {
+      deviceId: 'sw-1u',
+      deviceName: 'SW-1U',
+      rackId: 'k-ac',
+      deviceType: '交换机',
+      operationalStatus: '正常',
+      startU: 40,
+      endU: 40,
+    }
+    const tallDevice = {
+      deviceId: 'srv-2u',
+      deviceName: 'SRV-2U',
+      rackId: 'k-ac',
+      deviceType: '服务器',
+      operationalStatus: '正常',
+      startU: 1,
+      endU: 2,
+    }
+
+    const compactRect = deviceNameLabelRect(compactDevice, rack)
+    const groupX = rack.x + 10
+    const groupY = rack.y + (compactDevice.startU - 1) * DEVICE_U_PX + 2
+    const bodyW = 120
+    const panelW = rack.width - 20
+    expect(Math.max(16, 1 * DEVICE_U_PX - 4)).toBeLessThan(24)
+    expect(compactRect).toEqual({
+      x: groupX + bodyW + 4,
+      y: groupY + 2,
+      width: panelW - bodyW - 4,
+      height: 14,
+    })
+    expect(compactRect.width).toBe(96)
+    expect(compactRect.x).toBe(rack.x + 134)
+    expect(compactRect.x + compactRect.width).toBeLessThanOrEqual(rack.x + rack.width)
+
+    const tallRect = deviceNameLabelRect(tallDevice, rack)
+    const tallH = Math.max(16, 2 * DEVICE_U_PX - 4)
+    expect(tallH).toBeGreaterThanOrEqual(24)
+    expect(tallRect).toEqual({
+      x: rack.x + 10 + 8,
+      y: rack.y + (tallDevice.startU - 1) * DEVICE_U_PX + 2 + Math.max(4, tallH / 2 - 7),
+      width: panelW - 28,
+      height: 14,
+    })
+  })
+
+  it('TASK-20260813-153018: compact long name (>96px) is single-line ellipsis with height:14', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const viewSrc = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const sceneSrc = readFileSync(resolve(__dirname, '../composables/useCableScene.ts'), 'utf8')
+
+    const drawStart = viewSrc.indexOf('function drawDevicePanel(')
+    expect(drawStart).toBeGreaterThanOrEqual(0)
+    const drawEnd = viewSrc.indexOf('\nfunction', drawStart + 1)
+    const drawBody = viewSrc.slice(drawStart, drawEnd > drawStart ? drawEnd : undefined)
+    const nameIdx = drawBody.indexOf("name: 'device-name'")
+    expect(nameIdx).toBeGreaterThan(0)
+    const textIdx = drawBody.lastIndexOf('new Konva.Text({', nameIdx)
+    expect(textIdx).toBeGreaterThanOrEqual(0)
+    const nameText = drawBody.slice(textIdx, nameIdx)
+    expect(nameText).toMatch(/ellipsis:\s*true/)
+    expect(nameText).toMatch(/height:\s*compact\s*\?\s*14/)
+    expect(nameText).toMatch(/compact\s*\?\s*Math\.max\(0,\s*panelW\s*-\s*bodyW\s*-\s*4\)/)
+
+    const rectStart = sceneSrc.indexOf('export function deviceNameLabelRect(')
+    expect(rectStart).toBeGreaterThanOrEqual(0)
+    const rectEnd = sceneSrc.indexOf('\nexport ', rectStart + 1)
+    const rectBody = sceneSrc.slice(rectStart, rectEnd > rectStart ? rectEnd : undefined)
+    expect(rectBody).toMatch(/if \(panelH < 24\)[\s\S]*?height:\s*14/)
+
+    const rack = {
+      rackId: 'k-ac',
+      code: 'AC-03d5ef',
+      x: 80,
+      y: 110,
+      width: 240,
+      height: 42 * DEVICE_U_PX + 32,
+    }
+    const longNameDevice = {
+      deviceId: 'sw-long',
+      deviceName: 'SW-CORE-01-VERY-LONG-NAME-THAT-EXCEEDS-NINETY-SIX-PX',
+      rackId: 'k-ac',
+      deviceType: '交换机',
+      operationalStatus: '正常',
+      startU: 40,
+      endU: 40,
+    }
+    const rect = deviceNameLabelRect(longNameDevice, rack)
+    expect(rect.width).toBe(96)
+    expect(rect.height).toBe(14)
+    expect(rect.width).toBeLessThan(longNameDevice.deviceName.length * 6)
+  })
 })

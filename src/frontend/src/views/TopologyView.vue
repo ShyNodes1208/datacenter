@@ -1144,8 +1144,19 @@ function drawDevicePanel(
           ? '#1B2A3D'
           : '#222C38'
 
+  const compact = panelH < 24
+  const bodyW = compact ? 120 : panelW
+
+  if (compact) {
+    group.add(new Konva.Rect({
+      width: panelW,
+      height: panelH,
+      fill: 'transparent',
+    }))
+  }
+
   group.add(new Konva.Rect({
-    width: panelW,
+    width: bodyW,
     height: panelH,
     cornerRadius: 3,
     fill: baseFill,
@@ -1171,7 +1182,7 @@ function drawDevicePanel(
       }))
     }
   } else if (kind === 'switch') {
-    const slots = Math.min(12, Math.max(4, Math.floor((panelW - 20) / 10)))
+    const slots = Math.min(12, Math.max(4, Math.floor((bodyW - 20) / 10)))
     for (let i = 0; i < slots; i++) {
       group.add(new Konva.Rect({
         x: 10 + i * 10,
@@ -1186,7 +1197,7 @@ function drawDevicePanel(
     }
   } else if (kind === 'firewall') {
     group.add(new Konva.Text({
-      x: panelW - 28,
+      x: bodyW - 28,
       y: 4,
       text: 'FW',
       fontSize: 10,
@@ -1224,7 +1235,7 @@ function drawDevicePanel(
 
   // Status lamp
   group.add(new Konva.Circle({
-    x: panelW - 10,
+    x: bodyW - 10,
     y: 10,
     radius: 4,
     fill: statusLampColor(device.operationalStatus),
@@ -1235,9 +1246,10 @@ function drawDevicePanel(
   }))
 
   group.add(new Konva.Text({
-    x: 8,
-    y: Math.max(4, panelH / 2 - 7),
-    width: panelW - 28,
+    x: compact ? bodyW + 4 : 8,
+    y: compact ? 2 : Math.max(4, panelH / 2 - 7),
+    width: compact ? Math.max(0, panelW - bodyW - 4) : panelW - 28,
+    height: compact ? 14 : undefined,
     text: device.deviceName,
     fontSize: 11,
     fill: '#F8F9FA',

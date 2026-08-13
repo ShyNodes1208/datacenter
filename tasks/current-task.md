@@ -1,6 +1,6 @@
 # Current Task
 
-- Status：IN_PROGRESS（2026-08-13，TASK-20260813-153018 1U 设备名称重叠修复）
+- Status：IDLE（2026-08-13，TASK-20260813-153018 COMPLETED）
 - Branch：feature/TASK-20260813-133241-device-ui
 - Backend：220 tests PASS
 - Frontend：153 tests PASS（vitest）
@@ -16,7 +16,7 @@
 | TASK-20260812-120000: 2.5D 拓扑全链路实现 | feature/TASK-20260810-000003-topology-map | COMPLETED（2026-08-12 Codex PASS，已推送；锁已释放） |
 | TASK-20260813-085046: 机房/机柜点击修复 | feature/TASK-20260810-000003-topology-map | COMPLETED（Codex PASS，875dc11 已推送；锁已释放） |
 | TASK-20260813-133241: 设备级拓扑 UI 优化 | feature/TASK-20260813-133241-device-ui | COMPLETED（Codex PASS 复审 2 轮；待合并回 topology-map 分支） |
-| TASK-20260813-153018: 1U 设备名称重叠修复 | feature/TASK-20260813-133241-device-ui | IN_PROGRESS（Cursor 实现中） |
+| TASK-20260813-153018: 1U 设备名称重叠修复 | feature/TASK-20260813-133241-device-ui | COMPLETED（Codex PASS 复审 2 轮） |
 
 ## TASK-20260813-085046 机房/机柜点击修复
 

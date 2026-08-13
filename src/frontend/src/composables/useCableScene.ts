@@ -484,6 +484,15 @@ export function deviceNameLabelRect(device: DeviceInfo, rack: RackInfo): LabelRe
   const panelW = rack.width - 20
   const groupX = rack.x + 10
   const groupY = rack.y + (device.startU - 1) * unitPx + 2
+  if (panelH < 24) {
+    const bodyW = 120
+    return {
+      x: groupX + bodyW + 4,
+      y: groupY + 2,
+      width: Math.max(0, panelW - bodyW - 4),
+      height: 14,
+    }
+  }
   return {
     x: groupX + 8,
     y: groupY + Math.max(4, panelH / 2 - 7),
