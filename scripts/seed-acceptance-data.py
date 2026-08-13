@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Idempotent acceptance seed for 2.5D topology demo (TASK-20260812-120000)."""
+"""Idempotent acceptance seed: 3 rooms × 10 racks + device fill (TASK-20260813-170555)."""
 
 from __future__ import annotations
 
+import re
 import sqlite3
+import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,25 +16,29 @@ SHANGHAI_ROOM_ID = "64D083F6-CFFB-408E-AE45-5EA0E1914A51"
 SHANGHAI_LEGACY_NAME = "页面验证机房"
 SHANGHAI_NAME = "上海机房"
 SHANGHAI_LOCATION = "上海张江DC1"
-LEGACY_RACK_PREFIX = "R-页面验证机房-"
 
-ACCEPTANCE_ROOMS = [
-    ("北京机房", "北京"),
-    (SHANGHAI_NAME, SHANGHAI_LOCATION),
-    ("广州机房", "广州"),
-    ("成都机房", "成都"),
-    ("深圳机房", "深圳"),
-    ("杭州机房", "杭州"),
+# (name, location, abbr, rack_prefix)
+KEPT_ROOMS = [
+    (SHANGHAI_NAME, SHANGHAI_LOCATION, "SH", "R1"),
+    ("北京机房", "北京", "BJ", "R2"),
+    ("广州机房", "广州", "GZ", "R3"),
 ]
 
-INTER_ROOM_CABLES = [
-    ("北京机房", SHANGHAI_NAME, "光纤", "业务网络", "正常", 12),
-    (SHANGHAI_NAME, "广州机房", "光纤", "业务网络", "正常", 8),
-    ("北京机房", "成都机房", "DAC", "存储网络", "正常", 5),
-    ("广州机房", "深圳机房", "铜缆", "管理网络", "正常", 15),
-    ("成都机房", "杭州机房", "光纤", "业务网络", "正常", 6),
-    ("深圳机房", "杭州机房", "DAC", "存储网络", "告警", 3),
+RACK_U = 42
+RACKS_PER_ROOM = 10
+TARGET_PER_RACK = 19  # 18–20
+SYNTHETIC_TYPES = [
+    ("服务器", "SRV"),
+    ("交换机", "SW"),
+    ("防火墙", "FW"),
+    ("存储", "STG"),
+    ("服务器", "DB"),
 ]
+SYNTHETIC_HEIGHTS = [1, 2, 2, 2, 3, 4]
+SYNTHETIC_NAME_RE = re.compile(r"^(SRV|SW|FW|STG|DB)-(SH|BJ|GZ)-\d{3}$")
+CABLE_TYPES = ["光纤", "DAC", "铜缆"]
+CABLE_PURPOSES = ["业务网络", "上联", "存储网络", "管理网络"]
+CABLE_STATUSES = ["正常", "正常", "正常", "告警"]
 
 
 def uid() -> str:
@@ -56,7 +62,7 @@ def ensure_room(conn: sqlite3.Connection, name: str, location: str) -> tuple[str
     existing = room_by_name(conn, name)
     if existing:
         conn.execute(
-            "UPDATE Rooms SET Location = COALESCE(Location, ?) WHERE Id = ?",
+            "UPDATE Rooms SET Location = COALESCE(Location, ?), Status = '启用' WHERE Id = ?",
             (location, existing),
         )
         return existing, False
@@ -66,6 +72,49 @@ def ensure_room(conn: sqlite3.Connection, name: str, location: str) -> tuple[str
         (rid, name, location),
     )
     return rid, True
+
+
+def ensure_shanghai_room(conn: sqlite3.Connection) -> str:
+    """Keep Shanghai on the spec ID. Do not merge mismatched name/id rows."""
+    by_id = conn.execute(
+        "SELECT Id, Name FROM Rooms WHERE Id = ?",
+        (SHANGHAI_ROOM_ID,),
+    ).fetchone()
+    by_name = conn.execute(
+        "SELECT Id, Name FROM Rooms WHERE Name = ?",
+        (SHANGHAI_NAME,),
+    ).fetchone()
+    if by_id and by_name and by_id[0].upper() != by_name[0].upper():
+        raise SystemExit(
+            "BLOCKER: Shanghai Id "
+            f"{SHANGHAI_ROOM_ID} is named '{by_id[1]}', but '{SHANGHAI_NAME}' "
+            f"is a different row {by_name[0]}. Do not guess merge."
+        )
+    if by_name and by_name[0].upper() != SHANGHAI_ROOM_ID.upper() and not by_id:
+        raise SystemExit(
+            f"BLOCKER: room '{SHANGHAI_NAME}' exists with Id={by_name[0]}, "
+            f"spec requires {SHANGHAI_ROOM_ID}. Existing Id must not change."
+        )
+    legacy = conn.execute(
+        "SELECT Id FROM Rooms WHERE Name = ? AND Id != ?",
+        (SHANGHAI_LEGACY_NAME, SHANGHAI_ROOM_ID),
+    ).fetchone()
+    if legacy:
+        raise SystemExit(
+            f"BLOCKER: leftover legacy room '{SHANGHAI_LEGACY_NAME}' Id={legacy[0]} "
+            "is not the Shanghai spec Id. Do not rename/merge without a product decision."
+        )
+    if by_id:
+        conn.execute(
+            "UPDATE Rooms SET Name = ?, Location = ?, Status = '启用' WHERE Id = ?",
+            (SHANGHAI_NAME, SHANGHAI_LOCATION, SHANGHAI_ROOM_ID),
+        )
+        return SHANGHAI_ROOM_ID
+    conn.execute(
+        "INSERT INTO Rooms (Id, Name, Status, Location, TopologyX, TopologyY) VALUES (?, ?, '启用', ?, 0, 0)",
+        (SHANGHAI_ROOM_ID, SHANGHAI_NAME, SHANGHAI_LOCATION),
+    )
+    return SHANGHAI_ROOM_ID
 
 
 def ensure_server(
@@ -97,6 +146,10 @@ def ensure_rack(conn: sqlite3.Connection, room_id: str, code: str) -> tuple[str,
         (room_id, code),
     ).fetchone()
     if row:
+        conn.execute(
+            "UPDATE Racks SET HeightU = 42, X = 0, Y = 0, Z = 0, Status = '启用' WHERE Id = ?",
+            (row[0],),
+        )
         return row[0], False
     rid = uid()
     conn.execute(
@@ -116,19 +169,42 @@ def ensure_position(
     start_u: int,
     height: int,
 ) -> bool:
-    row = conn.execute(
-        "SELECT 1 FROM ServerPositions WHERE ServerId = ? AND RackId = ? AND Status = '在架'",
-        (server_id, rack_id),
-    ).fetchone()
-    if row:
-        return False
+    """Idempotent 在架 placement: move existing row or insert. One 在架 row per server."""
     end_u = start_u + height - 1
+    rows = conn.execute(
+        "SELECT Id, RackId, StartU, EndU FROM ServerPositions WHERE ServerId = ? AND Status = '在架'",
+        (server_id,),
+    ).fetchall()
+    if rows:
+        first = rows[0]
+        extra_ids = [r[0] for r in rows[1:]]
+        if extra_ids:
+            conn.executemany("DELETE FROM ServerPositions WHERE Id = ?", [(i,) for i in extra_ids])
+        if first[1] == rack_id and first[2] == start_u and first[3] == end_u:
+            conn.execute(
+                "UPDATE Servers SET PositionStatus = '在架' WHERE Id = ?",
+                (server_id,),
+            )
+            return False
+        conn.execute(
+            "UPDATE ServerPositions SET RackId = ?, StartU = ?, EndU = ?, Status = '在架' WHERE Id = ?",
+            (rack_id, start_u, end_u, first[0]),
+        )
+        conn.execute(
+            "UPDATE Servers SET PositionStatus = '在架' WHERE Id = ?",
+            (server_id,),
+        )
+        return True
     conn.execute(
         """
         INSERT INTO ServerPositions (Id, ServerId, RackId, StartU, EndU, Status, InstalledAt)
         VALUES (?, ?, ?, ?, ?, '在架', ?)
         """,
         (uid(), server_id, rack_id, start_u, end_u, now_iso()),
+    )
+    conn.execute(
+        "UPDATE Servers SET PositionStatus = '在架' WHERE Id = ?",
+        (server_id,),
     )
     return True
 
@@ -187,136 +263,599 @@ def ensure_cable(
     return True
 
 
-_stub_u_tracker: dict[str, int] = {}
+def first_free_port(conn: sqlite3.Connection, server_id: str) -> str | None:
+    rows = conn.execute(
+        "SELECT Id FROM Ports WHERE ServerId = ? ORDER BY PortName",
+        (server_id,),
+    ).fetchall()
+    for (pid,) in rows:
+        if not port_connected(conn, pid):
+            return pid
+    return None
 
 
-def _next_stub_u(conn: sqlite3.Connection, rack_id: str) -> int:
-    """Return the next available U slot in a STUB rack, starting at 1."""
-    key = rack_id
-    cur = _stub_u_tracker.get(key, 0)
-    if cur == 0:
-        row = conn.execute(
-            "SELECT COALESCE(MAX(EndU), 0) FROM ServerPositions WHERE RackId = ? AND Status = '在架'",
-            (rack_id,),
-        ).fetchone()
-        cur = (row[0] if row else 0) + 1
-    else:
-        cur += 1
-    _stub_u_tracker[key] = cur
-    return cur
+def devices_already_cabled(conn: sqlite3.Connection, server_a: str, server_b: str) -> bool:
+    row = conn.execute(
+        """
+        SELECT 1 FROM Cables c
+        JOIN Ports pa ON pa.Id = c.SourcePortId
+        JOIN Ports pb ON pb.Id = c.TargetPortId
+        WHERE (pa.ServerId = ? AND pb.ServerId = ?)
+           OR (pa.ServerId = ? AND pb.ServerId = ?)
+        LIMIT 1
+        """,
+        (server_a, server_b, server_b, server_a),
+    ).fetchone()
+    return row is not None
 
 
-def ensure_inter_room_stub(
+def parse_stub_name(name: str) -> tuple[str, str, str] | None:
+    if not name.startswith("__stub__"):
+        return None
+    parts = name.split("__")
+    # ['', 'stub', roomA, roomB, ..., 'a'|'b']
+    if len(parts) < 5:
+        return None
+    suffix = parts[-1].lower()
+    if suffix not in ("a", "b"):
+        return None
+    return parts[2], parts[3], suffix
+
+
+def map_stub_room(room_id: str, other_id: str, kept_ids: list[str]) -> str:
+    kept_upper = {k.upper(): k for k in kept_ids}
+    if room_id.upper() in kept_upper:
+        return kept_upper[room_id.upper()]
+    other = kept_upper.get(other_id.upper())
+    candidates = [k for k in kept_ids if k != other] or list(kept_ids)
+    idx = sum(ord(c) for c in room_id.upper()) % len(candidates)
+    return candidates[idx]
+
+
+def next_free_u(occupancy: dict[str, int], rack_id: str) -> int:
+    return occupancy.get(rack_id, 1)
+
+
+def can_fit(occupancy: dict[str, int], rack_id: str, height: int) -> bool:
+    start = next_free_u(occupancy, rack_id)
+    return start >= 1 and start + height - 1 <= RACK_U
+
+
+def remaining_u(occupancy: dict[str, int], rack_id: str) -> int:
+    return RACK_U - next_free_u(occupancy, rack_id) + 1
+
+
+def pick_rack(
+    rack_ids: list[str],
+    occupancy: dict[str, int],
+    counts: dict[str, int],
+    height: int,
+    respect_target: bool,
+) -> str | None:
+    """Stable pick: lowest used U, then lowest count, then original order."""
+    candidates: list[tuple[int, int, int, str]] = []
+    for idx, rack_id in enumerate(rack_ids):
+        if respect_target and counts.get(rack_id, 0) >= TARGET_PER_RACK:
+            continue
+        if not can_fit(occupancy, rack_id, height):
+            continue
+        used = next_free_u(occupancy, rack_id) - 1
+        candidates.append((used, counts.get(rack_id, 0), idx, rack_id))
+    if not candidates:
+        return None
+    candidates.sort()
+    return candidates[0][3]
+
+
+def place_into(
     conn: sqlite3.Connection,
-    room_a: str,
-    room_b: str,
-    cable_type: str,
-    purpose: str,
-    status: str,
-    count: int,
+    occupancy: dict[str, int],
+    counts: dict[str, int],
+    server_id: str,
+    rack_id: str,
+    height: int,
+) -> None:
+    start = next_free_u(occupancy, rack_id)
+    ensure_position(conn, server_id, rack_id, start, height)
+    occupancy[rack_id] = start + height
+    counts[rack_id] = counts.get(rack_id, 0) + 1
+
+
+def delete_non_live_positions(conn: sqlite3.Connection) -> int:
+    """Drop 已下架 (and any non-在架) rows so old racks can be deleted. Cables untouched."""
+    cur = conn.execute("DELETE FROM ServerPositions WHERE Status != '在架'")
+    return cur.rowcount or 0
+
+
+def seed_kept_rooms_and_racks(conn: sqlite3.Connection) -> tuple[list[dict], list[str]]:
+    """Return room dicts and flat rack id list (Shanghai R1-01.. then BJ then GZ)."""
+    shanghai_id = ensure_shanghai_room(conn)
+    rooms: list[dict] = []
+    flat_racks: list[str] = []
+    for name, location, abbr, prefix in KEPT_ROOMS:
+        if name == SHANGHAI_NAME:
+            rid = shanghai_id
+            created = False
+        else:
+            rid, created = ensure_room(conn, name, location)
+        log("CREATE" if created else "SKIP", f"room {name} ({rid})")
+        rack_ids: list[str] = []
+        for i in range(1, RACKS_PER_ROOM + 1):
+            code = f"{prefix}-{i:02d}"
+            rack_id, rack_new = ensure_rack(conn, rid, code)
+            rack_ids.append(rack_id)
+            flat_racks.append(rack_id)
+            if rack_new:
+                log("CREATE", f"rack {name}/{code}")
+        rooms.append(
+            {
+                "id": rid,
+                "name": name,
+                "abbr": abbr,
+                "prefix": prefix,
+                "rack_ids": rack_ids,
+            }
+        )
+    return rooms, flat_racks
+
+
+def load_servers(conn: sqlite3.Connection) -> list[tuple[str, str, int]]:
+    """(id, name, height) for every server."""
+    rows = conn.execute(
+        "SELECT Id, Name, DeviceHeight FROM Servers ORDER BY Name, Id"
+    ).fetchall()
+    out: list[tuple[str, str, int]] = []
+    for sid, name, height in rows:
+        h = int(height or 1)
+        if h < 1:
+            h = 1
+        if h > RACK_U:
+            raise SystemExit(f"BLOCKER: server {name} DeviceHeight={h} exceeds {RACK_U}U")
+        out.append((sid, name, h))
+    return out
+
+
+def place_existing_servers(
+    conn: sqlite3.Connection,
+    rooms: list[dict],
+    flat_racks: list[str],
+    occupancy: dict[str, int],
+    counts: dict[str, int],
+) -> None:
+    kept_ids = [r["id"] for r in rooms]
+    servers = load_servers(conn)
+    stubs: list[tuple[str, str, int]] = []
+    base: list[tuple[str, str, int]] = []
+    for sid, name, height in servers:
+        if SYNTHETIC_NAME_RE.match(name):
+            continue
+        if parse_stub_name(name):
+            stubs.append((sid, name, height))
+        else:
+            base.append((sid, name, height))
+
+    for sid, name, height in stubs:
+        parsed = parse_stub_name(name)
+        assert parsed is not None
+        room_a, room_b, suffix = parsed
+        endpoint = room_a if suffix == "a" else room_b
+        other = room_b if suffix == "a" else room_a
+        target_room = map_stub_room(endpoint, other, kept_ids)
+        room = next(r for r in rooms if r["id"] == target_room)
+        rack_id = pick_rack(room["rack_ids"], occupancy, counts, height, True) or pick_rack(
+            flat_racks, occupancy, counts, height, False
+        )
+        if not rack_id:
+            raise SystemExit(f"BLOCKER: no U slot for stub {name} height={height}")
+        place_into(conn, occupancy, counts, sid, rack_id, height)
+
+    base_sorted = sorted(base, key=lambda t: (-t[2], t[1], t[0]))
+    for sid, name, height in base_sorted:
+        rack_id = pick_rack(flat_racks, occupancy, counts, height, True) or pick_rack(
+            flat_racks, occupancy, counts, height, False
+        )
+        if not rack_id:
+            raise SystemExit(f"BLOCKER: no U slot for existing server {name} height={height}")
+        place_into(conn, occupancy, counts, sid, rack_id, height)
+
+
+def fill_synthetic_devices(
+    conn: sqlite3.Connection,
+    rooms: list[dict],
+    occupancy: dict[str, int],
+    counts: dict[str, int],
 ) -> int:
-    """Create aggregated inter-room cables via stub devices (one pair per bundle entry)."""
+    """Create-or-reuse deterministic SRV/SW/FW/STG/DB-{abbr}-{n:03d} and fill to 18–20/rack."""
+    created_servers = 0
+    for room_index, room in enumerate(rooms, start=1):
+        n = 1
+        for rack_n, rack_id in enumerate(room["rack_ids"], start=1):
+            while counts.get(rack_id, 0) < TARGET_PER_RACK:
+                remaining = remaining_u(occupancy, rack_id)
+                if remaining < 1:
+                    break
+                dtype, prefix = SYNTHETIC_TYPES[(n - 1) % len(SYNTHETIC_TYPES)]
+                planned = SYNTHETIC_HEIGHTS[(n - 1) % len(SYNTHETIC_HEIGHTS)]
+                needed = TARGET_PER_RACK - counts.get(rack_id, 0)
+                max_h = max(1, remaining // needed) if needed else remaining
+                height = min(planned, max_h, remaining, 4)
+                name = f"{prefix}-{room['abbr']}-{n:03d}"
+                ip = f"10.{room_index}.{rack_n}.{min(n, 254)}"
+                sid, new = ensure_server(conn, name, dtype, height, ip)
+                if not new:
+                    row = conn.execute(
+                        "SELECT DeviceHeight FROM Servers WHERE Id = ?",
+                        (sid,),
+                    ).fetchone()
+                    height = int(row[0]) if row else height
+                    if not can_fit(occupancy, rack_id, height):
+                        break
+                else:
+                    created_servers += 1
+                    for p in range(1 + (n - 1) % 4):
+                        ensure_port(conn, sid, f"eth{p}")
+                if not can_fit(occupancy, rack_id, height):
+                    break
+                place_into(conn, occupancy, counts, sid, rack_id, height)
+                n += 1
+            while counts.get(rack_id, 0) < 18:
+                remaining = remaining_u(occupancy, rack_id)
+                if remaining < 1:
+                    break
+                dtype, prefix = SYNTHETIC_TYPES[(n - 1) % len(SYNTHETIC_TYPES)]
+                name = f"{prefix}-{room['abbr']}-{n:03d}"
+                ip = f"10.{room_index}.{rack_n}.{min(n, 254)}"
+                sid, new = ensure_server(conn, name, dtype, 1, ip)
+                if not new:
+                    row = conn.execute(
+                        "SELECT DeviceHeight FROM Servers WHERE Id = ?",
+                        (sid,),
+                    ).fetchone()
+                    height = int(row[0]) if row else 1
+                    if not can_fit(occupancy, rack_id, height):
+                        break
+                else:
+                    created_servers += 1
+                    ensure_port(conn, sid, "eth0")
+                    height = 1
+                if not can_fit(occupancy, rack_id, height):
+                    break
+                place_into(conn, occupancy, counts, sid, rack_id, height)
+                n += 1
+    return created_servers
+
+
+def place_stragglers(
+    conn: sqlite3.Connection,
+    flat_racks: list[str],
+    occupancy: dict[str, int],
+    counts: dict[str, int],
+) -> int:
+    """Any server still without a 在架 row is overflow-placed (stable name order)."""
+    rows = conn.execute(
+        """
+        SELECT s.Id, s.Name, s.DeviceHeight
+        FROM Servers s
+        WHERE NOT EXISTS (
+            SELECT 1 FROM ServerPositions p
+            WHERE p.ServerId = s.Id AND p.Status = '在架'
+        )
+        ORDER BY s.Name, s.Id
+        """
+    ).fetchall()
+    placed_n = 0
+    for sid, name, height in rows:
+        h = int(height or 1)
+        placed = False
+        for rack_id in flat_racks:
+            if can_fit(occupancy, rack_id, h):
+                place_into(conn, occupancy, counts, sid, rack_id, h)
+                placed = True
+                placed_n += 1
+                break
+        if not placed:
+            raise SystemExit(f"BLOCKER: no U slot for unpositioned server {name} height={h}")
+    return placed_n
+
+
+def wire_intra_room(
+    conn: sqlite3.Connection,
+    rooms: list[dict],
+) -> int:
+    """Same-rack adjacent + consecutive cross-rack cables. Existing cables kept."""
     created = 0
-    stub_a = f"__stub__{room_a}__{room_b}__{cable_type}__{purpose}__{status}__a"
-    stub_b = f"__stub__{room_a}__{room_b}__{cable_type}__{purpose}__{status}__b"
-    rack_a, _ = ensure_rack(conn, room_a, f"STUB-{room_a[:2]}")
-    rack_b, _ = ensure_rack(conn, room_b, f"STUB-{room_b[:2]}")
-    dev_a, _ = ensure_server(conn, stub_a, "交换机", 1, f"10.99.{hash(room_a) % 200}.{hash(room_b) % 200}")
-    dev_b, _ = ensure_server(conn, stub_b, "交换机", 1, f"10.99.{hash(room_b) % 200}.{hash(room_a) % 200}")
-    # Assign non-overlapping U positions within the STUB rack
-    u_slot_a = _next_stub_u(conn, rack_a)
-    u_slot_b = _next_stub_u(conn, rack_b)
-    ensure_position(conn, dev_a, rack_a, u_slot_a, 1)
-    ensure_position(conn, dev_b, rack_b, u_slot_b, 1)
-    port_a, _ = ensure_port(conn, dev_a, "link")
-    port_b, _ = ensure_port(conn, dev_b, "link")
-    for i in range(count):
-        pa, _ = ensure_port(conn, dev_a, f"agg{i}")
-        pb, _ = ensure_port(conn, dev_b, f"agg{i}")
-        if ensure_cable(conn, pa, pb, cable_type, purpose, status):
+    cable_i = 0
+    for room in rooms:
+        rack_first_server: list[str | None] = []
+        for rack_id in room["rack_ids"]:
+            devices = conn.execute(
+                """
+                SELECT s.Id
+                FROM ServerPositions p
+                JOIN Servers s ON s.Id = p.ServerId
+                WHERE p.RackId = ? AND p.Status = '在架'
+                ORDER BY p.StartU, s.Name
+                """,
+                (rack_id,),
+            ).fetchall()
+            ids = [r[0] for r in devices]
+            rack_first_server.append(ids[0] if ids else None)
+            adjacent = min(3, max(0, len(ids) - 1))
+            for i in range(adjacent):
+                a, b = ids[i], ids[i + 1]
+                if devices_already_cabled(conn, a, b):
+                    continue
+                pa = first_free_port(conn, a)
+                pb = first_free_port(conn, b)
+                if not pa or not pb:
+                    continue
+                ctype = CABLE_TYPES[cable_i % len(CABLE_TYPES)]
+                purpose = CABLE_PURPOSES[cable_i % len(CABLE_PURPOSES)]
+                status = CABLE_STATUSES[cable_i % len(CABLE_STATUSES)]
+                if ensure_cable(conn, pa, pb, ctype, purpose, status):
+                    created += 1
+                cable_i += 1
+        for i in range(len(rack_first_server) - 1):
+            a = rack_first_server[i]
+            b = rack_first_server[i + 1]
+            if not a or not b:
+                continue
+            if devices_already_cabled(conn, a, b):
+                continue
+            pa = first_free_port(conn, a)
+            pb = first_free_port(conn, b)
+            if not pa or not pb:
+                continue
+            ctype = CABLE_TYPES[cable_i % len(CABLE_TYPES)]
+            purpose = CABLE_PURPOSES[cable_i % len(CABLE_PURPOSES)]
+            status = "正常"
+            if ensure_cable(conn, pa, pb, ctype, purpose, status):
+                created += 1
+            cable_i += 1
+    return created
+
+
+def wire_inter_room(conn: sqlite3.Connection, rooms: list[dict]) -> int:
+    """Ensure a few kept-room cross links using free ports (stubs already cover BJ↔SH, SH↔GZ)."""
+    created = 0
+    pairs = [(0, 1), (1, 2), (0, 2)]
+    for a_i, b_i in pairs:
+        rack_a = rooms[a_i]["rack_ids"][0]
+        rack_b = rooms[b_i]["rack_ids"][1] if len(rooms[b_i]["rack_ids"]) > 1 else rooms[b_i]["rack_ids"][0]
+        sa = conn.execute(
+            """
+            SELECT s.Id FROM ServerPositions p
+            JOIN Servers s ON s.Id = p.ServerId
+            WHERE p.RackId = ? AND p.Status = '在架'
+            ORDER BY p.StartU, s.Name LIMIT 1
+            """,
+            (rack_a,),
+        ).fetchone()
+        sb = conn.execute(
+            """
+            SELECT s.Id FROM ServerPositions p
+            JOIN Servers s ON s.Id = p.ServerId
+            WHERE p.RackId = ? AND p.Status = '在架'
+            ORDER BY p.StartU, s.Name LIMIT 1
+            """,
+            (rack_b,),
+        ).fetchone()
+        if not sa or not sb:
+            continue
+        if devices_already_cabled(conn, sa[0], sb[0]):
+            continue
+        pa = first_free_port(conn, sa[0])
+        pb = first_free_port(conn, sb[0])
+        if not pa or not pb:
+            continue
+        if ensure_cable(conn, pa, pb, "光纤", "业务网络", "正常"):
             created += 1
     return created
 
 
-def deactivate_legacy_shanghai_racks(conn: sqlite3.Connection, room_id: str) -> None:
-    """Mark old acceptance racks as 停用 (do not touch device positions)."""
-    updated = conn.execute(
-        "UPDATE Racks SET Status = '停用' WHERE RoomId = ? AND Code LIKE ?",
-        (room_id, LEGACY_RACK_PREFIX + "%"),
-    ).rowcount
-    if updated:
-        log("UPDATE", f"deactivated {updated} legacy rack(s) in Shanghai room")
+def delete_extra_racks_and_rooms(
+    conn: sqlite3.Connection,
+    kept_room_ids: list[str],
+    kept_rack_ids: list[str],
+) -> tuple[int, int]:
+    rack_ph = ",".join("?" * len(kept_rack_ids))
+    room_ph = ",".join("?" * len(kept_room_ids))
+    # DevicePositions FK RESTRICT on Racks; table is normally empty.
+    dp = conn.execute(
+        f"DELETE FROM DevicePositions WHERE RackId NOT IN ({rack_ph})",
+        kept_rack_ids,
+    )
+    leftover_pos = conn.execute(
+        f"SELECT COUNT(*) FROM ServerPositions WHERE RackId NOT IN ({rack_ph})",
+        kept_rack_ids,
+    ).fetchone()[0]
+    if leftover_pos:
+        raise SystemExit(
+            f"BLOCKER: {leftover_pos} ServerPositions still reference racks outside the kept 30"
+        )
+    racks_deleted = conn.execute(
+        f"DELETE FROM Racks WHERE Id NOT IN ({rack_ph})",
+        kept_rack_ids,
+    ).rowcount or 0
+    leftover_racks = conn.execute(
+        f"SELECT COUNT(*) FROM Racks WHERE RoomId NOT IN ({room_ph})",
+        kept_room_ids,
+    ).fetchone()[0]
+    if leftover_racks:
+        raise SystemExit(
+            f"BLOCKER: {leftover_racks} racks still belong to rooms outside the kept 3"
+        )
+    rooms_deleted = conn.execute(
+        f"DELETE FROM Rooms WHERE Id NOT IN ({room_ph})",
+        kept_room_ids,
+    ).rowcount or 0
+    if dp.rowcount:
+        log("DELETE", f"{dp.rowcount} DevicePositions on extra racks")
+    return racks_deleted, rooms_deleted
 
 
-def seed_shanghai_room(conn: sqlite3.Connection, room_id: str) -> None:
-    floor_rack, floor_new = ensure_rack(conn, room_id, "FLOOR")
-    if floor_new:
-        log("CREATE", "rack FLOOR (floor devices)")
+def u_overlap_count(conn: sqlite3.Connection) -> int:
+    rows = conn.execute(
+        """
+        SELECT a.RackId
+        FROM ServerPositions a
+        JOIN ServerPositions b
+          ON a.RackId = b.RackId
+         AND a.Id < b.Id
+         AND a.Status = '在架' AND b.Status = '在架'
+         AND a.StartU <= b.EndU AND b.StartU <= a.EndU
+        """
+    ).fetchall()
+    return len(rows)
 
-    racks = {}
-    for code in ("R3-01", "R3-02", "R3-03", "R3-04"):
-        rid, created = ensure_rack(conn, room_id, code)
-        racks[code] = rid
-        if created:
-            log("CREATE", f"rack {code}")
 
-    devices: dict[str, str] = {}
-    device_defs = [
-        ("APP-01", "服务器", 2, racks["R3-01"], 5, "10.10.3.1"),
-        ("APP-02", "服务器", 2, racks["R3-01"], 10, "10.10.3.2"),
-        ("DB-01", "服务器", 2, racks["R3-03"], 5, "10.10.3.3"),
-        ("DB-02", "服务器", 2, racks["R3-03"], 10, "10.10.3.4"),
-        ("SW-CORE-01", "交换机", 1, floor_rack, 1, "10.10.3.10"),
-        ("SW-CORE-02", "交换机", 1, floor_rack, 2, "10.10.3.11"),
-        ("FW-01", "防火墙", 1, floor_rack, 3, "10.10.3.12"),
-        ("STORAGE-01", "存储", 2, floor_rack, 4, "10.10.3.13"),
-        ("BAK-01", "备份设备", 2, floor_rack, 6, "10.10.3.14"),
+def print_summary(conn: sqlite3.Connection, kept_room_ids: list[str]) -> bool:
+    room_ph = ",".join("?" * len(kept_room_ids))
+    room_count = conn.execute("SELECT COUNT(*) FROM Rooms").fetchone()[0]
+    rack_count = conn.execute("SELECT COUNT(*) FROM Racks").fetchone()[0]
+    server_count = conn.execute("SELECT COUNT(*) FROM Servers").fetchone()[0]
+    cable_count = conn.execute("SELECT COUNT(*) FROM Cables").fetchone()[0]
+    print("=== SEED SUMMARY ===")
+    print(f"Rooms: {room_count}")
+    per_room_racks: list[int] = []
+    per_room_devices: list[tuple[str, int]] = []
+    for rid, name in conn.execute(
+        "SELECT Id, Name FROM Rooms ORDER BY CASE Name WHEN '上海机房' THEN 0 WHEN '北京机房' THEN 1 ELSE 2 END"
+    ):
+        n_racks = conn.execute("SELECT COUNT(*) FROM Racks WHERE RoomId = ?", (rid,)).fetchone()[0]
+        n_dev = conn.execute(
+            """
+            SELECT COUNT(*) FROM ServerPositions p
+            JOIN Racks k ON k.Id = p.RackId
+            WHERE k.RoomId = ? AND p.Status = '在架'
+            """,
+            (rid,),
+        ).fetchone()[0]
+        per_room_racks.append(n_racks)
+        per_room_devices.append((name, n_dev))
+        print(f"  {name} id={rid} racks={n_racks} devices={n_dev}")
+    print(f"Racks total: {rack_count}")
+    print(f"Servers total: {server_count}")
+    rack_counts = [
+        r[0]
+        for r in conn.execute(
+            """
+            SELECT COUNT(p.Id) FROM Racks k
+            LEFT JOIN ServerPositions p ON p.RackId = k.Id AND p.Status = '在架'
+            GROUP BY k.Id
+            """
+        )
     ]
-    for name, dtype, height, rack_id, start_u, ip in device_defs:
-        sid, created = ensure_server(conn, name, dtype, height, ip)
-        devices[name] = sid
-        if created:
-            log("CREATE", f"device {name}")
-        if ensure_position(conn, sid, rack_id, start_u, height):
-            log("CREATE", f"position {name} @ U{start_u}")
+    rmin = min(rack_counts) if rack_counts else 0
+    rmax = max(rack_counts) if rack_counts else 0
+    print(f"Devices per rack: min={rmin} max={rmax}")
+    print(f"Cables total: {cable_count}")
 
-    port_defs: dict[str, list[str]] = {
-        "APP-01": ["eth0", "eth1"],
-        "APP-02": ["eth0", "eth1"],
-        "DB-01": ["eth0", "eth1"],
-        "DB-02": ["eth0", "eth1"],
-        "SW-CORE-01": ["GE0/1", "GE0/2", "GE0/3", "GE0/4"],
-        "SW-CORE-02": ["GE0/1", "GE0/2", "GE0/3", "GE0/4", "GE0/5"],
-        "FW-01": ["GE0/0", "GE0/1"],
-        "STORAGE-01": ["FC1", "FC2"],
-        "BAK-01": ["eth0"],
-    }
-    ports: dict[str, dict[str, str]] = {}
-    for dev_name, port_names in port_defs.items():
-        ports[dev_name] = {}
-        for pname in port_names:
-            pid, created = ensure_port(conn, devices[dev_name], pname)
-            ports[dev_name][pname] = pid
-            if created:
-                log("CREATE", f"port {dev_name}/{pname}")
+    dangling_port = conn.execute(
+        """
+        SELECT COUNT(*) FROM Cables c
+        WHERE NOT EXISTS (SELECT 1 FROM Ports p WHERE p.Id = c.SourcePortId)
+           OR NOT EXISTS (SELECT 1 FROM Ports p WHERE p.Id = c.TargetPortId)
+        """
+    ).fetchone()[0]
+    dangling_room = conn.execute(
+        f"""
+        SELECT COUNT(*) FROM Cables c
+        JOIN Ports ps ON ps.Id = c.SourcePortId
+        JOIN Ports pt ON pt.Id = c.TargetPortId
+        LEFT JOIN ServerPositions sps ON sps.ServerId = ps.ServerId AND sps.Status = '在架'
+        LEFT JOIN ServerPositions spt ON spt.ServerId = pt.ServerId AND spt.Status = '在架'
+        LEFT JOIN Racks rks ON rks.Id = sps.RackId
+        LEFT JOIN Racks rkt ON rkt.Id = spt.RackId
+        WHERE sps.Id IS NULL OR spt.Id IS NULL
+           OR rks.RoomId NOT IN ({room_ph})
+           OR rkt.RoomId NOT IN ({room_ph})
+        """,
+        (*kept_room_ids, *kept_room_ids),
+    ).fetchone()[0]
+    overlaps = u_overlap_count(conn)
+    oob = conn.execute(
+        """
+        SELECT COUNT(*) FROM ServerPositions
+        WHERE Status = '在架' AND (StartU < 1 OR EndU > ? OR EndU < StartU)
+        """,
+        (RACK_U,),
+    ).fetchone()[0]
+    unpositioned = conn.execute(
+        """
+        SELECT COUNT(*) FROM Servers s
+        WHERE NOT EXISTS (
+            SELECT 1 FROM ServerPositions p WHERE p.ServerId = s.Id AND p.Status = '在架'
+        )
+        """
+    ).fetchone()[0]
+    extra_rooms = conn.execute(
+        f"SELECT COUNT(*) FROM Rooms WHERE Id NOT IN ({room_ph})",
+        kept_room_ids,
+    ).fetchone()[0]
+    print(f"Dangling cables (missing port): {dangling_port}")
+    print(f"Cables to devices not in kept rooms / unpositioned: {dangling_room}")
+    print(f"U overlaps: {overlaps}")
+    print(f"U out of range: {oob}")
+    print(f"Unpositioned servers: {unpositioned}")
+    print(f"Extra rooms: {extra_rooms}")
 
-    cable_defs = [
-        ("APP-01", "eth0", "SW-CORE-01", "GE0/1", "光纤", "业务网络", "正常"),
-        ("APP-02", "eth0", "SW-CORE-01", "GE0/2", "光纤", "业务网络", "正常"),
-        ("DB-01", "eth0", "SW-CORE-02", "GE0/1", "光纤", "业务网络", "正常"),
-        ("DB-02", "eth0", "SW-CORE-02", "GE0/2", "光纤", "业务网络", "正常"),
-        ("SW-CORE-01", "GE0/3", "FW-01", "GE0/0", "光纤", "管理网络", "正常"),
-        ("FW-01", "GE0/1", "SW-CORE-02", "GE0/3", "光纤", "管理网络", "正常"),
-        ("SW-CORE-01", "GE0/4", "STORAGE-01", "FC1", "DAC", "存储网络", "正常"),
-        ("SW-CORE-02", "GE0/4", "STORAGE-01", "FC2", "DAC", "存储网络", "告警"),
-        # GE0/4 already used; schema allows one cable per port — BAK uses GE0/5 (see IMPLEMENTATION.md)
-        ("SW-CORE-02", "GE0/5", "BAK-01", "eth0", "铜缆", "管理网络", "正常"),
-    ]
-    for src_dev, src_port, tgt_dev, tgt_port, ctype, purpose, status in cable_defs:
-        sp = ports[src_dev][src_port]
-        tp = ports[tgt_dev][tgt_port]
-        if ensure_cable(conn, sp, tp, ctype, purpose, status):
-            log("CREATE", f"cable {src_dev}/{src_port} → {tgt_dev}/{tgt_port}")
+    ok = True
+    reasons: list[str] = []
+    if room_count != 3:
+        ok = False
+        reasons.append(f"Rooms={room_count} expected 3")
+    if rack_count != 30:
+        ok = False
+        reasons.append(f"Racks={rack_count} expected 30")
+    if any(n != 10 for n in per_room_racks):
+        ok = False
+        reasons.append(f"per-room racks={per_room_racks} expected 10 each")
+    if rmin < 1 or rmax > 42:
+        ok = False
+        reasons.append(f"per-rack device count min={rmin} max={rmax} out of bounds")
+    if dangling_port != 0:
+        ok = False
+        reasons.append(f"dangling port cables={dangling_port}")
+    if dangling_room != 0:
+        ok = False
+        reasons.append(f"cables outside kept rooms={dangling_room}")
+    if overlaps != 0:
+        ok = False
+        reasons.append(f"U overlaps={overlaps}")
+    if oob != 0:
+        ok = False
+        reasons.append(f"U out of range={oob}")
+    if unpositioned != 0:
+        ok = False
+        reasons.append(f"unpositioned servers={unpositioned}")
+    if extra_rooms != 0:
+        ok = False
+        reasons.append(f"extra rooms={extra_rooms}")
+    if rmin < 18 or rmax > 20:
+        # soft: still fail summary if we missed the 18–20 target and U remains
+        print(f"NOTE: per-rack target 18–20 not met (min={rmin} max={rmax})")
+        if rmin < 18:
+            ok = False
+            reasons.append(f"per-rack min={rmin} < 18")
+        if rmax > 20:
+            ok = False
+            reasons.append(f"per-rack max={rmax} > 20")
+    print("=== RESULT: PASS ===" if ok else "=== RESULT: FAIL ===")
+    for r in reasons:
+        print(f"  - {r}")
+    return ok
+
+
+def snapshot_counts(conn: sqlite3.Connection) -> tuple:
+    return (
+        conn.execute("SELECT COUNT(*) FROM Rooms").fetchone()[0],
+        conn.execute("SELECT COUNT(*) FROM Racks").fetchone()[0],
+        conn.execute("SELECT COUNT(*) FROM Servers").fetchone()[0],
+        conn.execute("SELECT COUNT(*) FROM ServerPositions WHERE Status = '在架'").fetchone()[0],
+        conn.execute("SELECT COUNT(*) FROM Ports").fetchone()[0],
+        conn.execute("SELECT COUNT(*) FROM Cables").fetchone()[0],
+    )
 
 
 def main() -> None:
@@ -324,57 +863,67 @@ def main() -> None:
         raise SystemExit(f"Database not found: {DB_PATH}")
 
     conn = sqlite3.connect(DB_PATH)
+    conn.isolation_level = None
     conn.execute("PRAGMA foreign_keys = ON")
+    before = snapshot_counts(conn)
+    log("INFO", f"before counts rooms/racks/servers/pos/ports/cables={before}")
 
-    # Rename legacy Shanghai room if present
-    legacy = conn.execute(
-        "SELECT Id FROM Rooms WHERE Id = ? OR Name = ?",
-        (SHANGHAI_ROOM_ID, SHANGHAI_LEGACY_NAME),
-    ).fetchone()
-    if legacy:
-        conn.execute(
-            "UPDATE Rooms SET Name = ?, Location = ? WHERE Id = ? OR Name = ?",
-            (SHANGHAI_NAME, SHANGHAI_LOCATION, legacy[0], SHANGHAI_LEGACY_NAME),
+    try:
+        conn.execute("BEGIN")
+        dropped = delete_non_live_positions(conn)
+        if dropped:
+            log("DELETE", f"{dropped} non-在架 ServerPositions")
+
+        rooms, flat_racks = seed_kept_rooms_and_racks(conn)
+        occupancy: dict[str, int] = {rid: 1 for rid in flat_racks}
+        counts: dict[str, int] = {rid: 0 for rid in flat_racks}
+
+        place_existing_servers(conn, rooms, flat_racks, occupancy, counts)
+        created_s = fill_synthetic_devices(conn, rooms, occupancy, counts)
+        if created_s:
+            log("CREATE", f"{created_s} synthetic server(s)")
+        stragglers = place_stragglers(conn, flat_racks, occupancy, counts)
+        if stragglers:
+            log("UPDATE", f"placed {stragglers} previously unpositioned server(s)")
+
+        intra = wire_intra_room(conn, rooms)
+        inter = wire_inter_room(conn, rooms)
+        if intra or inter:
+            log("CREATE", f"cables intra={intra} inter={inter}")
+
+        racks_del, rooms_del = delete_extra_racks_and_rooms(
+            conn,
+            [r["id"] for r in rooms],
+            flat_racks,
         )
-        shanghai_id = legacy[0]
-        log("UPDATE", f"renamed {SHANGHAI_LEGACY_NAME} → {SHANGHAI_NAME}")
-    else:
-        existing_sh = room_by_name(conn, SHANGHAI_NAME)
-        if existing_sh:
-            shanghai_id = existing_sh
-            log("SKIP", f"room {SHANGHAI_NAME} exists")
-        else:
-            shanghai_id = uid()
-            conn.execute(
-                "INSERT INTO Rooms (Id, Name, Status, Location, TopologyX, TopologyY) VALUES (?, ?, '启用', ?, 0, 0)",
-                (shanghai_id, SHANGHAI_NAME, SHANGHAI_LOCATION),
-            )
-            log("CREATE", f"room {SHANGHAI_NAME}")
+        if racks_del:
+            log("DELETE", f"{racks_del} extra rack(s)")
+        if rooms_del:
+            log("DELETE", f"{rooms_del} extra room(s)")
 
-    room_ids: dict[str, str] = {SHANGHAI_NAME: shanghai_id}
-    for name, location in ACCEPTANCE_ROOMS:
-        if name == SHANGHAI_NAME:
-            continue
-        rid, created = ensure_room(conn, name, location)
-        room_ids[name] = rid
-        log("CREATE" if created else "SKIP", f"room {name}")
-
-    deactivate_legacy_shanghai_racks(conn, shanghai_id)
-    seed_shanghai_room(conn, shanghai_id)
-
-    for room_a, room_b, ctype, purpose, status, count in INTER_ROOM_CABLES:
-        ra = room_ids.get(room_a)
-        rb = room_ids.get(room_b)
-        if not ra or not rb:
-            log("SKIP", f"inter-room {room_a}↔{room_b} (room missing)")
-            continue
-        created = ensure_inter_room_stub(conn, ra, rb, ctype, purpose, status, count)
-        log("CREATE" if created else "SKIP", f"inter-room {room_a}↔{room_b} ×{created}/{count}")
-
-    conn.commit()
-    conn.close()
+        ok = print_summary(conn, [r["id"] for r in rooms])
+        if not ok:
+            conn.execute("ROLLBACK")
+            raise SystemExit("seed validation failed; transaction rolled back")
+        conn.execute("COMMIT")
+    except Exception:
+        try:
+            conn.execute("ROLLBACK")
+        except sqlite3.Error:
+            pass
+        raise
+    finally:
+        after = snapshot_counts(conn)
+        log("INFO", f"after counts rooms/racks/servers/pos/ports/cables={after}")
+        conn.close()
     print("Done.")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit:
+        raise
+    except Exception as exc:
+        print(f"[ERROR] {exc}", file=sys.stderr)
+        raise
