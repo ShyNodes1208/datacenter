@@ -131,10 +131,6 @@ function highlightedLabelPosition(): { x: number; y: number } {
       </filter>
     </defs>
 
-    <text x="10" y="14" class="disclaimer" font-size="10">
-      登记连接拓扑示意，非实时流量；箭头为登记端点方向
-    </text>
-
     <g
       v-for="bundle in scene.bundles"
       :key="bundle.id"
@@ -145,6 +141,17 @@ function highlightedLabelPosition(): { x: number; y: number } {
       :style="{ pointerEvents: bundle.opacity > 0 ? 'auto' : 'none' }"
       @click.stop="emit('bundle-click', bundle.id)"
     >
+      <path
+        v-if="bundle.route.length > 0"
+        class="cable-hit-area"
+        :d="routeD(bundle.route)"
+        fill="none"
+        stroke="transparent"
+        stroke-width="14"
+        pointer-events="stroke"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
       <path
         v-if="bundle.route.length > 0"
         :d="routeD(bundle.route)"
@@ -249,10 +256,8 @@ function highlightedLabelPosition(): { x: number; y: number } {
   }
 }
 
-.disclaimer {
-  fill: #8b9cb3;
-  user-select: none;
-  pointer-events: none;
+.cable-hit-area {
+  pointer-events: stroke;
 }
 
 .highlight-label {

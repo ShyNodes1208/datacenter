@@ -153,6 +153,9 @@ export const PURPOSE_DASH: Record<string, string> = {
   上联: '2,4',
 }
 
+/** Device-level U height in scene pixels. Shared by TopologyView panels and cable anchors. */
+export const DEVICE_U_PX = 20
+
 /** Unselected cable opacity when another cable/device is focused (FR-VIS-10). */
 export const UNSELECTED_OPACITY = 0.22
 
@@ -321,8 +324,8 @@ export function deviceEdgePoint(
   port?: DeviceEdgePortOptions,
 ): Point {
   const uHeight = device.endU - device.startU + 1
-  // Use the same U_PX=24 as panel rendering for consistent port positioning
-  const unitPx = rack.height >= 120 ? 24 : (rack.height / Math.max(1, uHeight || 1))
+  // Tall racks use DEVICE_U_PX (same as TopologyView panels); compact floor pseudo-racks scale to height.
+  const unitPx = rack.height >= 120 ? DEVICE_U_PX : (rack.height / Math.max(1, uHeight || 1))
   const deviceTopY = rack.y + (device.startU - 1) * unitPx
   const deviceHeight = Math.max(uHeight * unitPx, 16)
   const deviceWidth = rack.width
@@ -476,7 +479,7 @@ export function rectsOverlap(a: LabelRect, b: LabelRect, pad = 0): boolean {
 /** Matches TopologyView device-name text box (panel inset + name offset). */
 export function deviceNameLabelRect(device: DeviceInfo, rack: RackInfo): LabelRect {
   const uHeight = Math.max(1, device.endU - device.startU + 1)
-  const unitPx = rack.height / Math.max(1, Math.ceil(rack.height / 24))
+  const unitPx = DEVICE_U_PX
   const panelH = Math.max(16, uHeight * unitPx - 4)
   const panelW = rack.width - 20
   const groupX = rack.x + 10

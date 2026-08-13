@@ -12,6 +12,7 @@ import {
   buildPortSlotMap,
   buildSamePortExitOffsets,
   buildUniquePortLabelPlacements,
+  DEVICE_U_PX,
   deviceEdgePoint,
   deviceNameLabelRect,
   filterVisibleDevices,
@@ -753,9 +754,13 @@ describe('TopologyView', () => {
       animationEnabled: true,
     })
     const html = await renderToString(app)
-    expect(html).toContain('非实时流量')
-    expect(html).toContain('登记端点方向')
+    expect(html).not.toContain('非实时流量')
     expect(html).toContain('static-arrow')
+
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const view = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    expect(view).toContain('配置拓扑 · 非实时数据')
   })
 
 })
@@ -1650,5 +1655,240 @@ describe('TASK-20260813-085046 room/rack hit + dblclick', () => {
     expect(updateBody).toContain("'#2e4a6e'")
     expect(updateBody).toContain('layer?.draw()')
     expect(updateBody).not.toContain('drawScene()')
+  })
+})
+
+describe('TASK-20260813-133241 device UI', () => {
+  it('P2 default: drawPortAnchors skips port labels when nothing is selected', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const fnStart = source.indexOf('function drawPortAnchors(')
+    expect(fnStart).toBeGreaterThanOrEqual(0)
+    const fnBody = source.slice(fnStart, source.indexOf('function drawDeviceScene()', fnStart))
+    expect(fnBody).toContain("name: 'port-anchor'")
+    expect(fnBody).toContain('buildUniquePortLabelPlacements')
+    expect(fnBody).toMatch(/labelBundles\.length\s*===\s*0/)
+    expect(fnBody).toContain("name: 'port-label'")
+    const labelCall = fnBody.indexOf('buildUniquePortLabelPlacements')
+    const skipIdx = fnBody.indexOf('labelBundles.length === 0')
+    expect(skipIdx).toBeGreaterThan(-1)
+    expect(skipIdx).toBeLessThan(labelCall)
+  })
+
+  it('P2 focus device: port labels filtered to that device only', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const fnStart = source.indexOf('function drawPortAnchors(')
+    const fnBody = source.slice(fnStart, source.indexOf('function drawDeviceScene()', fnStart))
+    expect(fnBody).toMatch(/focusDeviceId\.value/)
+    expect(fnBody).toMatch(/placements\.filter\(\s*\(?p\)?\s*=>\s*p\.deviceId\s*===\s*focusDeviceId\.value/)
+    expect(fnBody).toMatch(/source\.deviceId\s*===\s*focusedId|source\.deviceId\s*===\s*focusDeviceId/)
+  })
+
+  it('P2 select cable: only that cable is passed into port label placement', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const fnStart = source.indexOf('function drawPortAnchors(')
+    const fnBody = source.slice(fnStart, source.indexOf('function drawDeviceScene()', fnStart))
+    expect(fnBody).toMatch(/labelBundles\s*=\s*\[\s*bundle\s*\]/)
+    expect(fnBody).toMatch(/labelCables\s*=\s*\[\s*cable\s*\]/)
+    expect(fnBody).toContain('selectedId')
+  })
+
+  it('P2 clear selection: clearDeviceFocus resets both ids', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const fnStart = source.indexOf('function clearDeviceFocus(')
+    expect(fnStart).toBeGreaterThanOrEqual(0)
+    const fnBody = source.slice(fnStart, source.indexOf('\nasync function fetchCsrf(', fnStart))
+    expect(fnBody).toContain('focusDeviceId.value = null')
+    expect(fnBody).toContain('selectedCableId.value = null')
+  })
+
+  it('P1 fit-to-screen: single 42U rack keeps readable width and 70-85% height', () => {
+    const rack = { x: 80, y: 110, width: 240, height: 42 * 20 + 32 }
+    const viewport = { width: 1400, height: 700 }
+    const transform = computeFitToScreenTransform([rack], viewport, { padding: 72 })
+    const visualW = rack.width * transform.scale
+    const visualH = rack.height * transform.scale
+    expect(visualW).toBeGreaterThanOrEqual(140)
+    expect(visualH / viewport.height).toBeGreaterThanOrEqual(0.7)
+    expect(visualH / viewport.height).toBeLessThanOrEqual(0.85)
+  })
+
+  it('P3 pageTitle uses room location and has no hardcoded A区', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const fnStart = source.indexOf('const pageTitle = computed(')
+    expect(fnStart).toBeGreaterThanOrEqual(0)
+    const fnBody = source.slice(fnStart, source.indexOf('const subtitle = computed(', fnStart))
+    expect(fnBody).toContain('focusedRoom.value.location')
+    expect(fnBody).toContain('位置未登记')
+    expect(fnBody).not.toContain('A区')
+  })
+
+  it('P5 ResizeObserver refits device mode only when container size changes', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const fnStart = source.indexOf('function initStage(')
+    expect(fnStart).toBeGreaterThanOrEqual(0)
+    const fnBody = source.slice(fnStart, source.indexOf('watch(topology, () => {', fnStart))
+    expect(fnBody).toContain('new ResizeObserver')
+    expect(fnBody).toContain('sizeChanged')
+    expect(fnBody).toMatch(/mode\s*===\s*['"]devices['"]/)
+    expect(fnBody).toContain('fitDeviceToScreen()')
+    expect(source).toContain('padding: DEVICE_FIT_PADDING')
+  })
+
+  it('P6 CableLayer adds a transparent hit path wider than the visual stroke', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../components/CableLayer.vue'), 'utf8')
+    expect(source).toMatch(/stroke=["']transparent["']/)
+    expect(source).toMatch(/stroke-width=["']14["']|:stroke-width=["']14["']/)
+    expect(source).toContain('pointer-events="stroke"')
+  })
+
+  it('P7 device filters use chips, clearDeviceFilters, and keep test ids', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    expect(source).toContain('filter-chip')
+    expect(source).toContain('aria-pressed')
+    expect(source).toContain('clearDeviceFilters')
+    expect(source).toContain('清除筛选')
+    expect(source).toContain('data-testid="enter-device-level"')
+    expect(source).toContain('data-testid="non-realtime-badge"')
+    expect(source).toContain('data-testid="animation-notice"')
+  })
+
+  it('P8 device non-realtime notice appears once; P9 defines topology CSS variables', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const view = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const layer = readFileSync(resolve(__dirname, '../components/CableLayer.vue'), 'utf8')
+    expect(view).toContain('配置拓扑 · 非实时数据')
+    expect(view).toContain('--topology-bg')
+    expect(view).toContain('--topology-panel')
+    expect(view).toContain('--topology-border')
+    expect(view).toContain('--topology-text')
+    expect(view).toContain('--topology-muted')
+    expect(view).toContain('--topology-accent')
+    expect(layer).not.toContain('登记连接拓扑示意，非实时流量')
+    const badgeMatches = view.match(/配置拓扑 · 非实时数据/g) ?? []
+    expect(badgeMatches).toHaveLength(1)
+  })
+
+  it('P4 canvas min-height is no longer 760px', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    expect(source).not.toMatch(/min-height:\s*760px/)
+    expect(source).toMatch(/100dvh|100vh/)
+    expect(source).toContain('DEVICE_RACK_W = 240')
+    expect(source).toContain('DEVICE_U_PX')
+    expect(source).not.toMatch(/const U_PX\s*=\s*\d+/)
+  })
+
+  it('R2-1 page height accounts for app nav and body margin without document overflow:hidden', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    expect(source).toMatch(/height:\s*calc\(100dvh\s*-\s*67px\)/)
+    expect(source).toMatch(/max-height:\s*calc\(100dvh\s*-\s*67px\)/)
+    expect(source).not.toMatch(/100dvh\s*-\s*48px/)
+    expect(source).not.toMatch(/(?:^|\n)\s*(?:html|body)\s*\{[^}]*overflow:\s*hidden/)
+  })
+
+  it('R2-2 header is one row: titles left, level-switcher and tools right; hint moved to title', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    expect(source).toContain('topology-header__lead')
+    expect(source).toContain('topology-header__tools')
+    expect(source).toContain('title="选择机房后查看机柜和设备链路"')
+    expect(source).not.toMatch(/class="topology-hint"/)
+    const toolsStart = source.indexOf('class="topology-header__tools"')
+    const toolsEnd = source.indexOf('</header>', toolsStart)
+    const toolsBlock = source.slice(toolsStart, toolsEnd)
+    expect(toolsBlock).toContain('level-switcher')
+    expect(toolsBlock).toContain('topology-actions')
+    expect(toolsBlock).toContain('机房级')
+    expect(toolsBlock).toContain('机柜级')
+    expect(toolsBlock).toContain('设备级')
+    expect(toolsBlock).toContain('流动动画')
+    expect(toolsBlock).toContain('适应屏幕')
+    expect(toolsBlock).toContain('刷新')
+    expect(toolsBlock).toContain('配置拓扑 · 非实时数据')
+    expect(source).toMatch(/\.topology-header__tools[\s\S]*flex-wrap:\s*nowrap/)
+  })
+
+  it('R4 high-U deviceEdgePoint y stays inside 20px/U device panel', async () => {
+    expect(DEVICE_U_PX).toBe(20)
+    const rack = {
+      rackId: 'k42',
+      code: 'R42',
+      x: 80,
+      y: 110,
+      width: 240,
+      height: 42 * DEVICE_U_PX + 32,
+    }
+    const device = {
+      deviceId: 'app-42',
+      deviceName: 'APP-42',
+      rackId: 'k42',
+      deviceType: '服务器',
+      operationalStatus: '正常',
+      startU: 42,
+      endU: 42,
+    }
+    const uHeight = device.endU - device.startU + 1
+    const panelY = rack.y + (device.startU - 1) * DEVICE_U_PX
+    const panelH = Math.max(16, uHeight * DEVICE_U_PX - 4)
+    const point = deviceEdgePoint(device, rack, 'left')
+    expect(rack.height).toBeGreaterThanOrEqual(120)
+    expect(point.x).toBe(rack.x)
+    expect(point.y).toBeGreaterThanOrEqual(panelY)
+    expect(point.y).toBeLessThanOrEqual(panelY + panelH)
+
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const sceneSrc = readFileSync(resolve(__dirname, '../composables/useCableScene.ts'), 'utf8')
+    const viewSrc = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    expect(sceneSrc).toContain('export const DEVICE_U_PX = 20')
+    expect(sceneSrc).toContain('rack.height >= 120 ? DEVICE_U_PX')
+    expect(sceneSrc).not.toMatch(/rack\.height\s*>=\s*120\s*\?\s*24/)
+    expect(sceneSrc).not.toMatch(/Math\.ceil\(rack\.height\s*\/\s*24\)/)
+    expect(viewSrc).toContain('DEVICE_U_PX')
+    expect(viewSrc).not.toMatch(/const U_PX\s*=\s*\d+/)
+  })
+
+  it('R3 floor network/storage pseudo-racks use full RACK_GAP_X step (no overlap)', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const layoutStart = source.indexOf('function layoutDeviceSnapshot(')
+    expect(layoutStart).toBeGreaterThanOrEqual(0)
+    const layoutEnd = source.indexOf('\nfunction', layoutStart + 1)
+    const layoutBody = source.slice(layoutStart, layoutEnd > layoutStart ? layoutEnd : undefined)
+    expect(layoutBody).toContain('DEVICE_RACK_W')
+    expect(layoutBody).toContain('RACK_GAP_X')
+    expect(source).toContain('DEVICE_RACK_W = 240')
+    expect(source).toContain('RACK_GAP_X = 340')
+    expect(340).toBeGreaterThanOrEqual(240)
+    expect(layoutBody).not.toMatch(/RACK_GAP_X\s*\/\s*Math\.max/)
+    expect(layoutBody).toMatch(/network\.forEach\([\s\S]*?x = 80 \+ i \* RACK_GAP_X/)
+    expect(layoutBody).toMatch(/storage\.forEach\([\s\S]*?x = 80 \+ i \* RACK_GAP_X/)
+    const networkLength = 3
+    const xs = Array.from({ length: networkLength }, (_, i) => 80 + i * 340)
+    for (let i = 1; i < xs.length; i++) {
+      expect(xs[i]! - xs[i - 1]!).toBeGreaterThanOrEqual(240)
+    }
   })
 })

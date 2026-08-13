@@ -5,7 +5,7 @@
     aria-label="拓扑视图"
   >
     <header class="topology-header">
-      <div>
+      <div class="topology-header__lead">
         <h1>{{ pageTitle }}</h1>
         <p class="topology-subtitle">{{ subtitle }}</p>
         <nav class="topology-breadcrumb" aria-label="层级导航">
@@ -23,6 +23,8 @@
             <span>设备链路</span>
           </template>
         </nav>
+      </div>
+      <div class="topology-header__tools">
         <div class="level-switcher" role="tablist" aria-label="拓扑层级切换">
           <button
             type="button"
@@ -30,6 +32,7 @@
             class="level-switcher__btn"
             :class="{ 'level-switcher__btn--active': !focusedRoomId }"
             :aria-selected="!focusedRoomId"
+            title="选择机房后查看机柜和设备链路"
             @click="exitRoomFocus"
           >
             机房级
@@ -58,39 +61,33 @@
             设备级
           </button>
         </div>
-        <p
-          v-if="!focusedRoomId && topology?.mode === 'rooms'"
-          class="topology-hint"
-        >
-          选择机房后查看机柜和设备链路
-        </p>
-      </div>
-      <div class="topology-actions">
-        <label
-          v-if="topology?.mode === 'devices'"
-          class="anim-toggle"
-          title="线路动画用于展示连接方向，不代表实时流量、带宽或设备负载。"
-        >
-          <input v-model="animationEnabled" type="checkbox" />
-          流动动画
-        </label>
-        <span
-          v-if="topology?.mode === 'devices'"
-          class="non-realtime-badge"
-          title="线路动画用于展示连接方向，不代表实时流量、带宽或设备负载。"
-        >
-          非实时流量
-        </span>
-        <button
-          v-if="topology?.mode === 'devices'"
-          type="button"
-          class="btn"
-          title="适应屏幕"
-          @click="fitDeviceToScreen"
-        >
-          适应屏幕
-        </button>
-        <button type="button" class="btn" :disabled="loading" @click="reload">刷新</button>
+        <div class="topology-actions">
+          <label
+            v-if="topology?.mode === 'devices'"
+            class="anim-toggle"
+            title="动画仅表示登记的线路方向，不代表实时带宽、流量、设备负载或实际路由。"
+          >
+            <input v-model="animationEnabled" type="checkbox" />
+            流动动画
+          </label>
+          <span
+            v-if="topology?.mode === 'devices'"
+            class="non-realtime-badge"
+            title="动画仅表示登记的线路方向，不代表实时带宽、流量、设备负载或实际路由。"
+          >
+            配置拓扑 · 非实时数据
+          </span>
+          <button
+            v-if="topology?.mode === 'devices'"
+            type="button"
+            class="btn"
+            title="适应屏幕"
+            @click="fitDeviceToScreen"
+          >
+            适应屏幕
+          </button>
+          <button type="button" class="btn" :disabled="loading" @click="reload">刷新</button>
+        </div>
       </div>
     </header>
 
@@ -153,55 +150,68 @@
       </span>
     </div>
 
-    <div v-if="topology?.mode === 'devices'" class="topology-filters" aria-label="线缆筛选">
+    <div v-if="topology?.mode === 'devices'" class="topology-filters topology-filters--devices" aria-label="线缆筛选">
       <label class="filter-text">
         设备名称
         <input v-model="deviceNameQuery" type="search" placeholder="筛选设备名" />
       </label>
       <fieldset>
         <legend>设备类型</legend>
-        <label v-for="type in availableDeviceTypes" :key="type">
-          <input
-            type="checkbox"
-            :checked="selectedDeviceTypes.includes(type)"
-            @change="toggleDeviceType(type)"
-          />
+        <button
+          v-for="type in availableDeviceTypes"
+          :key="type"
+          type="button"
+          class="filter-chip"
+          :class="{ 'filter-chip--active': selectedDeviceTypes.includes(type) }"
+          :aria-pressed="selectedDeviceTypes.includes(type)"
+          @click="toggleDeviceType(type)"
+        >
           {{ type }}
-        </label>
+        </button>
       </fieldset>
       <fieldset>
         <legend>线路类型</legend>
-        <label v-for="type in availableCableTypes" :key="type">
-          <input
-            type="checkbox"
-            :checked="selectedCableTypes.includes(type)"
-            @change="toggleCableType(type)"
-          />
+        <button
+          v-for="type in availableCableTypes"
+          :key="type"
+          type="button"
+          class="filter-chip"
+          :class="{ 'filter-chip--active': selectedCableTypes.includes(type) }"
+          :aria-pressed="selectedCableTypes.includes(type)"
+          @click="toggleCableType(type)"
+        >
           {{ type }}
-        </label>
+        </button>
       </fieldset>
       <fieldset>
         <legend>线路状态</legend>
-        <label v-for="status in availableLineStatuses" :key="status">
-          <input
-            type="checkbox"
-            :checked="selectedLineStatuses.includes(status)"
-            @change="toggleLineStatus(status)"
-          />
+        <button
+          v-for="status in availableLineStatuses"
+          :key="status"
+          type="button"
+          class="filter-chip"
+          :class="{ 'filter-chip--active': selectedLineStatuses.includes(status) }"
+          :aria-pressed="selectedLineStatuses.includes(status)"
+          @click="toggleLineStatus(status)"
+        >
           {{ status }}
-        </label>
+        </button>
       </fieldset>
       <fieldset>
         <legend>线路用途</legend>
-        <label v-for="purpose in availablePurposes" :key="purpose">
-          <input
-            type="checkbox"
-            :checked="selectedPurposes.includes(purpose)"
-            @change="togglePurpose(purpose)"
-          />
+        <button
+          v-for="purpose in availablePurposes"
+          :key="purpose"
+          type="button"
+          class="filter-chip"
+          :class="{ 'filter-chip--active': selectedPurposes.includes(purpose) }"
+          :aria-pressed="selectedPurposes.includes(purpose)"
+          @click="togglePurpose(purpose)"
+        >
           {{ purpose }}
-        </label>
+        </button>
       </fieldset>
+      <button type="button" class="btn filter-clear" @click="clearDeviceFilters">清除筛选</button>
     </div>
 
     <div class="topology-body" :class="{ 'topology-body--with-panel': !!selectedCable || !!selectedRoomConnection }">
@@ -372,6 +382,7 @@ import {
   buildCableScene,
   buildUniquePortLabelPlacements,
   computeFitToScreenTransform,
+  DEVICE_U_PX,
   filterActiveDeviceSnapshot,
   filterVisibleDevices,
   formatPortLabel,
@@ -395,13 +406,12 @@ const ROOM_W = ROOM_PLATFORM_W
 const ROOM_H = ROOM_PLATFORM_H
 const RACK_W = 90
 const RACK_H = 56
-const DEVICE_RACK_W = 168
-const RACK_GAP_X = 280
-const RACK_GAP_Y = 360
+const DEVICE_RACK_W = 240
+const RACK_GAP_X = 340
 const RACK_DEPTH_X = 16
 const RACK_DEPTH_Y = 10
-const U_PX = 24
 const COMPACT_EMPTY_RACK_H = 240
+const DEVICE_FIT_PADDING = 72
 const PLATFORM_DEPTH_X = 28
 const PLATFORM_DEPTH_Y = 18
 const PLATFORM_STRIP_H = 28
@@ -454,9 +464,13 @@ let deviceViewportBound = false
 /** Avoid resetting user pan/zoom on every focus redraw in devices mode. */
 let deviceFitAppliedForSnapshot: string | null = null
 
-const focusedRoom = computed(() =>
-  topology.value?.rooms.find((room) => room.id === (focusedRoomId.value ?? topology.value?.focusedRoomId)) ?? null,
-)
+const focusedRoom = computed(() => {
+  const id = focusedRoomId.value ?? topology.value?.focusedRoomId ?? null
+  if (!id || !topology.value) return null
+  return topology.value.rooms.find((room) => room.id === id)
+    ?? topology.value.rooms.find((room) => room.id.toLowerCase() === id.toLowerCase())
+    ?? null
+})
 
 const filteredRoomConnections = computed(() => {
   if (!topology.value || topology.value.mode !== 'rooms') return [] as TopologyRoomConnection[]
@@ -491,14 +505,15 @@ const availableRoomStatuses = computed(() => {
 
 const pageTitle = computed(() => {
   if (topology.value?.mode === 'devices' && focusedRoom.value) {
-    return `${focusedRoom.value.name} / A区`
+    const location = focusedRoom.value.location?.trim()
+    return location || `${focusedRoom.value.name} / 位置未登记`
   }
   return '机房线缆拓扑'
 })
 
 const subtitle = computed(() => {
   if (topology.value?.mode === 'devices') {
-    return '登记连接拓扑示意，非实时流量。箭头为登记端点方向，不代表实际数据包路由。'
+    return '单击设备或线路查看端口标签与链路详情'
   }
   return '跨机房线缆聚合视图；拖拽保存位置，双击机房展开机柜连接'
 })
@@ -591,7 +606,7 @@ function fitDeviceToScreen(): void {
   const transform = computeFitToScreenTransform(laidSnapshot.value.racks, {
     width: stage.width(),
     height: stage.height(),
-  })
+  }, { padding: DEVICE_FIT_PADDING })
   stage.scale({ x: transform.scale, y: transform.scale })
   stage.position({ x: transform.x, y: transform.y })
   syncDeviceOverlay()
@@ -790,33 +805,39 @@ function layoutDeviceSnapshot(snapshot: CableSnapshot): CableSnapshot {
 
   const laidRacks: RackInfo[] = []
   const laidDevices: DeviceInfo[] = []
-
-  // Row 1: racks (up to 4)
-  rackRacks.forEach((rack, index) => {
-    const devices = (devicesByRack.get(rack.rackId) ?? [])
-      .slice()
-      .sort((a, b) => a.startU - b.startU || a.deviceName.localeCompare(b.deviceName))
-    const maxEndU = devices.length > 0 ? Math.max(...devices.map((d) => d.endU)) : 0
-    const rackX = 80 + (index % 4) * RACK_GAP_X
-    const rackY = 110 + Math.floor(index / 4) * RACK_GAP_Y
-    const height = maxEndU > 0
-      ? Math.max(maxEndU * U_PX + 32, 120)
-      : COMPACT_EMPTY_RACK_H
-    laidRacks.push({
-      ...rack,
-      x: rackX,
-      y: rackY,
-      width: DEVICE_RACK_W,
-      height,
-    })
-    for (const device of devices) {
-      laidDevices.push({ ...device })
+  const colCount = 4
+  let cursorY = 110
+  const rowCount = Math.max(1, Math.ceil(rackRacks.length / colCount))
+  for (let row = 0; row < rowCount && rackRacks.length > 0; row++) {
+    const slice = rackRacks.slice(row * colCount, row * colCount + colCount)
+    let rowMaxH = COMPACT_EMPTY_RACK_H
+    for (let col = 0; col < slice.length; col++) {
+      const rack = slice[col]!
+      const devices = (devicesByRack.get(rack.rackId) ?? [])
+        .slice()
+        .sort((a, b) => a.startU - b.startU || a.deviceName.localeCompare(b.deviceName))
+      const maxEndU = devices.length > 0 ? Math.max(...devices.map((d) => d.endU)) : 0
+      const height = maxEndU > 0
+        ? Math.max(maxEndU * DEVICE_U_PX + 32, 120)
+        : COMPACT_EMPTY_RACK_H
+      rowMaxH = Math.max(rowMaxH, height)
+      laidRacks.push({
+        ...rack,
+        x: 80 + col * RACK_GAP_X,
+        y: cursorY,
+        width: DEVICE_RACK_W,
+        height,
+      })
+      for (const device of devices) {
+        laidDevices.push({ ...device })
+      }
     }
-  })
+    cursorY += rowMaxH + 48
+  }
 
-  // Row 2/3: floor network + storage devices
+  // Floor network + storage devices sit below the last rack row.
   if (floorDevices.length > 0) {
-    const baseY = 110 + RACK_GAP_Y
+    const baseY = laidRacks.length > 0 ? cursorY : 110
     const network = floorDevices.filter((d) =>
       d.deviceType.includes('交换') || d.deviceType.includes('防火') || d.deviceName.startsWith('SW-') || d.deviceName.startsWith('FW-'),
     )
@@ -831,7 +852,7 @@ function layoutDeviceSnapshot(snapshot: CableSnapshot): CableSnapshot {
         x,
         y,
         width: DEVICE_RACK_W,
-        height: Math.max(device.endU - device.startU + 1, 1) * U_PX + 16,
+        height: Math.max(device.endU - device.startU + 1, 1) * DEVICE_U_PX + 16,
       })
       laidDevices.push({
         ...device,
@@ -841,7 +862,7 @@ function layoutDeviceSnapshot(snapshot: CableSnapshot): CableSnapshot {
       })
     }
     network.forEach((device, i) => {
-      const x = 80 + i * (RACK_GAP_X / Math.max(1, network.length - 1 || 1))
+      const x = 80 + i * RACK_GAP_X
       placeFloorDevice(device, x, baseY, i + 1)
     })
     storage.forEach((device, i) => {
@@ -1271,17 +1292,39 @@ function drawPortAnchors(
     }
   }
 
+  let labelBundles: typeof scene.bundles = []
+  let labelCables: typeof snapshot.cables = []
+  if (selectedId) {
+    const bundle = scene.bundles.find((b) => b.id === selectedId)
+    const cable = snapshot.cables.find((c) => c.cableId === selectedId)
+    if (bundle && cable && bundle.opacity > 0) {
+      labelBundles = [bundle]
+      labelCables = [cable]
+    }
+  } else if (focusDeviceId.value) {
+    const focusedId = focusDeviceId.value
+    labelCables = snapshot.cables.filter(
+      (c) => c.source.deviceId === focusedId || c.target.deviceId === focusedId,
+    )
+    const ids = new Set(labelCables.map((c) => c.cableId))
+    labelBundles = scene.bundles.filter((b) => ids.has(b.id) && b.opacity > 0)
+  }
+  if (labelBundles.length === 0) return
+
   const canvasHeight = Math.max(
     stageSize.value.height,
     ...snapshot.racks.map((r) => r.y + r.height + 100),
   )
-  const placements = buildUniquePortLabelPlacements(
-    scene.bundles,
-    snapshot.cables,
+  let placements = buildUniquePortLabelPlacements(
+    labelBundles,
+    labelCables,
     snapshot.devices,
     snapshot.racks,
     { canvasHeight },
   )
+  if (focusDeviceId.value && !selectedId) {
+    placements = placements.filter((p) => p.deviceId === focusDeviceId.value)
+  }
   for (const placement of placements) {
     layer.add(new Konva.Text({
       x: placement.rect.x,
@@ -1362,8 +1405,8 @@ function drawDeviceScene(): void {
     const rack = snapshot.racks.find((r) => r.rackId === device.rackId)
     if (!rack) continue
     const uHeight = Math.max(1, device.endU - device.startU + 1)
-    const y = rack.y + (device.startU - 1) * U_PX
-    const height = Math.max(16, uHeight * U_PX - 4)
+    const y = rack.y + (device.startU - 1) * DEVICE_U_PX
+    const height = Math.max(16, uHeight * DEVICE_U_PX - 4)
     const dimmed = (focusDeviceId.value !== null || selectedCableId.value !== null)
       && !relatedDeviceIds.has(device.deviceId)
     const focusedDevice = focusDeviceId.value === device.deviceId
@@ -1839,8 +1882,8 @@ function syncRoomCableAnimation(): void {
 }
 
 function computeStageSize(): { width: number; height: number } {
-  const viewW = konvaContainer.value?.clientWidth || 800
-  const viewH = konvaContainer.value?.clientHeight || 760
+  const viewW = containerRef.value?.clientWidth || konvaContainer.value?.clientWidth || 800
+  const viewH = containerRef.value?.clientHeight || konvaContainer.value?.clientHeight || 760
   if (!topology.value || topology.value.rooms.length === 0) return { width: viewW, height: viewH }
 
   // Device level uses viewport-sized stage + pan/zoom (no content-sized scroll canvas).
@@ -1872,15 +1915,24 @@ function initStage(): void {
   }
   drawScene()
 
+  let observedW = stageSize.value.width
+  let observedH = stageSize.value.height
   resizeObserver = new ResizeObserver(() => {
-    if (!stage || !konvaContainer.value) return
+    if (!stage || !containerRef.value) return
     const { width: w, height: h } = computeStageSize()
+    const sizeChanged = observedW !== w || observedH !== h
+    observedW = w
+    observedH = h
     stageSize.value = { width: w, height: h }
     stage.width(w)
     stage.height(h)
     drawScene()
+    if (sizeChanged && topology.value?.mode === 'devices') {
+      fitDeviceToScreen()
+    }
   })
-  resizeObserver.observe(konvaContainer.value)
+  const roTarget = containerRef.value ?? konvaContainer.value
+  if (roTarget) resizeObserver.observe(roTarget)
 }
 
 watch(topology, () => {
@@ -2030,29 +2082,46 @@ onUnmounted(() => {
 
 <style scoped>
 .topology-page {
+  --topology-bg: #06111f;
+  --topology-panel: #0B1B31;
+  --topology-border: #2E4A6E;
+  --topology-text: #e8f1ff;
+  --topology-muted: #8b9cb3;
+  --topology-accent: #39D2C0;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
-  padding: var(--space-md);
-  min-height: calc(100vh - 48px);
-  background: linear-gradient(180deg, #06111f 0%, #071425 100%);
-  color: #e8f1ff;
+  gap: var(--space-sm);
+  margin: 0;
+  padding: var(--space-sm);
+  /* App nav 实测 51px + UA body margin 16px；App.vue 不可改 */
+  height: calc(100dvh - 67px);
+  max-height: calc(100dvh - 67px);
+  min-height: 0;
+  overflow: hidden;
+  background: linear-gradient(180deg, var(--topology-bg) 0%, #071425 100%);
+  color: var(--topology-text);
 }
 
 .topology-page--devices {
-  background: linear-gradient(180deg, #071426 0%, #0B1B31 100%);
-  color: #F8F9FA;
+  --topology-bg: #071426;
+  --topology-panel: #0B1B31;
+  --topology-border: #2E4A6E;
+  --topology-text: #F8F9FA;
+  --topology-muted: #C5D4E8;
+  --topology-accent: #39D2C0;
+  background: linear-gradient(180deg, var(--topology-bg) 0%, var(--topology-panel) 100%);
+  color: var(--topology-text);
 }
 
 .topology-page .topology-header h1,
 .topology-page .topology-subtitle,
-.topology-page .topology-breadcrumb,
-.topology-page .topology-hint {
-  color: #8fa4bd;
+.topology-page .topology-breadcrumb {
+  color: var(--topology-muted);
 }
 
 .topology-page .topology-header h1 {
-  color: #e8f1ff;
+  color: var(--topology-text);
 }
 
 .topology-page--devices .topology-header h1,
@@ -2060,65 +2129,76 @@ onUnmounted(() => {
 .topology-page--devices .topology-breadcrumb,
 .topology-page--devices .anim-toggle,
 .topology-page--devices .non-realtime-badge {
-  color: #C5D4E8;
+  color: var(--topology-muted);
 }
 
 .topology-page--devices .topology-header h1 {
-  color: #F8F9FA;
+  color: var(--topology-text);
 }
 
 .topology-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--space-md);
+  align-items: center;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+}
+
+.topology-header__lead {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.topology-header__tools {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-shrink: 0;
 }
 
 .topology-header h1 {
   margin: 0;
-  font-size: 1.4rem;
-  color: #e8f1ff;
+  font-size: 1.15rem;
+  line-height: 1.25;
+  color: var(--topology-text);
 }
 
 .topology-subtitle {
-  margin: 0.25rem 0 0;
-  color: #8fa4bd;
-  font-size: 0.9rem;
+  margin: 0.1rem 0 0;
+  color: var(--topology-muted);
+  font-size: 0.8rem;
+  line-height: 1.3;
 }
 
 .topology-breadcrumb {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  margin-top: 0.5rem;
-  font-size: 0.85rem;
-  color: #8fa4bd;
-}
-
-.topology-hint {
-  margin: 0.45rem 0 0;
-  font-size: 0.85rem;
-  color: #8b9cb3;
+  gap: 0.3rem;
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+  color: var(--topology-muted);
 }
 
 .level-switcher {
   display: inline-flex;
-  gap: 0.35rem;
-  margin-top: 0.65rem;
-  padding: 0.2rem;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0.12rem;
   border-radius: 10px;
   background: rgba(11, 27, 49, 0.55);
-  border: 1px solid #2E4A6E;
+  border: 1px solid var(--topology-border);
 }
 
 .level-switcher__btn {
   border: 1px solid transparent;
   background: transparent;
-  color: #C5D4E8;
+  color: var(--topology-muted);
   border-radius: 8px;
-  padding: 0.35rem 0.75rem;
+  padding: 0.25rem 0.6rem;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
 }
 
 .level-switcher__btn:disabled {
@@ -2127,9 +2207,9 @@ onUnmounted(() => {
 }
 
 .level-switcher__btn--active {
-  background: #0B1B31;
-  border-color: #39D2C0;
-  color: #F8F9FA;
+  background: var(--topology-panel);
+  border-color: var(--topology-accent);
+  color: var(--topology-text);
   font-weight: 600;
 }
 
@@ -2150,7 +2230,7 @@ onUnmounted(() => {
 
 .topology-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: var(--space-sm);
   align-items: center;
 }
@@ -2160,14 +2240,14 @@ onUnmounted(() => {
   background: #fff;
   color: #1f2a37;
   border-radius: 8px;
-  padding: 0.4rem 0.75rem;
+  padding: 0.28rem 0.6rem;
   cursor: pointer;
 }
 
 .topology-page--devices .btn {
-  border-color: #3D5578;
-  background: #0B1B31;
-  color: #F8F9FA;
+  border-color: var(--topology-border);
+  background: var(--topology-panel);
+  color: var(--topology-text);
 }
 
 .btn--primary {
@@ -2193,7 +2273,7 @@ onUnmounted(() => {
   font-size: 0.8rem;
   padding: 0.2rem 0.5rem;
   border-radius: 6px;
-  border: 1px solid #3D5578;
+  border: 1px solid var(--topology-border);
   background: rgba(11, 27, 49, 0.8);
   color: #FFB341;
 }
@@ -2207,10 +2287,17 @@ onUnmounted(() => {
   flex-wrap: wrap;
   gap: var(--space-md);
   padding: 0.5rem 0.75rem;
-  border: 1px solid #2E4A6E;
+  border: 1px solid var(--topology-border);
   border-radius: 8px;
   background: rgba(11, 27, 49, 0.85);
-  color: #C5D4E8;
+  color: var(--topology-muted);
+  flex-shrink: 0;
+}
+
+.topology-filters--devices {
+  gap: 0.5rem 0.75rem;
+  padding: 0.4rem 0.65rem;
+  align-items: center;
 }
 
 .filter-text {
@@ -2222,11 +2309,33 @@ onUnmounted(() => {
 
 .filter-text input {
   min-width: 160px;
-  border: 1px solid #3D5578;
+  border: 1px solid var(--topology-border);
   border-radius: 6px;
-  background: #071426;
-  color: #F8F9FA;
+  background: var(--topology-bg);
+  color: var(--topology-text);
   padding: 0.25rem 0.4rem;
+}
+
+.filter-chip {
+  border: 1px solid var(--topology-border);
+  background: transparent;
+  color: var(--topology-muted);
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.filter-chip--active,
+.filter-chip[aria-pressed='true'] {
+  border-color: var(--topology-accent);
+  background: rgba(57, 210, 192, 0.16);
+  color: var(--topology-accent);
+  font-weight: 600;
+}
+
+.filter-clear {
+  margin-left: auto;
 }
 
 .topology-filters fieldset {
@@ -2257,7 +2366,8 @@ onUnmounted(() => {
   display: flex;
   gap: var(--space-md);
   flex: 1;
-  min-height: 760px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .topology-body--with-panel .topology-canvas {
@@ -2267,11 +2377,11 @@ onUnmounted(() => {
 .topology-canvas {
   position: relative;
   flex: 1;
-  min-height: 760px;
-  border: 1px solid #203750;
+  min-height: 320px;
+  border: 1px solid var(--topology-border);
   border-radius: 12px;
   overflow: auto;
-  background-color: #071425;
+  background-color: var(--topology-bg);
   background-image:
     linear-gradient(30deg, rgba(91, 118, 152, 0.08) 1px, transparent 1px),
     linear-gradient(150deg, rgba(91, 118, 152, 0.08) 1px, transparent 1px);
@@ -2281,9 +2391,9 @@ onUnmounted(() => {
 .topology-canvas--devices {
   overflow: hidden;
   cursor: grab;
-  border-color: #2E4A6E;
+  border-color: var(--topology-border);
   /* FR-VIS-02 dark theme + diagonal grid */
-  background-color: #071426;
+  background-color: var(--topology-bg);
   background-image:
     linear-gradient(30deg, rgba(91, 118, 152, 0.08) 1px, transparent 1px),
     linear-gradient(150deg, rgba(91, 118, 152, 0.08) 1px, transparent 1px);
@@ -2297,7 +2407,7 @@ onUnmounted(() => {
 .konva-stage {
   width: 100%;
   height: 100%;
-  min-height: 760px;
+  min-height: 320px;
 }
 
 .cable-overlay {
@@ -2316,12 +2426,12 @@ onUnmounted(() => {
   min-width: 160px;
   max-width: 260px;
   padding: 0.5rem 0.65rem;
-  border: 1px solid #2E4A6E;
+  border: 1px solid var(--topology-border);
   border-radius: 8px;
   background: rgba(11, 27, 49, 0.94);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
   font-size: 0.75rem;
-  color: #C5D4E8;
+  color: var(--topology-muted);
   pointer-events: none;
 }
 
@@ -2339,7 +2449,7 @@ onUnmounted(() => {
 
 .device-legend__count {
   margin-left: auto;
-  color: #5B7698;
+  color: var(--topology-muted);
 }
 
 .cable-overlay :deep(.cable-layer) {
@@ -2353,10 +2463,10 @@ onUnmounted(() => {
 .cable-detail-panel {
   width: 300px;
   flex-shrink: 0;
-  border: 1px solid #2E4A6E;
+  border: 1px solid var(--topology-border);
   border-radius: 12px;
-  background: #0B1B31;
-  color: #C5D4E8;
+  background: var(--topology-panel);
+  color: var(--topology-muted);
   padding: 0.75rem 1rem;
   overflow: auto;
 }
@@ -2371,7 +2481,7 @@ onUnmounted(() => {
 .filter-label {
   font-weight: 600;
   font-size: 0.85rem;
-  color: #e8f1ff;
+  color: var(--topology-text);
 }
 
 .dot {
@@ -2386,7 +2496,7 @@ onUnmounted(() => {
 .cable-detail-panel h2 {
   margin: 0;
   font-size: 1rem;
-  color: #F8F9FA;
+  color: var(--topology-text);
 }
 
 .cable-detail-panel dl {
@@ -2398,12 +2508,12 @@ onUnmounted(() => {
 }
 
 .cable-detail-panel dt {
-  color: #5B7698;
+  color: var(--topology-muted);
 }
 
 .cable-detail-panel dd {
   margin: 0;
-  color: #F8F9FA;
+  color: var(--topology-text);
 }
 
 .topology-tooltip {
