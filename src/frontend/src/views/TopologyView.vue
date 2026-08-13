@@ -447,6 +447,7 @@ const tooltip = ref<{
 
 let stage: Konva.Stage | null = null
 let layer: Konva.Layer | null = null
+let roomGroups = new Map<string, Konva.Group>()
 let roomCableAnimation: Konva.Animation | null = null
 let resizeObserver: ResizeObserver | null = null
 let deviceViewportBound = false
@@ -1447,6 +1448,15 @@ function drawRoomPlatform(group: Konva.Group, room: TopologyRoom, selected: bool
   const dx = 24
   const dy = 16
 
+  // Transparent hit target: Group itself has no hit area; all visual children are listening:false.
+  group.add(new Konva.Rect({
+    x: 0,
+    y: -dy,
+    width: w + dx,
+    height: h + dy + 8,
+    fill: 'transparent',
+  }))
+
   group.add(new Konva.Line({
     points: [8, h + 8, w + 8, h + 8, w + dx + 8, h - dy + 8, dx + 8, h - dy + 8],
     closed: true,
@@ -1461,6 +1471,7 @@ function drawRoomPlatform(group: Konva.Group, room: TopologyRoom, selected: bool
     stroke: selected ? TOPOLOGY_PALETTE.accentBlue : '#2e4a6e',
     strokeWidth: selected ? 2 : 1,
     listening: false,
+    name: 'room-platform-top',
   }))
 
   for (let gx = 0; gx <= w; gx += 36) {
@@ -1536,6 +1547,19 @@ function drawRoomPlatform(group: Konva.Group, room: TopologyRoom, selected: bool
   }))
 }
 
+function updateRoomSelection(prevId: string | null, nextId: string): void {
+  const applyStroke = (id: string | null, selected: boolean): void => {
+    if (!id) return
+    const top = roomGroups.get(id)?.findOne('.room-platform-top')
+    if (!top) return
+    top.stroke(selected ? TOPOLOGY_PALETTE.accentBlue : '#2e4a6e')
+    top.strokeWidth(selected ? 2 : 1)
+  }
+  if (prevId && prevId !== nextId) applyStroke(prevId, false)
+  applyStroke(nextId, true)
+  layer?.draw()
+}
+
 function drawScene(): void {
   if (!stage || !layer || !topology.value) return
   layer.destroyChildren()
@@ -1554,6 +1578,7 @@ function drawScene(): void {
   overlayContentSize.value = { width: stageSize.value.width, height: stageSize.value.height }
 
   if (current.mode === 'rooms') {
+    roomGroups.clear()
     const positions = autoLayoutRooms(current.rooms)
 
     const edgeSlots = new Map<string, number>()
@@ -1652,11 +1677,13 @@ function drawScene(): void {
       })
 
       drawRoomPlatform(group, room, selected)
+      roomGroups.set(room.id, group)
 
       group.on('click', () => {
+        const prev = focusedRoomId.value
         focusedRoomId.value = room.id
+        updateRoomSelection(prev, room.id)
         router.replace({ query: { ...route.query, roomId: room.id, view: 'rooms' } })
-        drawScene()
       })
       group.on('dragend', async () => {
         const nextX = group.x()
@@ -1765,9 +1792,9 @@ function drawScene(): void {
         fill: '#f8f9fa',
       }))
       group.on('click', () => {
-        // Restore focusedRoomId from topology data so level switcher stays enabled
+        // Restore focusedRoomId from topology data so level switcher stays enabled.
+        // Do not call drawScene() here: destroying nodes on click kills Konva dblclick.
         focusedRoomId.value = current.focusedRoomId ?? focusedRoomId.value
-        drawScene()
       })
       group.on('dblclick', async () => {
         if (!current.focusedRoomId) return
@@ -1941,6 +1968,11 @@ async function syncFromRoute(): Promise<void> {
   } else if (view === 'racks' && roomId) {
     await load(roomId)
   } else {
+    // Already in rooms mode: skip reload so click→route watch does not rebuild nodes
+    // and kill Konva dblclick. Returning from devices/racks still needs load(null).
+    if (view === 'rooms' && topology.value?.mode === 'rooms') {
+      return
+    }
     // Room-level: load(null) to stay in room mode; roomId is used for highlighting only
     await load(null)
   }
