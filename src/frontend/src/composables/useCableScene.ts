@@ -484,7 +484,14 @@ export function deviceNameLabelRect(device: DeviceInfo, rack: RackInfo): LabelRe
   const panelW = rack.width - 20
   const groupX = rack.x + 10
   const groupY = rack.y + (device.startU - 1) * unitPx + 2
-  if (panelH < 24) {
+  const type = device.deviceType
+  const typeLower = type.toLowerCase()
+  const compactKind =
+    type.includes('交换') || typeLower.includes('switch')
+    || type.includes('防火') || typeLower.includes('firewall')
+    || type.includes('存储') || typeLower.includes('storage')
+    || type.includes('备份')
+  if (panelH < 24 || compactKind) {
     const bodyW = 120
     return {
       x: groupX + bodyW + 4,

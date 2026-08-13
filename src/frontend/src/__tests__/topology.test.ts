@@ -2003,7 +2003,7 @@ describe('TASK-20260813-133241 device UI', () => {
     expect(rectStart).toBeGreaterThanOrEqual(0)
     const rectEnd = sceneSrc.indexOf('\nexport ', rectStart + 1)
     const rectBody = sceneSrc.slice(rectStart, rectEnd > rectStart ? rectEnd : undefined)
-    expect(rectBody).toMatch(/if \(panelH < 24\)[\s\S]*?height:\s*14/)
+    expect(rectBody).toMatch(/if \(panelH < 24[\s\S]*?height:\s*14/)
 
     const rack = {
       rackId: 'k-ac',
@@ -2026,6 +2026,135 @@ describe('TASK-20260813-133241 device UI', () => {
     expect(rect.width).toBe(96)
     expect(rect.height).toBe(14)
     expect(rect.width).toBeLessThan(longNameDevice.deviceName.length * 6)
+  })
+
+  it('TASK-20260813-230017: compact predicate includes switch/storage/firewall at any panelH', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const viewSrc = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const sceneSrc = readFileSync(resolve(__dirname, '../composables/useCableScene.ts'), 'utf8')
+
+    const drawStart = viewSrc.indexOf('function drawDevicePanel(')
+    expect(drawStart).toBeGreaterThanOrEqual(0)
+    const drawEnd = viewSrc.indexOf('\nfunction', drawStart + 1)
+    const drawBody = viewSrc.slice(drawStart, drawEnd > drawStart ? drawEnd : undefined)
+    expect(drawBody).toMatch(
+      /panelH\s*<\s*24\s*\|\|\s*kind\s*===\s*'switch'\s*\|\|\s*kind\s*===\s*'storage'\s*\|\|\s*kind\s*===\s*'firewall'/,
+    )
+
+    const rectStart = sceneSrc.indexOf('export function deviceNameLabelRect(')
+    expect(rectStart).toBeGreaterThanOrEqual(0)
+    const rectEnd = sceneSrc.indexOf('\nexport ', rectStart + 1)
+    const rectBody = sceneSrc.slice(rectStart, rectEnd > rectStart ? rectEnd : undefined)
+    expect(rectBody).toMatch(/panelH\s*<\s*24/)
+    expect(rectBody).toMatch(/交换/)
+    expect(rectBody).toMatch(/switch/)
+    expect(rectBody).toMatch(/防火/)
+    expect(rectBody).toMatch(/firewall/)
+    expect(rectBody).toMatch(/存储/)
+    expect(rectBody).toMatch(/storage/)
+  })
+
+  it('TASK-20260813-230017: deviceNameLabelRect returns side name zone for 2U switch', () => {
+    const rack = {
+      rackId: 'k-ac',
+      code: 'AC-03d5ef',
+      x: 80,
+      y: 110,
+      width: 240,
+      height: 42 * DEVICE_U_PX + 32,
+    }
+    const switch2u = {
+      deviceId: 'sw-2u',
+      deviceName: 'SW-2U',
+      rackId: 'k-ac',
+      deviceType: '交换机',
+      operationalStatus: '正常',
+      startU: 1,
+      endU: 2,
+    }
+    const server2u = {
+      deviceId: 'srv-2u',
+      deviceName: 'SRV-2U',
+      rackId: 'k-ac',
+      deviceType: '服务器',
+      operationalStatus: '正常',
+      startU: 1,
+      endU: 2,
+    }
+    const panelH = Math.max(16, 2 * DEVICE_U_PX - 4)
+    expect(panelH).toBeGreaterThanOrEqual(24)
+    const groupX = rack.x + 10
+    const groupY = rack.y + (switch2u.startU - 1) * DEVICE_U_PX + 2
+    const bodyW = 120
+    const panelW = rack.width - 20
+    expect(deviceNameLabelRect(switch2u, rack)).toEqual({
+      x: groupX + bodyW + 4,
+      y: groupY + 2,
+      width: panelW - bodyW - 4,
+      height: 14,
+    })
+    expect(deviceNameLabelRect(server2u, rack)).toEqual({
+      x: rack.x + 10 + 8,
+      y: rack.y + (server2u.startU - 1) * DEVICE_U_PX + 2 + Math.max(4, panelH / 2 - 7),
+      width: panelW - 28,
+      height: 14,
+    })
+  })
+
+  it('TASK-20260813-230017 R2: 2U backup-only device classifies as storage compact', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const viewSrc = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+
+    const classifyStart = viewSrc.indexOf('function classifyDeviceKind(')
+    expect(classifyStart).toBeGreaterThanOrEqual(0)
+    const classifyEnd = viewSrc.indexOf('\nfunction', classifyStart + 1)
+    const classifyBody = viewSrc.slice(classifyStart, classifyEnd > classifyStart ? classifyEnd : undefined)
+    expect(classifyBody).toMatch(
+      /deviceType\.includes\('存储'\)\s*\|\|\s*t\.includes\('storage'\)\s*\|\|\s*deviceType\.includes\('备份'\)/,
+    )
+
+    const drawStart = viewSrc.indexOf('function drawDevicePanel(')
+    expect(drawStart).toBeGreaterThanOrEqual(0)
+    const drawEnd = viewSrc.indexOf('\nfunction', drawStart + 1)
+    const drawBody = viewSrc.slice(drawStart, drawEnd > drawStart ? drawEnd : undefined)
+    expect(drawBody).toMatch(
+      /panelH\s*<\s*24\s*\|\|\s*kind\s*===\s*'switch'\s*\|\|\s*kind\s*===\s*'storage'\s*\|\|\s*kind\s*===\s*'firewall'/,
+    )
+
+    const rack = {
+      rackId: 'k-ac',
+      code: 'AC-03d5ef',
+      x: 80,
+      y: 110,
+      width: 240,
+      height: 42 * DEVICE_U_PX + 32,
+    }
+    const backup2u = {
+      deviceId: 'bak-2u',
+      deviceName: 'BAK-2U',
+      rackId: 'k-ac',
+      deviceType: '备份',
+      operationalStatus: '正常',
+      startU: 1,
+      endU: 2,
+    }
+    expect(backup2u.deviceType).toBe('备份')
+    expect(backup2u.deviceType).not.toMatch(/存储|storage/i)
+
+    const panelH = Math.max(16, 2 * DEVICE_U_PX - 4)
+    expect(panelH).toBeGreaterThanOrEqual(24)
+    const groupX = rack.x + 10
+    const groupY = rack.y + (backup2u.startU - 1) * DEVICE_U_PX + 2
+    const bodyW = 120
+    const panelW = rack.width - 20
+    expect(deviceNameLabelRect(backup2u, rack)).toEqual({
+      x: groupX + bodyW + 4,
+      y: groupY + 2,
+      width: panelW - bodyW - 4,
+      height: 14,
+    })
   })
 })
 

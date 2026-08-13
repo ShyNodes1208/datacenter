@@ -908,7 +908,7 @@ function classifyDeviceKind(deviceType: string): 'server' | 'switch' | 'firewall
   const t = deviceType.toLowerCase()
   if (deviceType.includes('交换') || t.includes('switch')) return 'switch'
   if (deviceType.includes('防火') || t.includes('firewall')) return 'firewall'
-  if (deviceType.includes('存储') || t.includes('storage')) return 'storage'
+  if (deviceType.includes('存储') || t.includes('storage') || deviceType.includes('备份')) return 'storage'
   if (deviceType.includes('服务') || t.includes('server') || deviceType.includes('主机')) return 'server'
   return 'generic'
 }
@@ -1144,7 +1144,7 @@ function drawDevicePanel(
           ? '#1B2A3D'
           : '#222C38'
 
-  const compact = panelH < 24
+  const compact = panelH < 24 || kind === 'switch' || kind === 'storage' || kind === 'firewall'
   const bodyW = compact ? 120 : panelW
 
   if (compact) {
