@@ -367,6 +367,32 @@ def delete_non_live_positions(conn: sqlite3.Connection) -> int:
     return cur.rowcount or 0
 
 
+def clear_synthetic_live_positions(conn: sqlite3.Connection) -> int:
+    """Drop 在架 rows for synthetic devices before rebuild.
+
+    occupancy is rebuilt from scratch and does not load existing synthetic rows;
+    stale placements left after fill_synthetic_devices can_fit breaks cause U overlaps
+    on re-runs when non-synthetic inventory changes. Cleared synthetics are re-placed
+    by fill_synthetic_devices / place_stragglers. Cables untouched.
+    """
+    rows = conn.execute("SELECT Id, Name FROM Servers").fetchall()
+    synth_ids = [sid for sid, name in rows if SYNTHETIC_NAME_RE.match(name or "")]
+    if not synth_ids:
+        return 0
+    ph = ",".join("?" * len(synth_ids))
+    cur = conn.execute(
+        f"DELETE FROM ServerPositions WHERE Status = '在架' AND ServerId IN ({ph})",
+        synth_ids,
+    )
+    deleted = cur.rowcount or 0
+    if deleted:
+        conn.execute(
+            f"UPDATE Servers SET PositionStatus = '未上架' WHERE Id IN ({ph})",
+            synth_ids,
+        )
+    return deleted
+
+
 def seed_kept_rooms_and_racks(conn: sqlite3.Connection) -> tuple[list[dict], list[str]]:
     """Return room dicts and flat rack id list (Shanghai R1-01.. then BJ then GZ)."""
     shanghai_id = ensure_shanghai_room(conn)
@@ -875,6 +901,9 @@ def main() -> None:
             log("DELETE", f"{dropped} non-在架 ServerPositions")
 
         rooms, flat_racks = seed_kept_rooms_and_racks(conn)
+        cleared_synth = clear_synthetic_live_positions(conn)
+        if cleared_synth:
+            log("DELETE", f"{cleared_synth} synthetic 在架 ServerPositions (rebuild)")
         occupancy: dict[str, int] = {rid: 1 for rid in flat_racks}
         counts: dict[str, int] = {rid: 0 for rid in flat_racks}
 
