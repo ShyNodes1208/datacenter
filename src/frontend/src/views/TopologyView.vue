@@ -230,6 +230,42 @@
             :scene="deviceCableScene"
             :animation-enabled="animationEnabled"
             @bundle-click="onCableBundleClick"
+            @bundle-hover="onCableBundleHover"
+            @bundle-leave="onCableBundleLeave"
+            @background-click="onCableBackgroundClick"
+          />
+        </div>
+        <div
+          v-if="topology?.mode === 'devices' && laidSnapshot"
+          class="rack-hit-overlay"
+          data-testid="rack-hit-overlay"
+          :style="cableOverlayStyle"
+        >
+          <button
+            v-for="hit in rackHitTargets"
+            :key="`rack-hit-${hit.rackId}`"
+            type="button"
+            class="rack-hit-overlay__rack"
+            data-testid="rack-hit-target"
+            :data-rack-id="hit.rackId"
+            :class="{ 'rack-hit-overlay__rack--focused': focusedRackId === hit.rackId }"
+            :style="hit.style"
+            :aria-label="`聚焦机柜 ${hit.rackId}`"
+            @click.stop="onRackHitClick(hit.rackId)"
+          />
+          <button
+            v-for="hit in deviceHitTargets"
+            :key="`device-hit-${hit.deviceId}`"
+            type="button"
+            class="rack-hit-overlay__device"
+            data-testid="device-hit-target"
+            :data-device-id="hit.deviceId"
+            :data-rack-id="hit.rackId"
+            :class="{ 'rack-hit-overlay__device--active': focusedRackId === hit.rackId }"
+            :style="hit.style"
+            :aria-label="`聚焦设备 ${hit.deviceId}`"
+            :tabindex="focusedRackId === hit.rackId ? 0 : -1"
+            @click.stop="onDeviceHitClick(hit.deviceId, hit.rackId)"
           />
         </div>
         <aside
@@ -459,11 +495,16 @@ import {
   computeFitToScreenTransform,
   DEVICE_U_PX,
   filterVisibleDevices,
+  focusedPeerBundleKey,
   formatPortLabel,
+  FOCUSED_DIM_RACK_OPACITY,
   isPrimaryDeviceRack,
   layoutDeviceLevelSnapshot,
   portSlotKey,
   purposeDisplayName,
+  rackHitTargetStyle,
+  RACK_HIT_TITLE_BAND,
+  RACK_VISUAL_DEPTH_X,
   resolveSemanticZoom,
   shouldAutoFitOnDeviceResize,
   staticArrowPositions,
@@ -487,8 +528,10 @@ const ROOM_W = ROOM_PLATFORM_W
 const ROOM_H = ROOM_PLATFORM_H
 const RACK_W = 90
 const RACK_H = 56
-const RACK_DEPTH_X = 16
+const RACK_DEPTH_X = RACK_VISUAL_DEPTH_X
 const RACK_DEPTH_Y = 10
+/** Iso rack title band above front face (drawIsoRack y - dy - 18). */
+const RACK_TITLE_HIT_BAND = RACK_HIT_TITLE_BAND
 const DEVICE_FIT_PADDING = 72
 const PLATFORM_DEPTH_X = 28
 const PLATFORM_DEPTH_Y = 18
@@ -514,8 +557,11 @@ const roomStatuses = ref<string[]>([])
 const roomAnimationEnabled = ref(false)
 const animationEnabled = ref(false)
 const focusDeviceId = ref<string | null>(null)
+const focusedRackId = ref<string | null>(null)
 const selectedCableId = ref<string | null>(null)
 const selectedBundleId = ref<string | null>(null)
+/** Expanded aggregate key (peer|purpose or legacy direction key). */
+const expandedBundleKey = ref<string | null>(null)
 const selectedCableTypes = ref<string[]>([])
 const selectedPurposes = ref<string[]>([])
 const selectedDeviceTypes = ref<string[]>([])
@@ -633,9 +679,42 @@ const selectedCable = computed<CableInfo | null>(() => {
 })
 
 const selectedBundle = computed<CableBundle | null>(() => {
-  if (!selectedBundleId.value || !deviceCableScene.value) return null
-  const bundle = deviceCableScene.value.bundles.find((b) => b.id === selectedBundleId.value)
-  return bundle?.isAggregated ? bundle : null
+  const key = expandedBundleKey.value ?? selectedBundleId.value
+  if (!key || !deviceCableScene.value) return null
+  // Prefer the aggregated bundle still present, else synthesize from expanded members.
+  const bundle = deviceCableScene.value.bundles.find((b) => b.id === key && b.isAggregated)
+  if (bundle) return bundle
+  if (!expandedBundleKey.value || !laidSnapshot.value) return null
+  const members = laidSnapshot.value.cables.filter((c) => {
+    if (!focusedRackId.value) return false
+    const peer = c.source.rackId === focusedRackId.value
+      ? c.target.rackId
+      : c.target.rackId === focusedRackId.value
+        ? c.source.rackId
+        : null
+    return peer && `${peer}|${c.purpose}` === expandedBundleKey.value
+  })
+  if (members.length === 0) return null
+  const sample = members[0]!
+  const peer = sample.source.rackId === focusedRackId.value
+    ? sample.target.rackId!
+    : sample.source.rackId!
+  return {
+    id: expandedBundleKey.value,
+    purpose: sample.purpose,
+    cableType: sample.cableType,
+    strokeColor: '#3388ff',
+    count: members.length,
+    sourceRackId: focusedRackId.value!,
+    targetRackId: peer,
+    route: [],
+    opacity: 1,
+    highlighted: true,
+    animated: false,
+    isAggregated: true,
+    memberIds: members.map((m) => m.cableId),
+    direction: 'forward',
+  } as CableBundle
 })
 
 const selectedBundleMembers = computed<CableInfo[]>(() => {
@@ -679,8 +758,57 @@ const deviceCableScene = computed<CableScene | null>(() => {
       expandToCables: true,
       selectedCableId: selectedCableId.value,
       selectedBundleId: selectedBundleId.value,
+      focusedRackId: focusDeviceId.value ? null : focusedRackId.value,
+      expandedBundleKey: expandedBundleKey.value,
     },
   )
+})
+
+/** Hit targets for device > rack > cable interaction layer (above SVG cables). */
+const rackHitTargets = computed(() => {
+  const snapshot = laidSnapshot.value
+  if (!snapshot || topology.value?.mode !== 'devices') return [] as Array<{
+    rackId: string
+    style: Record<string, string>
+  }>
+  return snapshot.racks.filter(isPrimaryDeviceRack).map((rack) => ({
+    rackId: rack.rackId,
+    style: rackHitTargetStyle(rack, {
+      titleBand: RACK_TITLE_HIT_BAND,
+      depthX: RACK_DEPTH_X,
+    }),
+  }))
+})
+
+const deviceHitTargets = computed(() => {
+  const snapshot = laidSnapshot.value
+  if (!snapshot || topology.value?.mode !== 'devices') return [] as Array<{
+    deviceId: string
+    rackId: string
+    style: Record<string, string>
+  }>
+  const rackById = new Map(snapshot.racks.map((r) => [r.rackId, r]))
+  const visible = filterVisibleDevices(snapshot.devices, {
+    deviceNameQuery: deviceNameQuery.value,
+    deviceTypes: selectedDeviceTypes.value,
+  })
+  return visible.flatMap((device) => {
+    const rack = rackById.get(device.rackId)
+    if (!rack || !isPrimaryDeviceRack(rack)) return []
+    const uHeight = Math.max(1, device.endU - device.startU + 1)
+    const y = rack.y + (device.startU - 1) * DEVICE_U_PX + 2
+    const height = Math.max(16, uHeight * DEVICE_U_PX - 4)
+    return [{
+      deviceId: device.deviceId,
+      rackId: device.rackId,
+      style: {
+        left: `${rack.x + 10}px`,
+        top: `${y}px`,
+        width: `${rack.width - 20}px`,
+        height: `${height}px`,
+      },
+    }]
+  })
 })
 
 const cableOverlayStyle = computed(() => ({
@@ -892,8 +1020,10 @@ async function reload(): Promise<void> {
 
 async function exitRoomFocus(): Promise<void> {
   focusDeviceId.value = null
+  focusedRackId.value = null
   selectedCableId.value = null
   selectedBundleId.value = null
+  expandedBundleKey.value = null
   clearDeviceFilters()
   laidSnapshot.value = null
   await navigateToView(null, 'rooms')
@@ -902,8 +1032,10 @@ async function exitRoomFocus(): Promise<void> {
 async function enterRackLevel(): Promise<void> {
   if (!focusedRoomId.value) return
   focusDeviceId.value = null
+  focusedRackId.value = null
   selectedCableId.value = null
   selectedBundleId.value = null
+  expandedBundleKey.value = null
   clearDeviceFilters()
   laidSnapshot.value = null
   await navigateToView(focusedRoomId.value, 'racks')
@@ -912,8 +1044,10 @@ async function enterRackLevel(): Promise<void> {
 async function enterDeviceLevel(): Promise<void> {
   if (!focusedRoomId.value) return
   focusDeviceId.value = null
+  focusedRackId.value = null
   selectedCableId.value = null
   selectedBundleId.value = null
+  expandedBundleKey.value = null
   clearDeviceFilters()
   await navigateToView(focusedRoomId.value, 'devices')
 }
@@ -921,32 +1055,136 @@ async function enterDeviceLevel(): Promise<void> {
 function clearCableSelection(): void {
   selectedCableId.value = null
   selectedBundleId.value = null
+  expandedBundleKey.value = null
 }
 
 function onCableBundleClick(bundleId: string): void {
   focusDeviceId.value = null
   const bundle = deviceCableScene.value?.bundles.find((b) => b.id === bundleId)
   if (bundle?.isAggregated) {
-    selectedBundleId.value = bundleId
+    if (expandedBundleKey.value === bundleId) {
+      expandedBundleKey.value = null
+      selectedBundleId.value = null
+    } else {
+      expandedBundleKey.value = bundleId
+      selectedBundleId.value = bundleId
+    }
     selectedCableId.value = null
   } else {
     selectedCableId.value = bundleId
     selectedBundleId.value = null
+    // Keep expandedBundleKey so member selection stays in expand context when focused.
   }
 }
 
 function onBundleMemberClick(cableId: string): void {
   selectedCableId.value = cableId
-  selectedBundleId.value = null
   focusDeviceId.value = null
+}
+
+function onCableBackgroundClick(): void {
+  if (expandedBundleKey.value) {
+    expandedBundleKey.value = null
+    selectedBundleId.value = null
+    selectedCableId.value = null
+    return
+  }
+  if (focusedRackId.value) {
+    focusedRackId.value = null
+    selectedCableId.value = null
+    selectedBundleId.value = null
+    return
+  }
+  clearDeviceFocus()
+}
+
+function onRackHitClick(rackId: string): void {
+  focusDeviceId.value = null
+  selectedCableId.value = null
+  selectedBundleId.value = null
+  expandedBundleKey.value = null
+  if (focusedRackId.value === rackId) {
+    focusedRackId.value = null
+  } else {
+    focusedRackId.value = rackId
+  }
+  drawScene()
+}
+
+function onDeviceHitClick(deviceId: string, rackId: string): void {
+  // Device hits only register when focusedRackId matches (overlay gating); guard Konva fallback.
+  if (focusedRackId.value !== rackId) return
+  expandedBundleKey.value = null
+  selectedBundleId.value = null
+  selectedCableId.value = null
+  focusDeviceId.value = deviceId
+  focusedRackId.value = null
+  drawScene()
+}
+
+function onCableBundleHover(payload: {
+  bundleId: string
+  clientX: number
+  clientY: number
+}): void {
+  const bundle = deviceCableScene.value?.bundles.find((b) => b.id === payload.bundleId)
+  if (!bundle || !bundle.isAggregated) return
+  const snapshot = laidSnapshot.value
+  const rackCode = (id: string) => snapshot?.racks.find((r) => r.rackId === id)?.code ?? id
+  const alertCount = bundle.alertCount ?? 0
+  const normalCount = Math.max(0, bundle.count - alertCount)
+  const canvas = containerRef.value?.getBoundingClientRect()
+  tooltip.value = {
+    x: payload.clientX - (canvas?.left ?? 0) + 12,
+    y: payload.clientY - (canvas?.top ?? 0) + 12,
+    title: `线路束 ${bundle.countLabel ?? `×${bundle.count}`}`,
+    lines: [
+      `源机柜：${rackCode(bundle.sourceRackId)}`,
+      `对端机柜：${rackCode(bundle.peerRackId ?? bundle.targetRackId)}`,
+      `用途：${purposeLabel(bundle.purpose, bundle.cableType)}`,
+      `总数：${bundle.count} · 正常：${normalCount} · 告警：${alertCount}`,
+    ],
+  }
+}
+
+function onCableBundleLeave(): void {
+  if (tooltip.value?.title.startsWith('线路束')) tooltip.value = null
 }
 
 function clearDeviceFocus(): void {
   focusDeviceId.value = null
+  focusedRackId.value = null
   selectedCableId.value = null
   selectedBundleId.value = null
+  expandedBundleKey.value = null
   tooltip.value = null
   drawScene()
+}
+
+function onDeviceKeydown(event: KeyboardEvent): void {
+  if (event.key !== 'Escape') return
+  if (topology.value?.mode !== 'devices') return
+  if (selectedCableId.value) {
+    selectedCableId.value = null
+    event.preventDefault()
+    return
+  }
+  if (expandedBundleKey.value) {
+    expandedBundleKey.value = null
+    selectedBundleId.value = null
+    event.preventDefault()
+    return
+  }
+  if (focusedRackId.value) {
+    focusedRackId.value = null
+    event.preventDefault()
+    drawScene()
+    return
+  }
+  if (focusDeviceId.value) {
+    clearDeviceFocus()
+    event.preventDefault()
+  }
 }
 
 async function fetchCsrf(): Promise<string | null> {
@@ -1130,7 +1368,7 @@ function drawIsoPlatform(
   }))
 }
 
-function drawIsoRack(rack: RackInfo, empty: boolean): void {
+function drawIsoRack(rack: RackInfo, empty: boolean, options?: { focused?: boolean; dimmed?: boolean }): void {
   if (!layer) return
   const x = rack.x
   const y = rack.y
@@ -1138,6 +1376,11 @@ function drawIsoRack(rack: RackInfo, empty: boolean): void {
   const h = rack.height
   const dx = RACK_DEPTH_X
   const dy = RACK_DEPTH_Y
+  const focused = !!options?.focused
+  const dimmed = !!options?.dimmed
+  const rackOpacity = dimmed ? FOCUSED_DIM_RACK_OPACITY : 1
+  const frontStroke = focused ? '#39D2C0' : '#4A6388'
+  const frontStrokeW = focused ? 3 : 1.5
 
   // Drop shadow
   layer.add(new Konva.Rect({
@@ -1148,6 +1391,7 @@ function drawIsoRack(rack: RackInfo, empty: boolean): void {
     fill: 'rgba(0,0,0,0.35)',
     cornerRadius: 4,
     listening: false,
+    opacity: rackOpacity,
   }))
 
   // Top face
@@ -1155,9 +1399,10 @@ function drawIsoRack(rack: RackInfo, empty: boolean): void {
     points: [x, y, x + w, y, x + w + dx, y - dy, x + dx, y - dy],
     closed: true,
     fill: '#2A3F5F',
-    stroke: '#3D5578',
-    strokeWidth: 1,
+    stroke: focused ? '#39D2C0' : '#3D5578',
+    strokeWidth: focused ? 2 : 1,
     listening: false,
+    opacity: rackOpacity,
   }))
 
   // Right side
@@ -1165,9 +1410,10 @@ function drawIsoRack(rack: RackInfo, empty: boolean): void {
     points: [x + w, y, x + w + dx, y - dy, x + w + dx, y + h - dy, x + w, y + h],
     closed: true,
     fill: '#152338',
-    stroke: '#3D5578',
-    strokeWidth: 1,
+    stroke: focused ? '#39D2C0' : '#3D5578',
+    strokeWidth: focused ? 2 : 1,
     listening: false,
+    opacity: rackOpacity,
   }))
 
   // Front face (equipment bay)
@@ -1177,9 +1423,10 @@ function drawIsoRack(rack: RackInfo, empty: boolean): void {
     width: w,
     height: h,
     fill: '#182942',
-    stroke: '#4A6388',
-    strokeWidth: 1.5,
+    stroke: frontStroke,
+    strokeWidth: frontStrokeW,
     listening: false,
+    opacity: rackOpacity,
   }))
 
   // Inner bay
@@ -1192,6 +1439,7 @@ function drawIsoRack(rack: RackInfo, empty: boolean): void {
     stroke: '#0D1117',
     strokeWidth: 1,
     listening: false,
+    opacity: rackOpacity,
   }))
 
   // Rack name on top band
@@ -1203,8 +1451,9 @@ function drawIsoRack(rack: RackInfo, empty: boolean): void {
     text: rack.code,
     fontSize: 13,
     fontStyle: 'bold',
-    fill: '#F8F9FA',
+    fill: focused ? '#39D2C0' : '#F8F9FA',
     listening: false,
+    opacity: rackOpacity,
   }))
 
   if (empty) {
@@ -1217,6 +1466,7 @@ function drawIsoRack(rack: RackInfo, empty: boolean): void {
       fontSize: 13,
       fill: '#5B7698',
       listening: false,
+      opacity: rackOpacity,
     }))
   }
 }
@@ -1486,6 +1736,18 @@ function drawDeviceScene(): void {
   }
 
   const relatedDeviceIds = new Set<string>()
+  const relatedRackIds = new Set<string>()
+  if (focusedRackId.value) {
+    relatedRackIds.add(focusedRackId.value)
+    for (const cable of snapshot.cables) {
+      if (cable.source.rackId === focusedRackId.value || cable.target.rackId === focusedRackId.value) {
+        if (cable.source.rackId) relatedRackIds.add(cable.source.rackId)
+        if (cable.target.rackId) relatedRackIds.add(cable.target.rackId)
+        relatedDeviceIds.add(cable.source.deviceId)
+        relatedDeviceIds.add(cable.target.deviceId)
+      }
+    }
+  }
   if (focusDeviceId.value) {
     relatedDeviceIds.add(focusDeviceId.value)
     for (const cable of snapshot.cables) {
@@ -1502,9 +1764,22 @@ function drawDeviceScene(): void {
       relatedDeviceIds.add(sel.target.deviceId)
     }
   }
-  if (selectedBundleId.value) {
-    const bundle = scene?.bundles.find((b) => b.id === selectedBundleId.value)
-    for (const memberId of bundle?.memberIds ?? []) {
+  const expandKey = expandedBundleKey.value ?? selectedBundleId.value
+  if (expandKey) {
+    const bundle = scene?.bundles.find((b) => b.id === expandKey)
+    const memberIds = bundle?.memberIds
+      ?? snapshot.cables
+        .filter((c) => {
+          if (!focusedRackId.value) return false
+          const peer = c.source.rackId === focusedRackId.value
+            ? c.target.rackId
+            : c.target.rackId === focusedRackId.value
+              ? c.source.rackId
+              : null
+          return !!peer && `${peer}|${c.purpose}` === expandKey
+        })
+        .map((c) => c.cableId)
+    for (const memberId of memberIds) {
       const member = snapshot.cables.find((c) => c.cableId === memberId)
       if (member) {
         relatedDeviceIds.add(member.source.deviceId)
@@ -1532,7 +1807,11 @@ function drawDeviceScene(): void {
 
   for (const rack of snapshot.racks) {
     const rackDevices = devicesByRack.get(rack.rackId) ?? []
-    drawIsoRack(rack, rackDevices.length === 0)
+    const rackFocused = focusedRackId.value === rack.rackId
+    const rackDimmed = focusedRackId.value !== null
+      && isPrimaryDeviceRack(rack)
+      && !relatedRackIds.has(rack.rackId)
+    drawIsoRack(rack, rackDevices.length === 0, { focused: rackFocused, dimmed: rackDimmed })
   }
 
   for (const device of visibleDevices) {
@@ -1541,11 +1820,22 @@ function drawDeviceScene(): void {
     const uHeight = Math.max(1, device.endU - device.startU + 1)
     const y = rack.y + (device.startU - 1) * DEVICE_U_PX
     const height = Math.max(16, uHeight * DEVICE_U_PX - 4)
-    const dimmed = (focusDeviceId.value !== null || selectedCableId.value !== null || selectedBundleId.value !== null)
-      && !relatedDeviceIds.has(device.deviceId)
+    const dimmed = (
+      focusDeviceId.value !== null
+      || selectedCableId.value !== null
+      || expandedBundleKey.value !== null
+      || selectedBundleId.value !== null
+      || focusedRackId.value !== null
+    ) && !relatedDeviceIds.has(device.deviceId)
     const focusedDevice = focusDeviceId.value === device.deviceId
     const endpointHighlighted = relatedDeviceIds.has(device.deviceId)
-      && (selectedCableId.value !== null || selectedBundleId.value !== null || focusedDevice)
+      && (
+        selectedCableId.value !== null
+        || expandedBundleKey.value !== null
+        || selectedBundleId.value !== null
+        || focusedDevice
+        || focusedRackId.value !== null
+      )
     const showName = semantic.showDeviceNames
       || focusedDevice
       || endpointHighlighted
@@ -1559,10 +1849,11 @@ function drawDeviceScene(): void {
     drawDevicePanel(group, device, panelW, height, focusedDevice, endpointHighlighted && !focusedDevice, showName)
     group.on('click', (event) => {
       event.cancelBubble = true
-      focusDeviceId.value = device.deviceId
-      selectedCableId.value = null
-      selectedBundleId.value = null
-      drawScene()
+      if (focusedRackId.value !== rack.rackId) {
+        onRackHitClick(rack.rackId)
+        return
+      }
+      onDeviceHitClick(device.deviceId, rack.rackId)
     })
     group.on('mouseenter', () => {
       const pointer = stage?.getPointerPosition()
@@ -1608,7 +1899,7 @@ function drawDeviceScene(): void {
 
   stage.on('click', (event) => {
     if (event.target === stage) {
-      clearDeviceFocus()
+      onCableBackgroundClick()
     }
   })
 
@@ -2100,8 +2391,10 @@ watch(topology, () => {
 
 watch([
   focusDeviceId,
+  focusedRackId,
   selectedCableId,
   selectedBundleId,
+  expandedBundleKey,
   selectedCableTypes,
   selectedPurposes,
   selectedDeviceTypes,
@@ -2113,7 +2406,11 @@ watch([
 ], () => {
   if (topology.value?.mode === 'devices') {
     // FR-VIS-12 / T-20: clear selection when selected cable/bundle is filtered out.
-    if ((selectedCableId.value || selectedBundleId.value) && laidSnapshot.value && focusedRoomId.value) {
+    if (
+      (selectedCableId.value || selectedBundleId.value || expandedBundleKey.value)
+      && laidSnapshot.value
+      && focusedRoomId.value
+    ) {
       const scene = buildCableScene(
         laidSnapshot.value,
         { level: 'room', roomId: focusedRoomId.value },
@@ -2125,15 +2422,31 @@ watch([
           lineStatuses: selectedLineStatuses.value,
         },
         focusedRoomId.value,
-        { expandToCables: true },
+        {
+          expandToCables: true,
+          focusedRackId: focusedRackId.value,
+          expandedBundleKey: expandedBundleKey.value,
+        },
       )
-      if (selectedCableId.value) {
-        const stillVisible = scene.bundles.some(
-          (b) => b.id === selectedCableId.value || b.memberIds.includes(selectedCableId.value!),
-        )
-        if (!stillVisible) selectedCableId.value = null
+      const visibleCableIds = new Set(scene.bundles.flatMap((b) => b.memberIds))
+      if (selectedCableId.value && !visibleCableIds.has(selectedCableId.value)) {
+        selectedCableId.value = null
       }
-      if (selectedBundleId.value) {
+      if (expandedBundleKey.value) {
+        const stillExpanded = scene.bundles.some(
+          (b) => b.isAggregated && b.id === expandedBundleKey.value,
+        ) || (
+          focusedRackId.value
+          && [...visibleCableIds].some((cableId) => {
+            const cable = laidSnapshot.value!.cables.find((c) => c.cableId === cableId)
+            return cable && focusedPeerBundleKey(focusedRackId.value!, cable) === expandedBundleKey.value
+          })
+        )
+        if (!stillExpanded) {
+          expandedBundleKey.value = null
+          selectedBundleId.value = null
+        }
+      } else if (selectedBundleId.value) {
         if (!scene.bundles.some((b) => b.id === selectedBundleId.value && b.isAggregated)) {
           selectedBundleId.value = null
         }
@@ -2154,6 +2467,9 @@ async function navigateToView(roomId: string | null, view: 'rooms' | 'racks' | '
   selectedRoomConnectionId.value = null
   selectedCableId.value = null
   selectedBundleId.value = null
+  expandedBundleKey.value = null
+  focusedRackId.value = null
+  focusDeviceId.value = null
   const query: Record<string, string> = {}
   if (roomId) query.roomId = roomId
   if (view !== 'rooms' || roomId) query.view = view
@@ -2214,6 +2530,7 @@ function toggleRoomStatus(status: string): void {
 onMounted(async () => {
   await syncFromRoute()
   initStage()
+  window.addEventListener('keydown', onDeviceKeydown)
 })
 
 watch(() => [route.query.roomId, route.query.view], () => {
@@ -2221,6 +2538,7 @@ watch(() => [route.query.roomId, route.query.view], () => {
 })
 
 onUnmounted(() => {
+  window.removeEventListener('keydown', onDeviceKeydown)
   stopRoomCableAnimation()
   resizeObserver?.disconnect()
   resizeObserver = null
@@ -2577,6 +2895,46 @@ onUnmounted(() => {
   pointer-events: none;
   z-index: 4;
   overflow: visible;
+}
+
+.rack-hit-overlay {
+  position: absolute;
+  inset: 0 auto auto 0;
+  pointer-events: none;
+  z-index: 6;
+  overflow: visible;
+}
+
+.rack-hit-overlay__rack {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  pointer-events: auto;
+  cursor: pointer;
+  z-index: 0;
+}
+
+.rack-hit-overlay__rack--focused {
+  box-shadow: inset 0 0 0 2px rgba(57, 210, 192, 0.35);
+}
+
+.rack-hit-overlay__device {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  pointer-events: none;
+  cursor: default;
+  z-index: 0;
+}
+
+.rack-hit-overlay__device--active {
+  pointer-events: auto;
+  cursor: pointer;
+  z-index: 1;
 }
 
 .device-legend {

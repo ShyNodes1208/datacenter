@@ -43,7 +43,27 @@ import {
   UNSELECTED_OPACITY,
   ANIMATION_PERIOD_MS,
   applyDeviceViewportAction,
+  assignCorridorLanes,
+  bundleCountLabel,
+  computeCorridorLayout,
   computeFitToScreenTransform,
+  corridorForPurpose,
+  corridorHorizontalClear,
+  corridorLaneY,
+  type CorridorSide,
+  type CableSnapshot,
+  CORRIDOR_MAX_LANES,
+  EXPANDED_OTHER_OPACITY,
+  focusedAggregationStats,
+  focusedPeerBundleKey,
+  horizontalSegIntersectsRack,
+  peerRackId,
+  routeViaCorridor,
+  routeSegmentsClear,
+  rackHitTargetStyle,
+  RACK_HIT_TITLE_BAND,
+  RACK_VISUAL_DEPTH_X,
+  verticalSegIntersectsRack,
   viewportTransformsEqual,
   visualStrokeWidthForBundle,
   zoomViewportAroundPoint,
@@ -2878,7 +2898,7 @@ describe('TASK-20260814-120641 device cable bundle aggregation', () => {
     const { resolve } = await import('node:path')
     const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
     expect(source).toContain('selectedBundleId')
-    expect(source).toContain('b.memberIds.includes(selectedCableId.value!')
+    expect(source).toContain('visibleCableIds')
     expect(source).toContain('selectedBundleId.value = null')
     expect(source).toContain('onBundleMemberClick')
     expect(source).toContain('线路束')
@@ -2917,5 +2937,567 @@ describe('TASK-20260814-120641 device cable bundle aggregation', () => {
     // 2 cross-rack 上联 → 1 agg; reverse single; alert; same-rack; storage alone = 5
     expect(idle.bundles).toHaveLength(5)
     expect(idle.bundles.length).toBeLessThan(expanded.bundles.length)
+  })
+})
+
+const RACK_HIT_HARNESS_DEV_SERVER = process.env.VITE_DEV_SERVER_URL ?? 'http://localhost:5173'
+const RACK_HIT_HARNESS_URL = `${RACK_HIT_HARNESS_DEV_SERVER}/rack-hit-harness.html`
+
+async function assertRackHitHarnessDevServerReachable(): Promise<void> {
+  try {
+    const probe = await fetch(RACK_HIT_HARNESS_DEV_SERVER)
+    if (!probe.ok) {
+      throw new Error(`HTTP ${probe.status}`)
+    }
+  } catch (cause) {
+    const detail = cause instanceof Error ? cause.message : String(cause)
+    throw new Error(
+      `Vite dev server unreachable at ${RACK_HIT_HARNESS_DEV_SERVER}. `
+      + 'Start it with: npm run dev (in src/frontend). '
+      + detail,
+    )
+  }
+}
+
+describe('TASK-20260814-140520 corridor routing + rack focus', () => {
+  const corridorScene = {
+    racks: [
+      { rackId: 'k1', code: 'R1', x: 80, y: 110, width: 240, height: 200 },
+      { rackId: 'k2', code: 'R2', x: 420, y: 110, width: 240, height: 200 },
+      { rackId: 'k3', code: 'R3', x: 760, y: 110, width: 240, height: 200 },
+    ],
+    devices: [
+      { deviceId: 'd1', deviceName: 'a', rackId: 'k1', deviceType: '服务器', operationalStatus: '正常', startU: 1, endU: 2 },
+      { deviceId: 'd2', deviceName: 'b', rackId: 'k2', deviceType: '交换机', operationalStatus: '正常', startU: 1, endU: 1 },
+      { deviceId: 'd3', deviceName: 'c', rackId: 'k3', deviceType: '服务器', operationalStatus: '正常', startU: 1, endU: 2 },
+    ],
+    cables: [
+      {
+        cableId: 'c-mgmt', cableType: '网线', purpose: '正常', status: '正常',
+        source: { deviceId: 'd1', deviceName: 'a', portName: 'eth0', speed: '1G', rackId: 'k1', rackCode: 'R1' },
+        target: { deviceId: 'd2', deviceName: 'b', portName: 'GE0/1', speed: '1G', rackId: 'k2', rackCode: 'R2' },
+      },
+      {
+        cableId: 'c-biz', cableType: '光纤', purpose: '存储', status: '正常',
+        source: { deviceId: 'd1', deviceName: 'a', portName: 'eth1', speed: '10G', rackId: 'k1', rackCode: 'R1' },
+        target: { deviceId: 'd3', deviceName: 'c', portName: 'eth0', speed: '10G', rackId: 'k3', rackCode: 'R3' },
+      },
+      {
+        cableId: 'c-alert', cableType: '铜缆', purpose: '上联', status: '告警',
+        source: { deviceId: 'd1', deviceName: 'a', portName: 'eth2', speed: '10G', rackId: 'k1', rackCode: 'R1' },
+        target: { deviceId: 'd2', deviceName: 'b', portName: 'GE0/2', speed: '10G', rackId: 'k2', rackCode: 'R2' },
+      },
+    ],
+  }
+
+  it('focusedPeerBundleKey is direction-independent (peer|purpose)', () => {
+    const fwd = corridorScene.cables[0]!
+    const rev = {
+      ...fwd,
+      cableId: 'c-rev',
+      source: fwd.target,
+      target: fwd.source,
+    }
+    expect(focusedPeerBundleKey('k1', fwd)).toBe('k2|正常')
+    expect(focusedPeerBundleKey('k1', rev)).toBe('k2|正常')
+    expect(peerRackId('k1', fwd)).toBe('k2')
+  })
+
+  it('focused aggregation conserves members and tracks alert counts per bundle', () => {
+    const snapshot = parseCableSnapshot({
+      ...corridorScene,
+      cables: [
+        ...corridorScene.cables,
+        {
+          cableId: 'c-mgmt2', cableType: '网线', purpose: '正常', status: '正常',
+          source: { deviceId: 'd1', deviceName: 'a', portName: 'eth3', speed: '1G', rackId: 'k1', rackCode: 'R1' },
+          target: { deviceId: 'd2', deviceName: 'b', portName: 'GE0/3', speed: '1G', rackId: 'k2', rackCode: 'R2' },
+        },
+      ],
+    })!
+    const stats = focusedAggregationStats(snapshot.cables, 'k1')
+    expect(stats.relatedCount).toBe(4)
+    expect(stats.bundleMemberSum).toBe(stats.relatedCount)
+    expect(stats.alertByKey['k2|上联']).toBe(1)
+
+    const scene = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true, focusedRackId: 'k1' },
+    )
+    const memberSum = scene.bundles
+      .filter((b) => b.isAggregated)
+      .reduce((sum, b) => sum + b.count, 0)
+    const singles = scene.bundles.filter((b) => !b.isAggregated && b.sourceRackId !== b.targetRackId)
+    expect(memberSum + singles.length).toBeGreaterThan(0)
+    expect(memberSum).toBe(4) // 2×正常 + 1×上联(告警) + 1×存储
+    const uplink = scene.bundles.find((b) => b.id === 'k2|上联')
+    expect(uplink?.alertCount).toBe(1)
+    expect(uplink?.countLabel).toBe(bundleCountLabel(1, 1))
+    expect(scene.bundles.every((b) => b.memberIds.length > 0)).toBe(true)
+  })
+
+  it('corridorForPurpose maps 管理/上联→upper and 存储→lower; unconfigured is deterministic', () => {
+    expect(corridorForPurpose('正常')).toBe('upper')
+    expect(corridorForPurpose('上联')).toBe('upper')
+    expect(corridorForPurpose('存储')).toBe('lower')
+    expect(corridorForPurpose('自定义', { upperCount: 2, lowerCount: 1 })).toBe('lower')
+    expect(corridorForPurpose('自定义', { spanPx: 500 })).toBe('upper')
+    expect(corridorForPurpose('自定义', { spanPx: 100 })).toBe('lower')
+  })
+
+  it('corridor routes keep horizontal segments out of unrelated rack bodies', () => {
+    const snapshot = parseCableSnapshot(corridorScene)!
+    const layout = computeCorridorLayout(snapshot.racks)
+    const k1 = snapshot.racks[0]!
+    const k3 = snapshot.racks[2]!
+    const route = routeViaCorridor(k1, k3, {
+      layout,
+      side: 'lower',
+      lane: 0,
+      includeInternal: false,
+    })
+    const endpoints = new Set(['k1', 'k3'])
+    expect(corridorHorizontalClear(route, snapshot.racks, endpoints)).toBe(true)
+    expect(horizontalSegIntersectsRack(k1.x, k3.x + k3.width, corridorLaneY(layout, 'lower', 0), snapshot.racks[1]!)).toBe(false)
+  })
+
+  it('assignCorridorLanes separates overlapping intervals and reuses non-overlapping lanes', () => {
+    const lanes = assignCorridorLanes([
+      { id: 'a', side: 'upper', x1: 100, x2: 500, key: 'a' },
+      { id: 'b', side: 'upper', x1: 120, x2: 480, key: 'b' },
+      { id: 'c', side: 'upper', x1: 600, x2: 900, key: 'c' },
+    ])
+    expect(lanes.get('a')).not.toBe(lanes.get('b'))
+    expect(lanes.get('a')).toBe(lanes.get('c'))
+    expect(lanes.get('a')!).toBeLessThan(CORRIDOR_MAX_LANES)
+    const again = assignCorridorLanes([
+      { id: 'a', side: 'upper', x1: 100, x2: 500, key: 'a' },
+      { id: 'b', side: 'upper', x1: 120, x2: 480, key: 'b' },
+      { id: 'c', side: 'upper', x1: 600, x2: 900, key: 'c' },
+    ])
+    expect(again.get('a')).toBe(lanes.get('a'))
+    expect(again.get('b')).toBe(lanes.get('b'))
+  })
+
+  it('expanded bundle draws member cables only; collapse restores aggregates', () => {
+    const snapshot = parseCableSnapshot(corridorScene)!
+    const expanded = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true, focusedRackId: 'k1', expandedBundleKey: 'k2|正常' },
+    )
+    expect(expanded.bundles.some((b) => b.isAggregated && b.id === 'k2|正常')).toBe(false)
+    expect(expanded.bundles.filter((b) => b.memberIds.includes('c-mgmt')).length).toBe(1)
+    const collapsed = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true, focusedRackId: 'k1' },
+    )
+    expect(collapsed.bundles.some((b) => b.isAggregated && b.id === 'k2|正常')).toBe(true)
+  })
+
+  it('interaction overlay sits above cable SVG with rack/device hit targets', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    expect(source).toContain('data-testid="rack-hit-overlay"')
+    expect(source).toContain('data-testid="rack-hit-target"')
+    expect(source).toContain('data-testid="device-hit-target"')
+    expect(source).toContain('onRackHitClick')
+    expect(source).toContain('onDeviceHitClick')
+    expect(source).toMatch(/rack-hit-overlay[\s\S]*z-index:\s*6/)
+    expect(source).toMatch(/cable-overlay[\s\S]*z-index:\s*4/)
+    expect(source).toContain("@click.stop=\"onRackHitClick")
+    expect(source).toContain("@click.stop=\"onDeviceHitClick")
+  })
+
+  it('idle state: rack overlay above devices; device hits only when rack focused', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    // Idle: rack > device — devices default to pointer-events:none, active only for focused rack.
+    expect(source).toContain("'rack-hit-overlay__device--active': focusedRackId === hit.rackId")
+    expect(source).toMatch(/\.rack-hit-overlay__device\s*\{[\s\S]*pointer-events:\s*none/)
+    expect(source).toMatch(/\.rack-hit-overlay__device--active\s*\{[\s\S]*pointer-events:\s*auto/)
+    expect(source).toMatch(/\.rack-hit-overlay__device--active\s*\{[\s\S]*z-index:\s*1/)
+    // Rack click clears device focus; device click requires matching focusedRackId.
+    expect(source).toMatch(/function onRackHitClick[\s\S]*focusDeviceId\.value = null/)
+    expect(source).toMatch(/function onDeviceHitClick[\s\S]*if \(focusedRackId\.value !== rackId\) return/)
+    expect(source).toMatch(/function onDeviceHitClick[\s\S]*focusDeviceId\.value = deviceId/)
+    // Konva fallback: unfocused rack device panel delegates to rack click.
+    expect(source).toMatch(/if \(focusedRackId\.value !== rack\.rackId\)[\s\S]*onRackHitClick\(rack\.rackId\)/)
+  })
+
+  it('rack rectangle blocks cable selection (overlay z-index above cable layer)', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const view = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const layer = readFileSync(resolve(__dirname, '../components/CableLayer.vue'), 'utf8')
+    const rackZ = view.match(/\.rack-hit-overlay\s*\{[\s\S]*?z-index:\s*(\d+)/)?.[1]
+    const cableZ = view.match(/\.cable-overlay\s*\{[\s\S]*?z-index:\s*(\d+)/)?.[1]
+    expect(Number(rackZ)).toBeGreaterThan(Number(cableZ))
+    expect(layer).toContain('pointer-events="stroke"')
+    expect(view).toMatch(/\.rack-hit-overlay__rack\s*\{[\s\S]*pointer-events:\s*auto/)
+  })
+
+  it('Esc handler and background click clear expand then rack focus', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    expect(source).toContain('onDeviceKeydown')
+    expect(source).toContain("event.key !== 'Escape'")
+    expect(source).toContain('expandedBundleKey.value = null')
+    expect(source).toContain('focusedRackId.value = null')
+    expect(source).toContain('onCableBackgroundClick')
+  })
+
+  it('rack/bundle/cable clicks preserve viewport transform', () => {
+    const base = { transform: { scale: 1.35, x: 120, y: 80 }, userAdjusted: true, fitAppliedForSnapshot: 'k' }
+    for (const type of ['rack-click', 'bundle-expand', 'bundle-collapse', 'cable-click'] as const) {
+      const next = applyDeviceViewportAction(base, { type })
+      expect(next.transform).toEqual(base.transform)
+      expect(next.userAdjusted).toBe(true)
+    }
+  })
+
+  it('CableLayer exposes bundle hover + countLabel for aggregate tooltips', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const layer = readFileSync(resolve(__dirname, '../components/CableLayer.vue'), 'utf8')
+    expect(layer).toContain("emit('bundle-hover'")
+    expect(layer).toContain("emit('background-click')")
+    expect(layer).toContain('bundle.countLabel')
+    expect(layer).toContain('×${bundle.count}')
+  })
+
+  it('F1: multi-row 2×2 corridor routes avoid unrelated rack bodies (H + V segments)', () => {
+    const rowGap = 48
+    const rackH = 200
+    const row2Y = 110 + rackH + rowGap
+    const multiRow2x2 = {
+      racks: [
+        { rackId: 'a1', code: 'A1', x: 80, y: 110, width: 240, height: rackH },
+        { rackId: 'a2', code: 'A2', x: 420, y: 110, width: 240, height: rackH },
+        { rackId: 'b1', code: 'B1', x: 80, y: row2Y, width: 240, height: rackH },
+        { rackId: 'b2', code: 'B2', x: 420, y: row2Y, width: 240, height: rackH },
+      ],
+      devices: [],
+      cables: [],
+    }
+    const snapshot = parseCableSnapshot(multiRow2x2)!
+    const layout = computeCorridorLayout(snapshot.racks)
+    const endpoints = new Set<string>()
+    const pairs: Array<[string, string, CorridorSide]> = [
+      ['b1', 'a2', 'upper'],
+      ['b2', 'a1', 'upper'],
+      ['b1', 'b2', 'lower'],
+      ['a1', 'a2', 'upper'],
+    ]
+    for (const [srcId, tgtId, side] of pairs) {
+      const src = snapshot.racks.find((r) => r.rackId === srcId)!
+      const tgt = snapshot.racks.find((r) => r.rackId === tgtId)!
+      endpoints.clear()
+      endpoints.add(srcId)
+      endpoints.add(tgtId)
+      const route = routeViaCorridor(src, tgt, { layout, side, lane: 0, includeInternal: false })
+      expect(routeSegmentsClear(route, snapshot.racks, endpoints)).toBe(true)
+      expect(corridorHorizontalClear(route, snapshot.racks, endpoints)).toBe(true)
+    }
+  })
+
+  it('F1: multi-row 3×2 idle scene routes clear all cross-rack bundles', () => {
+    const rowGap = 48
+    const rackH = 180
+    const row2Y = 110 + rackH + rowGap
+    const racks = [
+      { rackId: 'r1', code: 'R1', x: 80, y: 110, width: 240, height: rackH },
+      { rackId: 'r2', code: 'R2', x: 420, y: 110, width: 240, height: rackH },
+      { rackId: 'r3', code: 'R3', x: 760, y: 110, width: 240, height: rackH },
+      { rackId: 'r4', code: 'R4', x: 80, y: row2Y, width: 240, height: rackH },
+      { rackId: 'r5', code: 'R5', x: 420, y: row2Y, width: 240, height: rackH },
+      { rackId: 'r6', code: 'R6', x: 760, y: row2Y, width: 240, height: rackH },
+    ]
+    const devices = racks.flatMap((r, i) => [{
+      deviceId: `d${i}`, deviceName: `srv${i}`, rackId: r.rackId,
+      deviceType: '服务器', operationalStatus: '正常', startU: 1, endU: 2,
+    }])
+    const cables = [
+      { cableId: 'c1', cableType: '网线', purpose: '正常', status: '正常',
+        source: { deviceId: 'd0', deviceName: 's0', portName: 'p0', speed: '1G', rackId: 'r1', rackCode: 'R1' },
+        target: { deviceId: 'd5', deviceName: 's5', portName: 'p1', speed: '1G', rackId: 'r6', rackCode: 'R6' } },
+      { cableId: 'c2', cableType: '光纤', purpose: '存储', status: '正常',
+        source: { deviceId: 'd3', deviceName: 's3', portName: 'p0', speed: '10G', rackId: 'r4', rackCode: 'R4' },
+        target: { deviceId: 'd1', deviceName: 's1', portName: 'p1', speed: '10G', rackId: 'r2', rackCode: 'R2' } },
+    ]
+    const snapshot = parseCableSnapshot({ racks, devices, cables })!
+    const scene = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'room' },
+      { purposes: [], cableTypes: [] },
+      'room',
+      { expandToCables: true },
+    )
+    for (const bundle of scene.bundles) {
+      if (bundle.sourceRackId === bundle.targetRackId || bundle.route.length < 2) continue
+      const endpoints = new Set([bundle.sourceRackId, bundle.targetRackId])
+      expect(routeSegmentsClear(bundle.route, snapshot.racks, endpoints)).toBe(true)
+    }
+  })
+
+  it('F1: single-column 3×20U focused routes avoid unrelated rack bodies', () => {
+    const heightU = 20
+    const rackH = heightU * DEVICE_U_PX + 32
+    const racks = Array.from({ length: 3 }, (_, i) => ({
+      rackId: `r${i + 1}`,
+      code: `R${i + 1}`,
+      x: 0,
+      y: 0,
+      width: 240,
+      height: rackH,
+    }))
+    const devices = racks.map((rack, i) => ({
+      deviceId: `d${i + 1}`,
+      deviceName: `srv${i + 1}`,
+      rackId: rack.rackId,
+      deviceType: '服务器',
+      operationalStatus: '正常',
+      startU: 1,
+      endU: heightU,
+    }))
+    const endpoint = (deviceId: string, rackId: string, rackCode: string, name: string) => ({
+      deviceId,
+      deviceName: name,
+      portName: 'eth0',
+      speed: '1G',
+      rackId,
+      rackCode,
+    })
+    const snapshot = parseCableSnapshot({
+      racks,
+      devices,
+      cables: [
+        {
+          cableId: 'c12', cableType: '网线', purpose: '正常', status: '正常',
+          source: endpoint('d1', 'r1', 'R1', 'srv1'),
+          target: endpoint('d2', 'r2', 'R2', 'srv2'),
+        },
+        {
+          cableId: 'c13', cableType: '光纤', purpose: '存储', status: '正常',
+          source: endpoint('d1', 'r1', 'R1', 'srv1'),
+          target: endpoint('d3', 'r3', 'R3', 'srv3'),
+        },
+        {
+          cableId: 'c23', cableType: '铜缆', purpose: '上联', status: '正常',
+          source: endpoint('d2', 'r2', 'R2', 'srv2'),
+          target: endpoint('d3', 'r3', 'R3', 'srv3'),
+        },
+      ],
+    })!
+    const laid = layoutDeviceLevelSnapshot(snapshot, { availW: 400, availH: 1000 })
+    expect(laid.colCount).toBe(1)
+    expect(laid.snapshot.racks).toHaveLength(3)
+
+    const focusedId = laid.snapshot.racks[0]!.rackId
+    const scene = buildCableScene(
+      laid.snapshot,
+      { level: 'room', roomId: 'room' },
+      { purposes: [], cableTypes: [] },
+      'room',
+      { expandToCables: true, focusedRackId: focusedId },
+    )
+    for (const bundle of scene.bundles) {
+      if (bundle.sourceRackId === bundle.targetRackId || bundle.route.length < 2) continue
+      const endpoints = new Set([bundle.sourceRackId, bundle.targetRackId])
+      expect(routeSegmentsClear(bundle.route, laid.snapshot.racks, endpoints)).toBe(true)
+    }
+  })
+
+  it('F1: 2×5 layout idle cross-rack routes clear all segments', () => {
+    const heightU = 20
+    const rackH = heightU * DEVICE_U_PX + 32
+    const racks = Array.from({ length: 10 }, (_, i) => ({
+      rackId: `r${i + 1}`,
+      code: `R${String(i + 1).padStart(2, '0')}`,
+      x: 0,
+      y: 0,
+      width: 240,
+      height: rackH,
+    }))
+    const devices = racks.map((rack, i) => ({
+      deviceId: `d${i + 1}`,
+      deviceName: `srv${i + 1}`,
+      rackId: rack.rackId,
+      deviceType: '服务器',
+      operationalStatus: '正常',
+      startU: 1,
+      endU: heightU,
+    }))
+    const ep = (deviceId: string, rackId: string, code: string) => ({
+      deviceId,
+      deviceName: deviceId,
+      portName: 'eth0',
+      speed: '1G',
+      rackId,
+      rackCode: code,
+    })
+    const snapshot = parseCableSnapshot({
+      racks,
+      devices,
+      cables: [
+        {
+          cableId: 'c-top-bottom', cableType: '网线', purpose: '正常', status: '正常',
+          source: ep('d1', 'r1', 'R01'),
+          target: ep('d10', 'r10', 'R10'),
+        },
+        {
+          cableId: 'c-mid', cableType: '光纤', purpose: '存储', status: '正常',
+          source: ep('d4', 'r4', 'R04'),
+          target: ep('d7', 'r7', 'R07'),
+        },
+      ],
+    })!
+    const laid = layoutDeviceLevelSnapshot(snapshot, {
+      availW: 800,
+      availH: 2400,
+      lockedColCount: 2,
+    })
+    expect(laid.colCount).toBe(2)
+    expect(laid.rows).toBe(5)
+
+    const scene = buildCableScene(
+      laid.snapshot,
+      { level: 'room', roomId: 'room' },
+      { purposes: [], cableTypes: [] },
+      'room',
+      { expandToCables: true },
+    )
+    for (const bundle of scene.bundles) {
+      if (bundle.sourceRackId === bundle.targetRackId || bundle.route.length < 2) continue
+      const endpoints = new Set([bundle.sourceRackId, bundle.targetRackId])
+      expect(routeSegmentsClear(bundle.route, laid.snapshot.racks, endpoints)).toBe(true)
+    }
+  })
+
+  it('F2: real TopologyView rack-hit-target clicks set focusedRackId (edge, body, title)', async () => {
+    await assertRackHitHarnessDevServerReachable()
+
+    const { chromium } = await import('playwright')
+    const browser = await chromium.launch({ headless: true })
+    try {
+      const page = await browser.newPage()
+      await page.setViewportSize({ width: 1400, height: 900 })
+      await page.goto(RACK_HIT_HARNESS_URL, { waitUntil: 'networkidle' })
+
+      const bootError = page.locator('[data-testid="rack-hit-harness-error"]')
+      expect(await bootError.count()).toBe(0)
+
+      const rack = page.locator('[data-testid="rack-hit-target"][data-rack-id="k1"]')
+      await rack.waitFor({ state: 'visible', timeout: 20_000 })
+
+      const resetFocus = async (): Promise<void> => {
+        const focused = await rack.evaluate((el) => el.classList.contains('rack-hit-overlay__rack--focused'))
+        if (focused) {
+          await rack.click({ position: { x: 8, y: 8 } })
+          await page.waitForFunction(
+            (selector) => {
+              const el = document.querySelector(selector)
+              return el !== null && !el.classList.contains('rack-hit-overlay__rack--focused')
+            },
+            '[data-testid="rack-hit-target"][data-rack-id="k1"]',
+          )
+        }
+      }
+
+      const box = await rack.boundingBox()
+      expect(box).not.toBeNull()
+      if (!box) return
+
+      const titleBand = RACK_HIT_TITLE_BAND
+      const frontWidth = box.width - RACK_VISUAL_DEPTH_X
+      const hitHeight = box.height
+
+      const assertRackFocused = async (): Promise<void> => {
+        expect(await rack.evaluate((el) => el.classList.contains('rack-hit-overlay__rack--focused'))).toBe(true)
+      }
+
+      // Title band (above rack front face)
+      await rack.click({ position: { x: frontWidth * 0.3, y: titleBand * 0.45 } })
+      await assertRackFocused()
+
+      await resetFocus()
+
+      // Rack body (front face interior)
+      await rack.click({ position: { x: frontWidth * 0.4, y: titleBand + (hitHeight - titleBand) * 0.5 } })
+      await assertRackFocused()
+
+      await resetFocus()
+
+      // Right 2.5D edge (x + width - 2px)
+      await rack.click({ position: { x: box.width - 2, y: hitHeight * 0.55 } })
+      await assertRackFocused()
+    } finally {
+      await browser.close()
+    }
+  }, 60_000)
+
+  it('F2: rack hit overlay covers title band above rack front face', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    expect(source).toContain('rackHitTargetStyle')
+    expect(source).toContain('RACK_TITLE_HIT_BAND')
+    const style = rackHitTargetStyle(
+      { x: 80, y: 110, width: 240, height: 400 },
+      { titleBand: RACK_HIT_TITLE_BAND, depthX: RACK_VISUAL_DEPTH_X },
+    )
+    expect(style.top).toBe(`${110 - RACK_HIT_TITLE_BAND}px`)
+    expect(style.height).toBe(`${400 + RACK_HIT_TITLE_BAND}px`)
+    expect(Number.parseFloat(style.width!)).toBe(240 + RACK_VISUAL_DEPTH_X)
+  })
+
+  it('F3: Konva stage blank click uses graded onCableBackgroundClick (not clearDeviceFocus)', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    expect(source).toMatch(/stage\.on\('click'[\s\S]*event\.target === stage[\s\S]*onCableBackgroundClick\(\)/)
+    expect(source).not.toMatch(/stage\.on\('click'[\s\S]*event\.target === stage[\s\S]*clearDeviceFocus\(\)/)
+    expect(source).toMatch(/function onCableBackgroundClick[\s\S]*expandedBundleKey\.value[\s\S]*focusedRackId\.value/)
+  })
+
+  it('F4: filter validity uses visible scene bundles (not unfiltered laidSnapshot cables)', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    expect(source).toContain('visibleCableIds')
+    expect(source).toContain('focusedPeerBundleKey')
+    expect(source).not.toMatch(/laidSnapshot\.value\.cables\.some\(\(c\) => \{[\s\S]*expandedBundleKey/)
+  })
+
+  it('F4: buildCableScene drops filtered-out expanded bundle from visible bundles', () => {
+    const snapshot = parseCableSnapshot(corridorScene)!
+    const expanded = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true, focusedRackId: 'k1', expandedBundleKey: 'k2|正常' },
+    )
+    expect(expanded.bundles.some((b) => b.memberIds.includes('c-mgmt'))).toBe(true)
+    const filtered = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: ['存储'], cableTypes: [] },
+      'r1',
+      { expandToCables: true, focusedRackId: 'k1', expandedBundleKey: 'k2|正常' },
+    )
+    expect(filtered.bundles.some((b) => b.memberIds.includes('c-mgmt'))).toBe(false)
+    expect(filtered.bundles.every((b) => b.purpose === '存储')).toBe(true)
   })
 })

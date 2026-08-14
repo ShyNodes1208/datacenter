@@ -16,6 +16,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'bundle-click': [bundleId: string]
+  'bundle-hover': [payload: { bundleId: string; clientX: number; clientY: number }]
+  'bundle-leave': []
   'background-click': []
 }>()
 
@@ -94,6 +96,10 @@ function routeLabelPosition(route: Point[]): { x: number; y: number } {
   return { x: (first.x + last.x) / 2, y: (first.y + last.y) / 2 - 8 }
 }
 
+function bundleLabel(bundle: CableBundle): string {
+  return bundle.countLabel ?? `×${bundle.count}`
+}
+
 function highlightedRouteD(): string {
   const path = props.scene.highlightedPath
   if (!path) return ''
@@ -106,10 +112,21 @@ function highlightedLabelPosition(): { x: number; y: number } {
   const pos = routeLabelPosition(path.route)
   return { x: pos.x, y: pos.y - 4 }
 }
+
+function onBundleMouseEnter(bundle: CableBundle, event: MouseEvent): void {
+  emit('bundle-hover', {
+    bundleId: bundle.id,
+    clientX: event.clientX,
+    clientY: event.clientY,
+  })
+}
 </script>
 
 <template>
-  <svg class="cable-layer">
+  <svg
+    class="cable-layer"
+    @click.self="emit('background-click')"
+  >
     <defs>
       <filter
         v-for="bundle in scene.bundles.filter((b) => b.highlighted)"
@@ -139,6 +156,8 @@ function highlightedLabelPosition(): { x: number; y: number } {
       :opacity="bundle.opacity"
       :style="{ pointerEvents: bundle.opacity > 0 ? 'auto' : 'none' }"
       @click.stop="emit('bundle-click', bundle.id)"
+      @mouseenter="onBundleMouseEnter(bundle, $event)"
+      @mouseleave="emit('bundle-leave')"
     >
       <path
         v-if="bundle.route.length > 0"
@@ -172,7 +191,7 @@ function highlightedLabelPosition(): { x: number; y: number } {
         :fill="bundleStroke(bundle)"
         font-weight="600"
       >
-        ×{{ bundle.count }}
+        {{ bundleLabel(bundle) }}
       </text>
       <polygon
         v-for="arrow in arrowsForBundle(bundle)"

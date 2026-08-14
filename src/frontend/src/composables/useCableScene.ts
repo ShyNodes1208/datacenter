@@ -70,8 +70,16 @@ export interface CableBundle {
   /** Resolved display stroke (purpose / alert mapping). */
   strokeColor: string
   count: number
+  /** Alert members inside an aggregate (focused-rack mode). */
+  alertCount?: number
   sourceRackId: string
   targetRackId: string
+  /** Peer rack when aggregated under focusedRackId. */
+  peerRackId?: string
+  corridor?: CorridorSide
+  lane?: number
+  /** Display label e.g. ×6⚠2 */
+  countLabel?: string
   route: Point[]
   opacity: number
   highlighted: boolean
@@ -118,8 +126,43 @@ export interface DetailRow {
 export interface BuildCableSceneOptions {
   expandToCables?: boolean
   selectedCableId?: string | null
-  /** Device-level aggregated bundle key (sourceRack|targetRack|purpose). */
+  /** Device-level aggregated bundle key (sourceRack|targetRack|purpose) or peer|purpose when focused. */
   selectedBundleId?: string | null
+  /** Device-level rack focus (corridor aggregation mode). */
+  focusedRackId?: string | null
+  /** Expanded peer|purpose (or legacy) bundle key — members drawn as individual cables. */
+  expandedBundleKey?: string | null
+}
+
+export type CorridorSide = 'upper' | 'lower'
+
+/** Vertical gap from rack edge to first corridor lane. */
+export const CORRIDOR_BASE_GAP = 32
+/** Spacing between parallel lanes in one corridor. */
+export const CORRIDOR_LANE_SPACING = 9
+/** Hard cap on distinct lanes per corridor; overflow reuses lanes. */
+export const CORRIDOR_MAX_LANES = 8
+/** Dim opacity for unrelated cables while a rack is focused (idle leftovers). */
+export const FOCUSED_UNRELATED_OPACITY = 0.08
+/** Dim opacity for non-expanded bundles while one bundle is expanded. */
+export const EXPANDED_OTHER_OPACITY = 0.1
+/** Unrelated rack chrome opacity while focused (TopologyView). */
+export const FOCUSED_DIM_RACK_OPACITY = 0.4
+/** Horizontal span (px) above which unconfigured purposes prefer the upper corridor. */
+export const UNCONFIGURED_SPAN_UPPER_THRESHOLD = 400
+
+export interface CorridorLayout {
+  upperBaseY: number
+  lowerBaseY: number
+  racks: RackInfo[]
+}
+
+export interface LaneInterval {
+  id: string
+  side: CorridorSide
+  x1: number
+  x2: number
+  key: string
 }
 
 export interface BreadcrumbItem {
@@ -180,6 +223,13 @@ export const SEMANTIC_SCALE_PORT = 0.9
 
 /** Hysteresis band around semantic thresholds to avoid flicker while zooming. */
 export const SEMANTIC_SCALE_HYSTERESIS = 0.03
+
+/** 2.5D iso depth on rack front face (TopologyView drawIsoRack / hit overlay). */
+export const RACK_VISUAL_DEPTH_X = 16
+/** Title band above rack front face included in rack hit target. */
+export const RACK_HIT_TITLE_BAND = 28
+/** Horizontal offset outside rack array when no column gap exists (single-column layouts). */
+export const RACK_OUTER_AISLE_PAD = 40
 
 /** Device-level rack grid layout constants (shared by layout + TopologyView). */
 export const DEVICE_RACK_W = 240
@@ -441,7 +491,9 @@ export function layoutDeviceLevelSnapshot(
   }
 
   if (floorDevices.length > 0) {
-    const baseY = laidRacks.length > 0 ? cursorY : DEVICE_LAYOUT_ORIGIN_Y
+    // Reserve lower-corridor space between rack rows and floor pseudo-racks.
+    const corridorReserve = CORRIDOR_BASE_GAP + CORRIDOR_MAX_LANES * CORRIDOR_LANE_SPACING
+    const baseY = laidRacks.length > 0 ? cursorY + corridorReserve : DEVICE_LAYOUT_ORIGIN_Y
     const network = floorDevices.filter((d) =>
       d.deviceType.includes('交换') || d.deviceType.includes('防火')
       || d.deviceName.startsWith('SW-') || d.deviceName.startsWith('FW-'),
@@ -532,6 +584,588 @@ export function layoutDeviceLevelSnapshot(
 /** Racks used by "适应机柜" (exclude floor pseudo-racks). */
 export function isPrimaryDeviceRack(rack: { rackId: string; code: string }): boolean {
   return rack.code !== 'FLOOR' && !rack.rackId.startsWith('floor-')
+}
+
+export function computeCorridorLayout(racks: RackInfo[]): CorridorLayout {
+  const primary = racks.filter((r) => isPrimaryDeviceRack(r))
+  const use = primary.length > 0 ? primary : racks
+  if (use.length === 0) {
+    return { upperBaseY: CORRIDOR_BASE_GAP, lowerBaseY: 400, racks: [] }
+  }
+  const minY = Math.min(...use.map((r) => r.y))
+  const maxY = Math.max(...use.map((r) => r.y + r.height))
+  return {
+    upperBaseY: minY - CORRIDOR_BASE_GAP,
+    lowerBaseY: maxY + CORRIDOR_BASE_GAP,
+    racks: use,
+  }
+}
+
+/**
+ * Purpose → corridor.
+ * 管理/正常/上联 → upper; 业务网络/存储 → lower.
+ * Unconfigured: fewer occupied corridor wins; ties use span threshold.
+ */
+export function corridorForPurpose(
+  purpose: string,
+  opts?: { spanPx?: number; upperCount?: number; lowerCount?: number },
+): CorridorSide {
+  if (purpose === '上联' || purpose === '正常' || purpose === '管理网络') return 'upper'
+  if (purpose === '存储' || purpose === '存储网络' || purpose === '业务网络') return 'lower'
+  const upperCount = opts?.upperCount ?? 0
+  const lowerCount = opts?.lowerCount ?? 0
+  if (upperCount !== lowerCount) {
+    return upperCount < lowerCount ? 'upper' : 'lower'
+  }
+  return (opts?.spanPx ?? 0) >= UNCONFIGURED_SPAN_UPPER_THRESHOLD ? 'upper' : 'lower'
+}
+
+export function corridorLaneY(layout: CorridorLayout, side: CorridorSide, lane: number): number {
+  const clamped = Math.max(0, Math.min(CORRIDOR_MAX_LANES - 1, lane))
+  if (side === 'upper') return layout.upperBaseY - clamped * CORRIDOR_LANE_SPACING
+  return layout.lowerBaseY + clamped * CORRIDOR_LANE_SPACING
+}
+
+export function rackConvergePoint(rack: RackInfo, side: CorridorSide): Point {
+  return {
+    x: rack.x + rack.width / 2,
+    y: side === 'upper' ? rack.y : rack.y + rack.height,
+  }
+}
+
+/** Peer rack id for a cable relative to focused rack; null if unrelated or same-rack. */
+export function peerRackId(focusedRackId: string, cable: CableInfo): string | null {
+  const src = cable.source.rackId ?? '__none__'
+  const tgt = cable.target.rackId ?? '__none__'
+  if (src === focusedRackId && tgt !== focusedRackId) return tgt
+  if (tgt === focusedRackId && src !== focusedRackId) return src
+  return null
+}
+
+/** Direction-independent aggregate key: peerRack|purpose. */
+export function focusedPeerBundleKey(focusedRackId: string, cable: CableInfo): string | null {
+  const peer = peerRackId(focusedRackId, cable)
+  if (!peer) return null
+  return `${peer}|${cable.purpose}`
+}
+
+export function bundleCountLabel(count: number, alertCount: number): string {
+  if (alertCount > 0) return `×${count}⚠${alertCount}`
+  return `×${count}`
+}
+
+/**
+ * Greedy lane assignment per corridor.
+ * Larger spans prefer outer lanes; non-overlapping intervals reuse lanes;
+ * capacity capped at CORRIDOR_MAX_LANES with stable reuse on overflow.
+ */
+export function assignCorridorLanes(intervals: LaneInterval[]): Map<string, number> {
+  const result = new Map<string, number>()
+  const bySide: Record<CorridorSide, LaneInterval[]> = { upper: [], lower: [] }
+  for (const item of intervals) bySide[item.side].push(item)
+
+  for (const side of ['upper', 'lower'] as CorridorSide[]) {
+    const items = bySide[side].slice().sort((a, b) => {
+      const spanA = Math.abs(a.x2 - a.x1)
+      const spanB = Math.abs(b.x2 - b.x1)
+      return spanB - spanA
+        || Math.min(a.x1, a.x2) - Math.min(b.x1, b.x2)
+        || Math.max(a.x1, a.x2) - Math.max(b.x1, b.x2)
+        || a.key.localeCompare(b.key)
+    })
+    const laneEnds: Array<Array<{ x1: number; x2: number }>> = Array.from(
+      { length: CORRIDOR_MAX_LANES },
+      () => [],
+    )
+    for (const item of items) {
+      const x1 = Math.min(item.x1, item.x2)
+      const x2 = Math.max(item.x1, item.x2)
+      let assigned = -1
+      for (let lane = CORRIDOR_MAX_LANES - 1; lane >= 0; lane--) {
+        const overlaps = laneEnds[lane]!.some((seg) => !(x2 <= seg.x1 || x1 >= seg.x2))
+        if (!overlaps) {
+          assigned = lane
+          break
+        }
+      }
+      if (assigned < 0) {
+        let hash = 0
+        for (let i = 0; i < item.key.length; i++) hash = (hash * 31 + item.key.charCodeAt(i)) | 0
+        assigned = Math.abs(hash) % CORRIDOR_MAX_LANES
+      }
+      laneEnds[assigned]!.push({ x1, x2 })
+      result.set(item.id, assigned)
+    }
+  }
+  return result
+}
+
+/** True when a horizontal segment at y overlaps a rack body (open interval on Y). */
+export function horizontalSegIntersectsRack(
+  x1: number,
+  x2: number,
+  y: number,
+  rack: RackInfo,
+): boolean {
+  if (y <= rack.y || y >= rack.y + rack.height) return false
+  const left = Math.min(x1, x2)
+  const right = Math.max(x1, x2)
+  return right > rack.x && left < rack.x + rack.width
+}
+
+/** True when a vertical segment at x overlaps a rack body (open interval on X). */
+export function verticalSegIntersectsRack(
+  x: number,
+  y1: number,
+  y2: number,
+  rack: RackInfo,
+): boolean {
+  const top = Math.min(y1, y2)
+  const bottom = Math.max(y1, y2)
+  if (bottom <= rack.y || top >= rack.y + rack.height) return false
+  return x > rack.x && x < rack.x + rack.width
+}
+
+/** All orthogonal route segments must avoid unrelated rack interiors (H + V). */
+export function routeSegmentsClear(
+  route: Point[],
+  racks: RackInfo[],
+  endpointRackIds: Set<string>,
+): boolean {
+  for (let i = 1; i < route.length; i++) {
+    const a = route[i - 1]!
+    const b = route[i]!
+    if (Math.abs(a.y - b.y) <= 0.5) {
+      for (const rack of racks) {
+        if (endpointRackIds.has(rack.rackId)) continue
+        if (horizontalSegIntersectsRack(a.x, b.x, a.y, rack)) return false
+      }
+    } else if (Math.abs(a.x - b.x) <= 0.5) {
+      for (const rack of racks) {
+        if (endpointRackIds.has(rack.rackId)) continue
+        if (verticalSegIntersectsRack(a.x, a.y, b.y, rack)) return false
+      }
+    }
+  }
+  return true
+}
+
+/** CSS pixel bounds for device-level rack hit overlay (full 2.5D visual outline). */
+export function rackHitTargetStyle(
+  rack: Pick<RackInfo, 'x' | 'y' | 'width' | 'height'>,
+  options?: { titleBand?: number; depthX?: number },
+): Record<string, string> {
+  const titleBand = options?.titleBand ?? RACK_HIT_TITLE_BAND
+  const depthX = options?.depthX ?? RACK_VISUAL_DEPTH_X
+  return {
+    left: `${rack.x}px`,
+    top: `${rack.y - titleBand}px`,
+    width: `${rack.width + depthX}px`,
+    height: `${rack.height + titleBand}px`,
+  }
+}
+
+/** Pick a vertical aisle X in the nearest column gap beside a rack. */
+export function rackColumnAisleX(rack: RackInfo, racks: RackInfo[]): number {
+  const rightNeighbor = racks
+    .filter((r) => r.rackId !== rack.rackId && r.x >= rack.x + rack.width - 0.5)
+    .sort((a, b) => a.x - b.x)[0]
+  const leftNeighbor = racks
+    .filter((r) => r.rackId !== rack.rackId && r.x + r.width <= rack.x + 0.5)
+    .sort((a, b) => b.x - a.x)[0]
+  if (rightNeighbor) {
+    return (rack.x + rack.width + rightNeighbor.x) / 2
+  }
+  if (leftNeighbor) {
+    return (leftNeighbor.x + leftNeighbor.width + rack.x) / 2
+  }
+  const primary = racks.filter((r) => isPrimaryDeviceRack(r))
+  const use = primary.length > 0 ? primary : racks
+  if (use.length === 0) return rack.x + rack.width / 2
+  const minX = Math.min(...use.map((r) => r.x))
+  const maxRight = Math.max(...use.map((r) => r.x + r.width))
+  const rightAisle = maxRight + RACK_OUTER_AISLE_PAD
+  const leftAisle = minX - RACK_OUTER_AISLE_PAD
+  const rackCenter = rack.x + rack.width / 2
+  const distRight = Math.abs(rightAisle - rackCenter)
+  const distLeft = Math.abs(leftAisle - rackCenter)
+  return distRight <= distLeft ? rightAisle : leftAisle
+}
+
+/** Pick a vertical aisle X in a column gap so multi-row vertical stubs avoid rack bodies. */
+export function corridorAisleX(
+  srcRack: RackInfo,
+  tgtRack: RackInfo,
+  racks: RackInfo[],
+): number {
+  const leftRight = Math.min(srcRack.x + srcRack.width, tgtRack.x + tgtRack.width)
+  const rightLeft = Math.max(srcRack.x, tgtRack.x)
+  if (leftRight < rightLeft - 0.5) {
+    return (leftRight + rightLeft) / 2
+  }
+  return rackColumnAisleX(srcRack, racks)
+}
+
+/** Horizontal corridor segment must not cross unrelated rack bodies. */
+export function corridorHorizontalClear(
+  route: Point[],
+  racks: RackInfo[],
+  endpointRackIds: Set<string>,
+): boolean {
+  for (let i = 1; i < route.length; i++) {
+    const a = route[i - 1]!
+    const b = route[i]!
+    if (Math.abs(a.y - b.y) > 0.5) continue
+    for (const rack of racks) {
+      if (endpointRackIds.has(rack.rackId)) continue
+      if (horizontalSegIntersectsRack(a.x, b.x, a.y, rack)) return false
+    }
+  }
+  return true
+}
+
+function corridorDevicePortPoint(
+  device: DeviceInfo,
+  rack: RackInfo,
+  side: CorridorSide,
+  slotIndex = 0,
+  slotCount = 1,
+): Point {
+  const uHeight = device.endU - device.startU + 1
+  const unitPx = rack.height >= 120 ? DEVICE_U_PX : (rack.height / Math.max(1, uHeight || 1))
+  const deviceTopY = rack.y + (device.startU - 1) * unitPx
+  const deviceHeight = Math.max(uHeight * unitPx, 16)
+  const t = slotCount > 1 ? (slotIndex + 1) / (slotCount + 1) : 0.5
+  return {
+    x: rack.x + rack.width * t,
+    y: side === 'upper' ? deviceTopY : deviceTopY + deviceHeight,
+  }
+}
+
+export interface CorridorRouteOptions {
+  layout: CorridorLayout
+  side: CorridorSide
+  lane: number
+  includeInternal?: boolean
+  srcDevice?: DeviceInfo
+  tgtDevice?: DeviceInfo
+  srcSlot?: { index: number; count: number }
+  tgtSlot?: { index: number; count: number }
+  memberOffset?: number
+}
+
+/** Orthogonal corridor route: port stubs → aisle exit → corridor lane → aisle entry → peer. */
+export function routeViaCorridor(
+  srcRack: RackInfo,
+  tgtRack: RackInfo,
+  options: CorridorRouteOptions,
+): Point[] {
+  const side = options.side
+  const laneY = corridorLaneY(options.layout, side, options.lane) + (options.memberOffset ?? 0)
+  const srcConv = rackConvergePoint(srcRack, side)
+  const tgtConv = rackConvergePoint(tgtRack, side)
+  const racks = options.layout.racks
+  const srcAisleX = rackColumnAisleX(srcRack, racks)
+  const tgtAisleX = rackColumnAisleX(tgtRack, racks)
+  const points: Point[] = []
+  if (options.includeInternal && options.srcDevice) {
+    points.push(corridorDevicePortPoint(
+      options.srcDevice,
+      srcRack,
+      side,
+      options.srcSlot?.index ?? 0,
+      options.srcSlot?.count ?? 1,
+    ))
+  }
+  points.push(srcConv)
+  if (Math.abs(srcConv.x - srcAisleX) > 0.5) {
+    points.push({ x: srcAisleX, y: srcConv.y })
+  }
+  points.push({ x: srcAisleX, y: laneY })
+  if (Math.abs(tgtAisleX - srcAisleX) > 0.5) {
+    points.push({ x: tgtAisleX, y: laneY })
+  }
+  if (Math.abs(tgtConv.y - laneY) > 0.5) {
+    points.push({ x: tgtAisleX, y: tgtConv.y })
+  }
+  if (Math.abs(tgtConv.x - tgtAisleX) > 0.5) {
+    points.push({ x: tgtConv.x, y: tgtConv.y })
+  }
+  const last = points[points.length - 1]!
+  if (Math.abs(last.x - tgtConv.x) > 0.5 || Math.abs(last.y - tgtConv.y) > 0.5) {
+    points.push(tgtConv)
+  }
+  if (options.includeInternal && options.tgtDevice) {
+    points.push(corridorDevicePortPoint(
+      options.tgtDevice,
+      tgtRack,
+      side,
+      options.tgtSlot?.index ?? 0,
+      options.tgtSlot?.count ?? 1,
+    ))
+  }
+  return points
+}
+
+/** Conservation helper: related cross-rack cables vs peer|purpose groups. */
+export function focusedAggregationStats(
+  cables: CableInfo[],
+  focusedRackId: string,
+): {
+  relatedCount: number
+  bundleMemberSum: number
+  keys: string[]
+  alertByKey: Record<string, number>
+} {
+  const related = cables.filter(
+    (c) => (c.source.rackId === focusedRackId || c.target.rackId === focusedRackId)
+      && (c.source.rackId !== c.target.rackId),
+  )
+  const groups = new Map<string, CableInfo[]>()
+  for (const c of related) {
+    const key = focusedPeerBundleKey(focusedRackId, c)!
+    const list = groups.get(key)
+    if (list) list.push(c)
+    else groups.set(key, [c])
+  }
+  const alertByKey: Record<string, number> = {}
+  let sum = 0
+  for (const [key, group] of groups) {
+    sum += group.length
+    alertByKey[key] = group.filter((c) => c.status === '告警').length
+  }
+  return {
+    relatedCount: related.length,
+    bundleMemberSum: sum,
+    keys: [...groups.keys()].sort(),
+    alertByKey,
+  }
+}
+
+function buildFocusedRackBundles(
+  cables: CableInfo[],
+  focusedRackId: string,
+  rackMap: Map<string, RackInfo>,
+  deviceMap: Map<string, DeviceInfo>,
+  portSlots: PortSlotMap,
+  exitOffsets: Map<string, number>,
+  expandedBundleKey: string | null,
+  selectedCableId: string | null,
+): CableBundle[] {
+  const racks = [...rackMap.values()]
+  const layout = computeCorridorLayout(racks)
+  const related = cables.filter(
+    (c) => c.source.rackId === focusedRackId || c.target.rackId === focusedRackId,
+  )
+  const sameRack: CableInfo[] = []
+  const groups = new Map<string, CableInfo[]>()
+  for (const c of related) {
+    const key = focusedPeerBundleKey(focusedRackId, c)
+    if (!key) {
+      sameRack.push(c)
+      continue
+    }
+    const list = groups.get(key)
+    if (list) list.push(c)
+    else groups.set(key, [c])
+  }
+
+  let upperCount = 0
+  let lowerCount = 0
+  const sideByKey = new Map<string, CorridorSide>()
+  for (const [key, group] of groups) {
+    const sample = group[0]!
+    const peer = peerRackId(focusedRackId, sample)!
+    const a = rackMap.get(focusedRackId)
+    const b = rackMap.get(peer)
+    const spanPx = a && b
+      ? Math.abs((a.x + a.width / 2) - (b.x + b.width / 2))
+      : 0
+    const side = corridorForPurpose(sample.purpose, { spanPx, upperCount, lowerCount })
+    sideByKey.set(key, side)
+    if (side === 'upper') upperCount++
+    else lowerCount++
+  }
+
+  const intervals: LaneInterval[] = []
+  for (const [key, group] of groups) {
+    const sample = group[0]!
+    const peer = peerRackId(focusedRackId, sample)!
+    const a = rackMap.get(focusedRackId)
+    const b = rackMap.get(peer)
+    if (!a || !b) continue
+    intervals.push({
+      id: key,
+      side: sideByKey.get(key) ?? 'upper',
+      x1: a.x + a.width / 2,
+      x2: b.x + b.width / 2,
+      key,
+    })
+  }
+  const lanes = assignCorridorLanes(intervals)
+  const bundles: CableBundle[] = []
+
+  for (const [key, group] of groups) {
+    const sample = group[0]!
+    const peer = peerRackId(focusedRackId, sample)!
+    const side = sideByKey.get(key) ?? 'upper'
+    const lane = lanes.get(key) ?? 0
+    const fromRack = rackMap.get(focusedRackId)
+    const toRack = rackMap.get(peer)
+    if (!fromRack || !toRack) continue
+    const purposeColor = purposeNetworkColor(sample.purpose, sample.cableType)
+    const alertCount = group.filter((c) => c.status === '告警').length
+
+    if (expandedBundleKey === key) {
+      group.forEach((c, idx) => {
+        const fromDeviceId = c.source.rackId === focusedRackId ? c.source.deviceId : c.target.deviceId
+        const toDeviceId = c.source.rackId === focusedRackId ? c.target.deviceId : c.source.deviceId
+        const fromPortName = c.source.rackId === focusedRackId ? c.source.portName : c.target.portName
+        const toPortName = c.source.rackId === focusedRackId ? c.target.portName : c.source.portName
+        const fromDevice = resolveDevice(deviceMap, fromDeviceId, focusedRackId, fromDeviceId)
+        const toDevice = resolveDevice(deviceMap, toDeviceId, peer, toDeviceId)
+        const fromSlot = edgePortOptions(fromDeviceId, fromPortName, portSlots)
+        const toSlot = edgePortOptions(toDeviceId, toPortName, portSlots)
+        const offset = (idx - (group.length - 1) / 2) * 3
+        const route = routeViaCorridor(fromRack, toRack, {
+          layout,
+          side,
+          lane,
+          includeInternal: true,
+          srcDevice: fromDevice,
+          tgtDevice: toDevice,
+          srcSlot: { index: fromSlot.slotIndex ?? 0, count: fromSlot.slotCount ?? 1 },
+          tgtSlot: { index: toSlot.slotIndex ?? 0, count: toSlot.slotCount ?? 1 },
+          memberOffset: offset,
+        })
+        const selected = selectedCableId === c.cableId
+        bundles.push({
+          id: c.cableId,
+          purpose: c.purpose,
+          cableType: c.cableType,
+          strokeColor: isAlertCable(c) ? NETWORK_COLORS.alert : purposeColor,
+          count: 1,
+          alertCount: isAlertCable(c) ? 1 : 0,
+          sourceRackId: c.source.rackId ?? focusedRackId,
+          targetRackId: c.target.rackId ?? peer,
+          peerRackId: peer,
+          corridor: side,
+          lane,
+          route,
+          opacity: selected || !selectedCableId ? 1 : EXPANDED_OTHER_OPACITY,
+          highlighted: selected,
+          animated: selected,
+          isAggregated: false,
+          memberIds: [c.cableId],
+          direction: 'forward',
+        })
+      })
+      continue
+    }
+
+    bundles.push({
+      id: key,
+      purpose: sample.purpose,
+      cableType: sample.cableType,
+      strokeColor: purposeColor,
+      count: group.length,
+      alertCount,
+      sourceRackId: focusedRackId,
+      targetRackId: peer,
+      peerRackId: peer,
+      corridor: side,
+      lane,
+      route: routeViaCorridor(fromRack, toRack, { layout, side, lane, includeInternal: false }),
+      opacity: expandedBundleKey ? EXPANDED_OTHER_OPACITY : 1,
+      highlighted: false,
+      animated: false,
+      isAggregated: true,
+      memberIds: group.map((c) => c.cableId),
+      direction: 'forward',
+      countLabel: bundleCountLabel(group.length, alertCount),
+    })
+  }
+
+  for (const c of sameRack) {
+    bundles.push(cableToBundle(c, rackMap, deviceMap, portSlots, exitOffsets, {
+      opacity: expandedBundleKey ? EXPANDED_OTHER_OPACITY : 1,
+      highlighted: selectedCableId === c.cableId,
+      animated: selectedCableId === c.cableId,
+      alertCount: isAlertCable(c) ? 1 : 0,
+    }))
+  }
+
+  if (selectedCableId && expandedBundleKey) {
+    const selected = bundles.find((b) => b.id === selectedCableId)
+    if (selected) {
+      for (const b of bundles) {
+        if (b.id === selectedCableId) {
+          b.opacity = 1
+          b.highlighted = true
+          b.animated = true
+        } else {
+          b.opacity = Math.min(b.opacity, EXPANDED_OTHER_OPACITY)
+          b.highlighted = false
+          b.animated = false
+        }
+      }
+    }
+  }
+
+  return bundles
+}
+
+/** Rewrite cross-rack idle/device bundles onto corridor lanes (no internal stubs). */
+export function applyIdleCorridorRoutes(
+  bundles: CableBundle[],
+  racks: RackInfo[],
+  cables: CableInfo[],
+): CableBundle[] {
+  const rackMap = new Map(racks.map((r) => [r.rackId, r]))
+  const layout = computeCorridorLayout(racks)
+  const cableById = new Map(cables.map((c) => [c.cableId, c]))
+  let upperCount = 0
+  let lowerCount = 0
+  const intervals: LaneInterval[] = []
+  const meta = new Map<string, { side: CorridorSide; src: RackInfo; tgt: RackInfo }>()
+
+  for (const b of bundles) {
+    if (b.sourceRackId === b.targetRackId) continue
+    const src = rackMap.get(b.sourceRackId)
+    const tgt = rackMap.get(b.targetRackId)
+    if (!src || !tgt) continue
+    const sample = cableById.get(b.memberIds[0] ?? '')
+    const purpose = sample?.purpose ?? b.purpose
+    const spanPx = Math.abs((src.x + src.width / 2) - (tgt.x + tgt.width / 2))
+    const side = corridorForPurpose(purpose, { spanPx, upperCount, lowerCount })
+    if (side === 'upper') upperCount++
+    else lowerCount++
+    meta.set(b.id, { side, src, tgt })
+    intervals.push({
+      id: b.id,
+      side,
+      x1: src.x + src.width / 2,
+      x2: tgt.x + tgt.width / 2,
+      key: b.id,
+    })
+  }
+  const lanes = assignCorridorLanes(intervals)
+  return bundles.map((b) => {
+    const m = meta.get(b.id)
+    if (!m) return b
+    const lane = lanes.get(b.id) ?? 0
+    return {
+      ...b,
+      corridor: m.side,
+      lane,
+      route: routeViaCorridor(m.src, m.tgt, {
+        layout,
+        side: m.side,
+        lane,
+        includeInternal: false,
+      }),
+    }
+  })
 }
 
 export function visualStrokeWidthForBundle(bundle: {
@@ -1653,12 +2287,37 @@ export function buildCableScene(
   if (options?.expandToCables) {
     const selectedCableId = options.selectedCableId ?? null
     const selectedBundleId = options.selectedBundleId ?? null
-    // Device focus keeps per-cable expand; idle/selection uses rack+purpose aggregation.
+    const focusedRackId = options.focusedRackId ?? null
+    const expandedBundleKey = options.expandedBundleKey ?? null
+    // Device focus keeps per-cable expand; rack focus uses corridor peer aggregation.
     const expandAll = focus.level === 'device'
+
+    if (focusedRackId && !expandAll) {
+      const focusedBundles = buildFocusedRackBundles(
+        visibleCables,
+        focusedRackId,
+        rackMap,
+        deviceMap,
+        portSlots,
+        exitOffsets,
+        expandedBundleKey,
+        selectedCableId,
+      )
+      return {
+        bundles: focusedBundles,
+        highlightedPath: null,
+        legend: buildLegend(visibleCables, deviceMap),
+        detailRows: buildDetailRows(visibleCables),
+        breadcrumbs: buildBreadcrumbs(snapshot, focus, resolvedRoomId),
+      }
+    }
 
     let bundles: CableBundle[] = expandAll
       ? visibleCables.map((c) => cableToBundle(c, rackMap, deviceMap, portSlots, exitOffsets))
       : aggregateDeviceLevelCables(visibleCables, rackMap, snapshot.devices)
+
+    // Idle / device-expand: rewrite cross-rack routes onto upper/lower corridors.
+    bundles = applyIdleCorridorRoutes(bundles, snapshot.racks, visibleCables)
 
     if (selectedCableId) {
       for (const b of bundles) {
@@ -1675,11 +2334,87 @@ export function buildCableScene(
           existing.animated = true
         } else {
           // Keep aggregation; overlay the selected member as an independent highlight path.
-          bundles.push(cableToBundle(selectedCable, rackMap, deviceMap, portSlots, exitOffsets, {
+          const overlay = cableToBundle(selectedCable, rackMap, deviceMap, portSlots, exitOffsets, {
             opacity: 1,
             highlighted: true,
             animated: true,
-          }))
+          })
+          const routed = applyIdleCorridorRoutes([overlay], snapshot.racks, visibleCables)
+          bundles.push(routed[0]!)
+        }
+      }
+    } else if (expandedBundleKey) {
+      // Expand selected aggregate: replace bundle with member cables on corridor lanes.
+      const agg = bundles.find((b) => b.id === expandedBundleKey && b.isAggregated)
+      if (agg) {
+        const memberCables = visibleCables.filter((c) => agg.memberIds.includes(c.cableId))
+        const layout = computeCorridorLayout(snapshot.racks)
+        const side = agg.corridor ?? corridorForPurpose(agg.purpose)
+        const lane = agg.lane ?? 0
+        const srcRack = rackMap.get(agg.sourceRackId)
+        const tgtRack = rackMap.get(agg.targetRackId)
+        const expandedMembers: CableBundle[] = []
+        if (srcRack && tgtRack) {
+          memberCables.forEach((c, idx) => {
+            const srcDevice = resolveDevice(
+              deviceMap,
+              c.source.deviceId,
+              c.source.rackId ?? agg.sourceRackId,
+              c.source.deviceName,
+            )
+            const tgtDevice = resolveDevice(
+              deviceMap,
+              c.target.deviceId,
+              c.target.rackId ?? agg.targetRackId,
+              c.target.deviceName,
+            )
+            const srcPort = edgePortOptions(c.source.deviceId, c.source.portName, portSlots)
+            const tgtPort = edgePortOptions(c.target.deviceId, c.target.portName, portSlots)
+            expandedMembers.push({
+              id: c.cableId,
+              purpose: c.purpose,
+              cableType: c.cableType,
+              strokeColor: strokeForCable(c, deviceMap),
+              count: 1,
+              sourceRackId: c.source.rackId ?? agg.sourceRackId,
+              targetRackId: c.target.rackId ?? agg.targetRackId,
+              corridor: side,
+              lane,
+              route: routeViaCorridor(srcRack, tgtRack, {
+                layout,
+                side,
+                lane,
+                includeInternal: true,
+                srcDevice,
+                tgtDevice,
+                srcSlot: { index: srcPort.slotIndex ?? 0, count: srcPort.slotCount ?? 1 },
+                tgtSlot: { index: tgtPort.slotIndex ?? 0, count: tgtPort.slotCount ?? 1 },
+                memberOffset: (idx - (memberCables.length - 1) / 2) * 3,
+              }),
+              opacity: 1,
+              highlighted: false,
+              animated: false,
+              isAggregated: false,
+              memberIds: [c.cableId],
+              direction: 'forward',
+            })
+          })
+        }
+        bundles = [
+          ...bundles.filter((b) => b.id !== expandedBundleKey).map((b) => ({
+            ...b,
+            opacity: EXPANDED_OTHER_OPACITY,
+            highlighted: false,
+            animated: false,
+          })),
+          ...expandedMembers,
+        ]
+      } else {
+        for (const b of bundles) {
+          const selected = b.id === expandedBundleKey
+          b.opacity = selected ? 1 : UNSELECTED_OPACITY
+          b.highlighted = selected
+          b.animated = selected
         }
       }
     } else if (selectedBundleId) {
@@ -1961,6 +2696,9 @@ export function applyDeviceViewportAction(
     | { type: 'user-pan'; dx: number; dy: number }
     | { type: 'cable-click' }
     | { type: 'device-click' }
+    | { type: 'rack-click' }
+    | { type: 'bundle-expand' }
+    | { type: 'bundle-collapse' }
     | { type: 'panel-open' }
     | { type: 'panel-close' }
     | { type: 'resize'; sizeChanged: boolean; mode: string; fit: ViewportTransform }
@@ -1999,9 +2737,12 @@ export function applyDeviceViewportAction(
       }
     case 'cable-click':
     case 'device-click':
+    case 'rack-click':
+    case 'bundle-expand':
+    case 'bundle-collapse':
     case 'panel-open':
     case 'panel-close':
-      // Selection / overlay panel must not alter stage transform.
+      // Selection / overlay panel / rack focus must not alter stage transform.
       return {
         transform: { ...state.transform },
         userAdjusted: state.userAdjusted,
