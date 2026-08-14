@@ -1,9 +1,9 @@
 ﻿# Current Task
 
-- Status：IDLE（2026-08-14，TASK-20260814-101757 COMPLETED，4f6f716 已推送）
+- Status：IDLE（2026-08-14，TASK-20260814-120641 COMPLETED，2990677 已推送）
 - Branch：feature/TASK-20260813-133241-device-ui
 - Backend：220 tests PASS
-- Frontend：185 tests PASS（vitest）
+- Frontend：195 tests PASS（vitest）
 
 ## 当前任务
 
@@ -18,6 +18,7 @@
 | TASK-20260813-133241: 设备级拓扑 UI 优化 | feature/TASK-20260813-133241-device-ui | COMPLETED（Codex PASS 复审 2 轮；待合并回 topology-map 分支） |
 | TASK-20260813-153018: 1U 设备名称重叠修复 | feature/TASK-20260813-133241-device-ui | COMPLETED（Codex PASS 复审 2 轮） |
 | TASK-20260814-101757: 设备级拓扑可读性修复（自适应布局+语义缩放+视口保持） | feature/TASK-20260810-000003-topology-map | COMPLETED（Codex PASS 2 轮；4f6f716 已推送；锁已释放） |
+| TASK-20260814-120641: 设备级机柜间线路束聚合 | feature/TASK-20260810-000003-topology-map | COMPLETED（Codex PASS 1 轮；2990677 已推送；锁已释放） |
 
 ## TASK-20260813-085046 机房/机柜点击修复
 
