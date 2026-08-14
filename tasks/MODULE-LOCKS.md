@@ -384,3 +384,7 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 | TASK-20260814-101757 | src/frontend/src/components/CableLayer.vue | Cursor | 2026-08-14 +08:00 | RELEASED | Codex 审核 PASS (Round 2) → 任务 COMPLETED | 2026-08-14 (Claude) |
 | TASK-20260814-101757 | src/frontend/src/composables/useCableScene.ts | Cursor | 2026-08-14 +08:00 | RELEASED | Codex 审核 PASS (Round 2) → 任务 COMPLETED | 2026-08-14 (Claude) |
 | TASK-20260814-101757 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-14 +08:00 | RELEASED | Codex 审核 PASS (Round 2) → 任务 COMPLETED | 2026-08-14 (Claude) |
+| TASK-20260814-120641 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-14 +08:00 | CLAIMED | Codex 审核 PASS → 任务 COMPLETED | |
+| TASK-20260814-120641 | src/frontend/src/components/CableLayer.vue | Cursor | 2026-08-14 +08:00 | CLAIMED | Codex 审核 PASS → 任务 COMPLETED | |
+| TASK-20260814-120641 | src/frontend/src/composables/useCableScene.ts | Cursor | 2026-08-14 +08:00 | CLAIMED | Codex 审核 PASS → 任务 COMPLETED | |
+| TASK-20260814-120641 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-14 +08:00 | CLAIMED | Codex 审核 PASS → 任务 COMPLETED | |
