@@ -1,6 +1,6 @@
 ﻿# Current Task
 
-- Status：READY_FOR_RETEST（2026-08-14，TASK-20260814-140520 走廊路由+机柜点击优先，等待 Codex 复审）
+- Status：IDLE（2026-08-14，TASK-20260814-140520 COMPLETED，6128697 已推送）
 - Branch：feature/TASK-20260813-133241-device-ui
 - Backend：220 tests PASS
 - Frontend：195 tests PASS（vitest）
@@ -19,6 +19,7 @@
 | TASK-20260813-153018: 1U 设备名称重叠修复 | feature/TASK-20260813-133241-device-ui | COMPLETED（Codex PASS 复审 2 轮） |
 | TASK-20260814-101757: 设备级拓扑可读性修复（自适应布局+语义缩放+视口保持） | feature/TASK-20260810-000003-topology-map | COMPLETED（Codex PASS 2 轮；4f6f716 已推送；锁已释放） |
 | TASK-20260814-120641: 设备级机柜间线路束聚合 | feature/TASK-20260810-000003-topology-map | COMPLETED（Codex PASS 1 轮；2990677 已推送；锁已释放） |
+| TASK-20260814-140520: 走廊路由+机柜点击优先+聚焦聚合 | feature/TASK-20260810-000003-topology-map | COMPLETED（Codex PASS 第 5 轮；6128697 已推送；锁已释放） |
 
 ## TASK-20260813-085046 机房/机柜点击修复
 
