@@ -214,7 +214,7 @@
       <button type="button" class="btn filter-clear" @click="clearDeviceFilters">清除筛选</button>
     </div>
 
-    <div class="topology-body" :class="{ 'topology-body--with-panel': !!selectedCable || !!selectedRoomConnection }">
+    <div class="topology-body" :class="{ 'topology-body--with-panel': !!selectedCable || !!selectedBundle || !!selectedRoomConnection }">
       <div
         ref="containerRef"
         class="topology-canvas"
@@ -281,7 +281,7 @@
           v-if="topology?.mode === 'devices'"
           class="device-zoom-controls"
           :class="{
-            'device-zoom-controls--panel-open': !!selectedCable || !!selectedRoomConnection,
+            'device-zoom-controls--panel-open': !!selectedCable || !!selectedBundle || !!selectedRoomConnection,
           }"
           data-testid="device-zoom-controls"
           aria-label="缩放控件"
@@ -327,6 +327,49 @@
           <dt>流向</dt>
           <dd>聚合链路</dd>
         </dl>
+      </aside>
+
+      <aside v-if="selectedBundle && !selectedCable" class="cable-detail-panel cable-detail-panel--overlay" aria-label="线路束">
+        <div class="cable-detail-panel__header">
+          <h2>线路束 ×{{ selectedBundle.count }}</h2>
+          <button type="button" class="btn" @click="clearCableSelection">关闭</button>
+        </div>
+        <dl class="cable-detail-panel__groups">
+          <div class="cable-detail-group">
+            <dt>用途 / 类型概况</dt>
+            <dd>
+              <div>{{ purposeLabel(selectedBundle.purpose, selectedBundle.cableType) }}</div>
+              <div class="cable-detail-group__sub">
+                {{ selectedBundle.sourceRackId }} → {{ selectedBundle.targetRackId }}
+                · {{ selectedBundleMemberTypeSummary }}
+              </div>
+            </dd>
+          </div>
+        </dl>
+        <ul class="cable-bundle-members" aria-label="成员线缆">
+          <li
+            v-for="member in selectedBundleMembers"
+            :key="member.cableId"
+            class="cable-bundle-members__item"
+            :class="{ 'cable-bundle-members__item--alert': member.status === '告警' }"
+          >
+            <button
+              type="button"
+              class="cable-bundle-members__btn"
+              @click="onBundleMemberClick(member.cableId)"
+            >
+              <span class="cable-bundle-members__title">
+                {{ member.source.deviceName }} / {{ formatPortDisplay(member.source.portName) }}
+                →
+                {{ member.target.deviceName }} / {{ formatPortDisplay(member.target.portName) }}
+              </span>
+              <span class="cable-bundle-members__meta">
+                {{ member.cableType }} · {{ purposeLabel(member.purpose, member.cableType) }}
+                · {{ member.status }}
+              </span>
+            </button>
+          </li>
+        </ul>
       </aside>
 
       <aside v-if="selectedCable" class="cable-detail-panel cable-detail-panel--overlay" aria-label="线路详情">
@@ -426,6 +469,7 @@ import {
   staticArrowPositions,
   UNSELECTED_OPACITY,
   zoomViewportAroundPoint,
+  type CableBundle,
   type CableFocus,
   type CableInfo,
   type CableScene,
@@ -471,6 +515,7 @@ const roomAnimationEnabled = ref(false)
 const animationEnabled = ref(false)
 const focusDeviceId = ref<string | null>(null)
 const selectedCableId = ref<string | null>(null)
+const selectedBundleId = ref<string | null>(null)
 const selectedCableTypes = ref<string[]>([])
 const selectedPurposes = ref<string[]>([])
 const selectedDeviceTypes = ref<string[]>([])
@@ -587,6 +632,27 @@ const selectedCable = computed<CableInfo | null>(() => {
   return topology.value.cableSnapshot.cables.find((c) => c.cableId === selectedCableId.value) ?? null
 })
 
+const selectedBundle = computed<CableBundle | null>(() => {
+  if (!selectedBundleId.value || !deviceCableScene.value) return null
+  const bundle = deviceCableScene.value.bundles.find((b) => b.id === selectedBundleId.value)
+  return bundle?.isAggregated ? bundle : null
+})
+
+const selectedBundleMembers = computed<CableInfo[]>(() => {
+  const bundle = selectedBundle.value
+  const snapshot = laidSnapshot.value ?? topology.value?.cableSnapshot
+  if (!bundle || !snapshot) return []
+  const byId = new Map(snapshot.cables.map((c) => [c.cableId, c]))
+  return bundle.memberIds
+    .map((id) => byId.get(id))
+    .filter((c): c is CableInfo => !!c)
+})
+
+const selectedBundleMemberTypeSummary = computed(() => {
+  const types = [...new Set(selectedBundleMembers.value.map((c) => c.cableType))]
+  return types.length ? types.join(' / ') : (selectedBundle.value?.cableType ?? '—')
+})
+
 const selectedPathLabel = computed(() => {
   const cable = selectedCable.value
   if (!cable) return '—'
@@ -612,6 +678,7 @@ const deviceCableScene = computed<CableScene | null>(() => {
     {
       expandToCables: true,
       selectedCableId: selectedCableId.value,
+      selectedBundleId: selectedBundleId.value,
     },
   )
 })
@@ -826,6 +893,7 @@ async function reload(): Promise<void> {
 async function exitRoomFocus(): Promise<void> {
   focusDeviceId.value = null
   selectedCableId.value = null
+  selectedBundleId.value = null
   clearDeviceFilters()
   laidSnapshot.value = null
   await navigateToView(null, 'rooms')
@@ -835,6 +903,7 @@ async function enterRackLevel(): Promise<void> {
   if (!focusedRoomId.value) return
   focusDeviceId.value = null
   selectedCableId.value = null
+  selectedBundleId.value = null
   clearDeviceFilters()
   laidSnapshot.value = null
   await navigateToView(focusedRoomId.value, 'racks')
@@ -844,22 +913,38 @@ async function enterDeviceLevel(): Promise<void> {
   if (!focusedRoomId.value) return
   focusDeviceId.value = null
   selectedCableId.value = null
+  selectedBundleId.value = null
   clearDeviceFilters()
   await navigateToView(focusedRoomId.value, 'devices')
 }
 
 function clearCableSelection(): void {
   selectedCableId.value = null
+  selectedBundleId.value = null
 }
 
 function onCableBundleClick(bundleId: string): void {
-  selectedCableId.value = bundleId
+  focusDeviceId.value = null
+  const bundle = deviceCableScene.value?.bundles.find((b) => b.id === bundleId)
+  if (bundle?.isAggregated) {
+    selectedBundleId.value = bundleId
+    selectedCableId.value = null
+  } else {
+    selectedCableId.value = bundleId
+    selectedBundleId.value = null
+  }
+}
+
+function onBundleMemberClick(cableId: string): void {
+  selectedCableId.value = cableId
+  selectedBundleId.value = null
   focusDeviceId.value = null
 }
 
 function clearDeviceFocus(): void {
   focusDeviceId.value = null
   selectedCableId.value = null
+  selectedBundleId.value = null
   tooltip.value = null
   drawScene()
 }
@@ -1417,6 +1502,16 @@ function drawDeviceScene(): void {
       relatedDeviceIds.add(sel.target.deviceId)
     }
   }
+  if (selectedBundleId.value) {
+    const bundle = scene?.bundles.find((b) => b.id === selectedBundleId.value)
+    for (const memberId of bundle?.memberIds ?? []) {
+      const member = snapshot.cables.find((c) => c.cableId === memberId)
+      if (member) {
+        relatedDeviceIds.add(member.source.deviceId)
+        relatedDeviceIds.add(member.target.deviceId)
+      }
+    }
+  }
 
   const semantic = resolveSemanticZoom(stage?.scaleX() ?? stageScale.value, semanticZoomLatch)
   semanticZoomLatch = semantic
@@ -1446,11 +1541,11 @@ function drawDeviceScene(): void {
     const uHeight = Math.max(1, device.endU - device.startU + 1)
     const y = rack.y + (device.startU - 1) * DEVICE_U_PX
     const height = Math.max(16, uHeight * DEVICE_U_PX - 4)
-    const dimmed = (focusDeviceId.value !== null || selectedCableId.value !== null)
+    const dimmed = (focusDeviceId.value !== null || selectedCableId.value !== null || selectedBundleId.value !== null)
       && !relatedDeviceIds.has(device.deviceId)
     const focusedDevice = focusDeviceId.value === device.deviceId
     const endpointHighlighted = relatedDeviceIds.has(device.deviceId)
-      && (selectedCableId.value !== null || focusedDevice)
+      && (selectedCableId.value !== null || selectedBundleId.value !== null || focusedDevice)
     const showName = semantic.showDeviceNames
       || focusedDevice
       || endpointHighlighted
@@ -1466,6 +1561,7 @@ function drawDeviceScene(): void {
       event.cancelBubble = true
       focusDeviceId.value = device.deviceId
       selectedCableId.value = null
+      selectedBundleId.value = null
       drawScene()
     })
     group.on('mouseenter', () => {
@@ -2005,6 +2101,7 @@ watch(topology, () => {
 watch([
   focusDeviceId,
   selectedCableId,
+  selectedBundleId,
   selectedCableTypes,
   selectedPurposes,
   selectedDeviceTypes,
@@ -2015,8 +2112,8 @@ watch([
   selectedRoomConnectionId,
 ], () => {
   if (topology.value?.mode === 'devices') {
-    // FR-VIS-12 / T-20: clear selection when selected cable is filtered out.
-    if (selectedCableId.value && laidSnapshot.value && focusedRoomId.value) {
+    // FR-VIS-12 / T-20: clear selection when selected cable/bundle is filtered out.
+    if ((selectedCableId.value || selectedBundleId.value) && laidSnapshot.value && focusedRoomId.value) {
       const scene = buildCableScene(
         laidSnapshot.value,
         { level: 'room', roomId: focusedRoomId.value },
@@ -2030,8 +2127,16 @@ watch([
         focusedRoomId.value,
         { expandToCables: true },
       )
-      if (!scene.bundles.some((b) => b.id === selectedCableId.value)) {
-        selectedCableId.value = null
+      if (selectedCableId.value) {
+        const stillVisible = scene.bundles.some(
+          (b) => b.id === selectedCableId.value || b.memberIds.includes(selectedCableId.value!),
+        )
+        if (!stillVisible) selectedCableId.value = null
+      }
+      if (selectedBundleId.value) {
+        if (!scene.bundles.some((b) => b.id === selectedBundleId.value && b.isAggregated)) {
+          selectedBundleId.value = null
+        }
       }
     }
     drawScene()
@@ -2048,6 +2153,7 @@ async function navigateToView(roomId: string | null, view: 'rooms' | 'racks' | '
   focusedRoomId.value = roomId
   selectedRoomConnectionId.value = null
   selectedCableId.value = null
+  selectedBundleId.value = null
   const query: Record<string, string> = {}
   if (roomId) query.roomId = roomId
   if (view !== 'rooms' || roomId) query.view = view
@@ -2619,6 +2725,49 @@ onUnmounted(() => {
   margin: 0;
   font-size: 1rem;
   color: var(--topology-text);
+}
+
+.cable-bundle-members {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: min(50vh, 420px);
+  overflow: auto;
+}
+
+.cable-bundle-members__item--alert .cable-bundle-members__btn {
+  border-color: rgba(255, 77, 90, 0.55);
+}
+
+.cable-bundle-members__btn {
+  width: 100%;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(91, 118, 152, 0.35);
+  border-radius: 6px;
+  color: var(--topology-text);
+  padding: 0.55rem 0.65rem;
+  cursor: pointer;
+}
+
+.cable-bundle-members__btn:hover {
+  border-color: rgba(57, 210, 192, 0.55);
+}
+
+.cable-bundle-members__title {
+  display: block;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.cable-bundle-members__meta {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.72rem;
+  opacity: 0.75;
 }
 
 .cable-detail-panel dl {

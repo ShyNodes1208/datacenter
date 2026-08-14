@@ -78,6 +78,8 @@ export interface CableBundle {
   /** Decorative flow animation; only selected cables may be true (VIS-003). */
   animated: boolean
   isAggregated: boolean
+  /** Member cable ids (aggregated or single). */
+  memberIds: string[]
   /** Registration direction only; bidirectional only when data provides it. */
   direction: 'forward' | 'bidirectional'
 }
@@ -116,6 +118,8 @@ export interface DetailRow {
 export interface BuildCableSceneOptions {
   expandToCables?: boolean
   selectedCableId?: string | null
+  /** Device-level aggregated bundle key (sourceRack|targetRack|purpose). */
+  selectedBundleId?: string | null
 }
 
 export interface BreadcrumbItem {
@@ -1275,6 +1279,21 @@ function bundleKey(c: CableInfo): string {
   return `${a}|${b}|${c.purpose}|${c.cableType}`
 }
 
+/** Device-level aggregate key: direction-sensitive rack pair + purpose (no cable type). */
+export function deviceBundleKey(c: CableInfo): string {
+  const srcRack = c.source.rackId ?? '__none__'
+  const tgtRack = c.target.rackId ?? '__none__'
+  return `${srcRack}|${tgtRack}|${c.purpose}`
+}
+
+function isAlertCable(c: CableInfo): boolean {
+  return c.status === '告警'
+}
+
+function isSameRackCable(c: CableInfo): boolean {
+  return (c.source.rackId ?? '__none__') === (c.target.rackId ?? '__none__')
+}
+
 function resolveDevice(
   deviceMap: Map<string, DeviceInfo>,
   deviceId: string,
@@ -1369,6 +1388,7 @@ export function aggregateCables(
       highlighted: false,
       animated: false,
       isAggregated: group.length > 1,
+      memberIds: group.map((c) => c.cableId),
       direction: 'forward',
     })
   }
@@ -1397,9 +1417,82 @@ function cableToBundle(
     highlighted: false,
     animated: false,
     isAggregated: false,
+    memberIds: [c.cableId],
     direction: 'forward',
     ...overrides,
   }
+}
+
+/**
+ * Device-level default aggregation: cross-rack + same purpose (≥2),
+ * exclude alert cables and same-rack cables.
+ * SVG paint/hit order: singles → aggregated → alerts (alerts on top).
+ */
+export function aggregateDeviceLevelCables(
+  cables: CableInfo[],
+  rackMap: Map<string, RackInfo>,
+  devices: DeviceInfo[] = [],
+): CableBundle[] {
+  const deviceMap = new Map(devices.map((d) => [d.deviceId, d]))
+  const portSlots = buildPortSlotMap(cables)
+  const exitOffsets = buildSamePortExitOffsets(cables)
+
+  const singles: CableInfo[] = []
+  const alerts: CableInfo[] = []
+  const groups = new Map<string, CableInfo[]>()
+
+  for (const c of cables) {
+    if (isAlertCable(c)) {
+      alerts.push(c)
+      continue
+    }
+    if (isSameRackCable(c)) {
+      singles.push(c)
+      continue
+    }
+    const key = deviceBundleKey(c)
+    const group = groups.get(key)
+    if (group) group.push(c)
+    else groups.set(key, [c])
+  }
+
+  const aggregated: CableBundle[] = []
+
+  for (const [key, group] of groups) {
+    if (group.length < 2) {
+      singles.push(...group)
+      continue
+    }
+    const sample = group[0]!
+    const parts = key.split('|')
+    aggregated.push({
+      id: key,
+      purpose: parts[2] ?? sample.purpose,
+      cableType: sample.cableType,
+      strokeColor: purposeNetworkColor(sample.purpose, sample.cableType),
+      count: group.length,
+      sourceRackId: parts[0] ?? sample.source.rackId ?? '__none__',
+      targetRackId: parts[1] ?? sample.target.rackId ?? '__none__',
+      route: routeForCable(sample, rackMap, deviceMap, portSlots, exitOffsets),
+      opacity: DEFAULT_CABLE_OPACITY,
+      highlighted: false,
+      animated: false,
+      isAggregated: true,
+      memberIds: group.map((c) => c.cableId),
+      direction: 'forward',
+    })
+  }
+
+  const bundles: CableBundle[] = []
+  for (const c of singles) {
+    bundles.push(cableToBundle(c, rackMap, deviceMap, portSlots, exitOffsets))
+  }
+  bundles.push(...aggregated)
+  for (const c of alerts) {
+    bundles.push(cableToBundle(c, rackMap, deviceMap, portSlots, exitOffsets))
+  }
+
+  return bundles
 }
 
 function bundleContainsDevice(bundleId: string, cables: CableInfo[], deviceId: string): boolean {
@@ -1558,19 +1651,47 @@ export function buildCableScene(
   const exitOffsets = buildSamePortExitOffsets(visibleCables)
 
   if (options?.expandToCables) {
-    let bundles = visibleCables.map(c => cableToBundle(c, rackMap, deviceMap, portSlots, exitOffsets))
     const selectedCableId = options.selectedCableId ?? null
+    const selectedBundleId = options.selectedBundleId ?? null
+    // Device focus keeps per-cable expand; idle/selection uses rack+purpose aggregation.
+    const expandAll = focus.level === 'device'
+
+    let bundles: CableBundle[] = expandAll
+      ? visibleCables.map((c) => cableToBundle(c, rackMap, deviceMap, portSlots, exitOffsets))
+      : aggregateDeviceLevelCables(visibleCables, rackMap, snapshot.devices)
 
     if (selectedCableId) {
       for (const b of bundles) {
-        const selected = b.id === selectedCableId
+        b.opacity = UNSELECTED_OPACITY
+        b.highlighted = false
+        b.animated = false
+      }
+      const selectedCable = visibleCables.find((c) => c.cableId === selectedCableId)
+      if (selectedCable) {
+        const existing = bundles.find((b) => b.id === selectedCableId)
+        if (existing) {
+          existing.opacity = 1
+          existing.highlighted = true
+          existing.animated = true
+        } else {
+          // Keep aggregation; overlay the selected member as an independent highlight path.
+          bundles.push(cableToBundle(selectedCable, rackMap, deviceMap, portSlots, exitOffsets, {
+            opacity: 1,
+            highlighted: true,
+            animated: true,
+          }))
+        }
+      }
+    } else if (selectedBundleId) {
+      for (const b of bundles) {
+        const selected = b.id === selectedBundleId
         b.opacity = selected ? 1 : UNSELECTED_OPACITY
         b.highlighted = selected
         b.animated = selected
       }
     } else if (focus.level === 'device') {
       for (const b of bundles) {
-        const cable = visibleCables.find(c => c.cableId === b.id)
+        const cable = visibleCables.find((c) => c.cableId === b.id)
         const related = !!cable
           && (cable.source.deviceId === focus.deviceId || cable.target.deviceId === focus.deviceId)
         b.opacity = related ? 1 : UNSELECTED_OPACITY
@@ -1578,7 +1699,7 @@ export function buildCableScene(
         b.animated = false
       }
     }
-    // else: keep DEFAULT_CABLE_OPACITY from cableToBundle (idle denoise)
+    // else: keep DEFAULT_CABLE_OPACITY from builders (idle denoise)
 
     return {
       bundles,

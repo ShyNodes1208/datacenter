@@ -2676,3 +2676,246 @@ describe('TASK-20260814-101757 device topology readability', () => {
     expect(borderBoxOuter).toBeLessThanOrEqual(reserved)
   })
 })
+
+describe('TASK-20260814-120641 device cable bundle aggregation', () => {
+  const multiRackScene = {
+    racks: [
+      { rackId: 'k1', code: 'R1', x: 0, y: 0, width: 60, height: 100 },
+      { rackId: 'k2', code: 'R2', x: 200, y: 0, width: 60, height: 100 },
+    ],
+    devices: [
+      {
+        deviceId: 'd1', deviceName: 'app-01', rackId: 'k1', deviceType: '服务器',
+        operationalStatus: '正常', startU: 1, endU: 2,
+      },
+      {
+        deviceId: 'd2', deviceName: 'sw-01', rackId: 'k2', deviceType: '交换机',
+        operationalStatus: '正常', startU: 40, endU: 40,
+      },
+      {
+        deviceId: 'd3', deviceName: 'app-02', rackId: 'k1', deviceType: '服务器',
+        operationalStatus: '正常', startU: 5, endU: 6,
+      },
+      {
+        deviceId: 'd4', deviceName: 'sw-02', rackId: 'k2', deviceType: '交换机',
+        operationalStatus: '正常', startU: 38, endU: 38,
+      },
+    ],
+    cables: [
+      {
+        cableId: 'c-a', cableType: '铜缆', purpose: '上联', status: '正常',
+        source: { deviceId: 'd1', deviceName: 'app-01', portName: 'eth0', speed: '10G', rackId: 'k1', rackCode: 'R1' },
+        target: { deviceId: 'd2', deviceName: 'sw-01', portName: 'GE0/1', speed: '10G', rackId: 'k2', rackCode: 'R2' },
+      },
+      {
+        cableId: 'c-b', cableType: '光纤', purpose: '上联', status: '正常',
+        source: { deviceId: 'd3', deviceName: 'app-02', portName: 'eth0', speed: '10G', rackId: 'k1', rackCode: 'R1' },
+        target: { deviceId: 'd4', deviceName: 'sw-02', portName: 'GE0/2', speed: '10G', rackId: 'k2', rackCode: 'R2' },
+      },
+      {
+        cableId: 'c-alert', cableType: '铜缆', purpose: '上联', status: '告警',
+        source: { deviceId: 'd1', deviceName: 'app-01', portName: 'eth1', speed: '1G', rackId: 'k1', rackCode: 'R1' },
+        target: { deviceId: 'd2', deviceName: 'sw-01', portName: 'GE0/3', speed: '1G', rackId: 'k2', rackCode: 'R2' },
+      },
+      {
+        cableId: 'c-same', cableType: '铜缆', purpose: '上联', status: '正常',
+        source: { deviceId: 'd1', deviceName: 'app-01', portName: 'eth2', speed: '1G', rackId: 'k1', rackCode: 'R1' },
+        target: { deviceId: 'd3', deviceName: 'app-02', portName: 'eth2', speed: '1G', rackId: 'k1', rackCode: 'R1' },
+      },
+      {
+        cableId: 'c-rev', cableType: '铜缆', purpose: '上联', status: '正常',
+        source: { deviceId: 'd2', deviceName: 'sw-01', portName: 'GE0/9', speed: '10G', rackId: 'k2', rackCode: 'R2' },
+        target: { deviceId: 'd1', deviceName: 'app-01', portName: 'eth9', speed: '10G', rackId: 'k1', rackCode: 'R1' },
+      },
+      {
+        cableId: 'c-alone', cableType: 'DAC', purpose: '存储', status: '正常',
+        source: { deviceId: 'd3', deviceName: 'app-02', portName: 'sas0', speed: '12G', rackId: 'k1', rackCode: 'R1' },
+        target: { deviceId: 'd4', deviceName: 'sw-02', portName: 'sas1', speed: '12G', rackId: 'k2', rackCode: 'R2' },
+      },
+    ],
+  }
+
+  it('aggregates by rack-pair+purpose (no type); ≥2 merge, =1 stays single', () => {
+    const snapshot = parseCableSnapshot(multiRackScene)!
+    const scene = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true },
+    )
+    const agg = scene.bundles.find((b) => b.isAggregated)
+    expect(agg).toBeTruthy()
+    expect(agg!.id).toBe('k1|k2|上联')
+    expect(agg!.id.split('|')).toHaveLength(3)
+    expect(agg!.count).toBe(2)
+    expect(agg!.memberIds.sort()).toEqual(['c-a', 'c-b'])
+    expect(agg!.strokeColor).toBe(purposeNetworkColor('上联', '铜缆'))
+
+    const alone = scene.bundles.find((b) => b.id === 'c-alone')
+    expect(alone?.isAggregated).toBe(false)
+    expect(alone?.count).toBe(1)
+  })
+
+  it('alert cables never join aggregates and keep alert stroke', () => {
+    const snapshot = parseCableSnapshot(multiRackScene)!
+    const scene = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true },
+    )
+    const alert = scene.bundles.find((b) => b.id === 'c-alert')
+    expect(alert).toBeTruthy()
+    expect(alert!.isAggregated).toBe(false)
+    expect(alert!.strokeColor).toBe(NETWORK_COLORS.alert)
+    const agg = scene.bundles.find((b) => b.isAggregated)!
+    expect(agg.memberIds).not.toContain('c-alert')
+    expect(scene.bundles.indexOf(alert!)).toBeGreaterThan(scene.bundles.indexOf(agg))
+  })
+
+  it('paint/hit order: singles before aggregated, alerts last', () => {
+    const snapshot = parseCableSnapshot(multiRackScene)!
+    const scene = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true },
+    )
+    const lastSingleIdx = Math.max(
+      ...scene.bundles
+        .map((b, i) => (!b.isAggregated && b.id !== 'c-alert' ? i : -1)),
+    )
+    const firstAggIdx = scene.bundles.findIndex((b) => b.isAggregated)
+    const alertIdx = scene.bundles.findIndex((b) => b.id === 'c-alert')
+    expect(firstAggIdx).toBeGreaterThan(-1)
+    expect(lastSingleIdx).toBeGreaterThan(-1)
+    expect(lastSingleIdx).toBeLessThan(firstAggIdx)
+    expect(alertIdx).toBe(scene.bundles.length - 1)
+    expect(alertIdx).toBeGreaterThan(firstAggIdx)
+  })
+
+  it('same-rack cables stay independent', () => {
+    const snapshot = parseCableSnapshot(multiRackScene)!
+    const scene = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true },
+    )
+    const same = scene.bundles.find((b) => b.id === 'c-same')
+    expect(same?.isAggregated).toBe(false)
+    expect(same?.sourceRackId).toBe(same?.targetRackId)
+  })
+
+  it('direction-sensitive: A→B and B→A are different bundles', () => {
+    const snapshot = parseCableSnapshot(multiRackScene)!
+    const scene = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true },
+    )
+    expect(scene.bundles.some((b) => b.id === 'k1|k2|上联')).toBe(true)
+    const reverse = scene.bundles.find((b) => b.id === 'c-rev' || b.id === 'k2|k1|上联')
+    expect(reverse).toBeTruthy()
+    expect(reverse!.id).not.toBe('k1|k2|上联')
+  })
+
+  it('selected aggregate bundle highlights and exposes member list', () => {
+    const snapshot = parseCableSnapshot(multiRackScene)!
+    const scene = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true, selectedBundleId: 'k1|k2|上联' },
+    )
+    const agg = scene.bundles.find((b) => b.id === 'k1|k2|上联')!
+    expect(agg.highlighted).toBe(true)
+    expect(agg.opacity).toBe(1)
+    expect(agg.memberIds).toHaveLength(2)
+    expect(scene.bundles.find((b) => b.id === 'c-alone')?.opacity).toBe(UNSELECTED_OPACITY)
+  })
+
+  it('member cable selection keeps aggregation and overlays independent highlight', () => {
+    const snapshot = parseCableSnapshot(multiRackScene)!
+    const scene = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true, selectedCableId: 'c-a' },
+    )
+    const agg = scene.bundles.find((b) => b.id === 'k1|k2|上联')
+    expect(agg?.isAggregated).toBe(true)
+    expect(agg?.opacity).toBe(UNSELECTED_OPACITY)
+    const overlay = scene.bundles.find((b) => b.id === 'c-a')
+    expect(overlay?.highlighted).toBe(true)
+    expect(overlay?.opacity).toBe(1)
+    expect(visualStrokeWidthForBundle(overlay!)).toBe(SELECTED_STROKE_WIDTH)
+    // Not fully expanded to one-bundle-per-cable for all normals
+    expect(scene.bundles.filter((b) => b.isAggregated).length).toBe(1)
+  })
+
+  it('filters recompute aggregates; empty selected bundle clears via TopologyView watch', async () => {
+    const snapshot = parseCableSnapshot(multiRackScene)!
+    const filtered = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: ['DAC'] },
+      'r1',
+      { expandToCables: true },
+    )
+    expect(filtered.bundles.some((b) => b.isAggregated)).toBe(false)
+    expect(filtered.bundles.map((b) => b.id)).toEqual(['c-alone'])
+
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    expect(source).toContain('selectedBundleId')
+    expect(source).toContain('b.memberIds.includes(selectedCableId.value!')
+    expect(source).toContain('selectedBundleId.value = null')
+    expect(source).toContain('onBundleMemberClick')
+    expect(source).toContain('线路束')
+  })
+
+  it('device focus still expands to per-cable bundles', () => {
+    const snapshot = parseCableSnapshot(multiRackScene)!
+    const scene = buildCableScene(
+      snapshot,
+      { level: 'device', deviceId: 'd1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true },
+    )
+    expect(scene.bundles.every((b) => !b.isAggregated)).toBe(true)
+    expect(scene.bundles).toHaveLength(multiRackScene.cables.length)
+  })
+
+  it('reports idle bundle count reduction vs fully expanded', () => {
+    const snapshot = parseCableSnapshot(multiRackScene)!
+    const expanded = buildCableScene(
+      snapshot,
+      { level: 'device', deviceId: 'd1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true },
+    )
+    const idle = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true },
+    )
+    expect(expanded.bundles).toHaveLength(6)
+    // 2 cross-rack 上联 → 1 agg; reverse single; alert; same-rack; storage alone = 5
+    expect(idle.bundles).toHaveLength(5)
+    expect(idle.bundles.length).toBeLessThan(expanded.bundles.length)
+  })
+})
