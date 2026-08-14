@@ -81,8 +81,8 @@
             v-if="topology?.mode === 'devices'"
             type="button"
             class="btn"
-            title="适应屏幕"
-            @click="fitDeviceToScreen"
+            title="适应全部内容"
+            @click="fitDeviceAll"
           >
             适应屏幕
           </button>
@@ -277,9 +277,24 @@
             …其余 {{ tooltip.cables.length - 8 }} 条
           </div>
         </div>
+        <div
+          v-if="topology?.mode === 'devices'"
+          class="device-zoom-controls"
+          :class="{
+            'device-zoom-controls--panel-open': !!selectedCable || !!selectedRoomConnection,
+          }"
+          data-testid="device-zoom-controls"
+          aria-label="缩放控件"
+        >
+          <button type="button" class="device-zoom-controls__btn" title="缩小" @click="zoomDeviceBy(1 / 1.2)">−</button>
+          <span class="device-zoom-controls__pct" data-testid="device-zoom-percent">{{ deviceZoomPercent }}%</span>
+          <button type="button" class="device-zoom-controls__btn" title="放大" @click="zoomDeviceBy(1.2)">+</button>
+          <button type="button" class="device-zoom-controls__btn device-zoom-controls__fit" @click="fitDeviceRacks">适应机柜</button>
+          <button type="button" class="device-zoom-controls__btn device-zoom-controls__fit" @click="fitDeviceAll">适应全部</button>
+        </div>
       </div>
 
-      <aside v-if="selectedRoomConnection" class="cable-detail-panel" aria-label="链路详情">
+      <aside v-if="selectedRoomConnection" class="cable-detail-panel cable-detail-panel--overlay" aria-label="链路详情">
         <div class="cable-detail-panel__header">
           <h2>链路详情</h2>
           <button type="button" class="btn" @click="selectedRoomConnectionId = null">关闭</button>
@@ -314,40 +329,57 @@
         </dl>
       </aside>
 
-      <aside v-if="selectedCable" class="cable-detail-panel" aria-label="线路详情">
+      <aside v-if="selectedCable" class="cable-detail-panel cable-detail-panel--overlay" aria-label="线路详情">
         <div class="cable-detail-panel__header">
           <h2>线路详情</h2>
           <button type="button" class="btn" @click="clearCableSelection">关闭</button>
         </div>
-        <dl>
-          <dt>起点设备</dt>
-          <dd>{{ selectedCable.source.deviceName }}</dd>
-          <dt>起点端口</dt>
-          <dd>{{ formatPortDisplay(selectedCable.source.portName) }}</dd>
-          <dt>终点设备</dt>
-          <dd>{{ selectedCable.target.deviceName }}</dd>
-          <dt>终点端口</dt>
-          <dd>{{ formatPortDisplay(selectedCable.target.portName) }}</dd>
-          <dt>线路类型</dt>
-          <dd>{{ selectedCable.cableType }}</dd>
-          <dt>线路用途</dt>
-          <dd>{{ purposeLabel(selectedCable.purpose, selectedCable.cableType) }}</dd>
-          <dt>线路状态</dt>
-          <dd>{{ selectedCable.status }}</dd>
-          <dt>带宽</dt>
-          <dd>未配置</dd>
-          <dt>方向</dt>
-          <dd>单向</dd>
-          <dt>所属机房</dt>
-          <dd>{{ focusedRoom?.name ?? '—' }}</dd>
-          <dt>所属机柜</dt>
-          <dd>{{ selectedCable.source.rackCode ?? '—' }} → {{ selectedCable.target.rackCode ?? '—' }}</dd>
-          <dt>完整路径</dt>
-          <dd>{{ selectedPathLabel }}</dd>
-          <dt>源端口 Speed</dt>
-          <dd>{{ formatSpeed(selectedCable.source.speed) }}</dd>
-          <dt>目标端口 Speed</dt>
-          <dd>{{ formatSpeed(selectedCable.target.speed) }}</dd>
+        <dl class="cable-detail-panel__groups">
+          <div class="cable-detail-group">
+            <dt>起点</dt>
+            <dd>
+              <div>{{ selectedCable.source.deviceName }}</div>
+              <div class="cable-detail-group__sub">{{ formatPortDisplay(selectedCable.source.portName) }}</div>
+            </dd>
+          </div>
+          <div class="cable-detail-group">
+            <dt>终点</dt>
+            <dd>
+              <div>{{ selectedCable.target.deviceName }}</div>
+              <div class="cable-detail-group__sub">{{ formatPortDisplay(selectedCable.target.portName) }}</div>
+            </dd>
+          </div>
+          <div class="cable-detail-group">
+            <dt>状态 / 类型 / 用途</dt>
+            <dd>
+              <div>{{ selectedCable.status }} · {{ selectedCable.cableType }}</div>
+              <div class="cable-detail-group__sub">{{ purposeLabel(selectedCable.purpose, selectedCable.cableType) }}</div>
+            </dd>
+          </div>
+          <div class="cable-detail-group">
+            <dt>Speed</dt>
+            <dd>
+              <div>源 {{ formatSpeed(selectedCable.source.speed) }}</div>
+              <div class="cable-detail-group__sub">目标 {{ formatSpeed(selectedCable.target.speed) }}</div>
+            </dd>
+          </div>
+          <div class="cable-detail-group">
+            <dt>所属机房 / 机柜</dt>
+            <dd>
+              <div>{{ focusedRoom?.name ?? '—' }}</div>
+              <div class="cable-detail-group__sub">
+                {{ selectedCable.source.rackCode ?? '—' }} → {{ selectedCable.target.rackCode ?? '—' }}
+              </div>
+            </dd>
+          </div>
+          <div class="cable-detail-group">
+            <dt>完整路径</dt>
+            <dd class="cable-detail-path">{{ selectedPathLabel }}</dd>
+          </div>
+          <div class="cable-detail-group">
+            <dt>带宽 / 方向</dt>
+            <dd>未配置 · 单向</dd>
+          </div>
         </dl>
       </aside>
     </div>
@@ -383,19 +415,24 @@ import {
   buildUniquePortLabelPlacements,
   computeFitToScreenTransform,
   DEVICE_U_PX,
-  filterActiveDeviceSnapshot,
   filterVisibleDevices,
   formatPortLabel,
+  isPrimaryDeviceRack,
+  layoutDeviceLevelSnapshot,
   portSlotKey,
   purposeDisplayName,
+  resolveSemanticZoom,
+  shouldAutoFitOnDeviceResize,
   staticArrowPositions,
   UNSELECTED_OPACITY,
+  zoomViewportAroundPoint,
   type CableFocus,
   type CableInfo,
   type CableScene,
   type CableSnapshot,
   type DeviceInfo,
   type RackInfo,
+  type SemanticZoomState,
 } from '../composables/useCableScene'
 
 const route = useRoute()
@@ -406,17 +443,16 @@ const ROOM_W = ROOM_PLATFORM_W
 const ROOM_H = ROOM_PLATFORM_H
 const RACK_W = 90
 const RACK_H = 56
-const DEVICE_RACK_W = 240
-const RACK_GAP_X = 340
 const RACK_DEPTH_X = 16
 const RACK_DEPTH_Y = 10
-const COMPACT_EMPTY_RACK_H = 240
 const DEVICE_FIT_PADDING = 72
 const PLATFORM_DEPTH_X = 28
 const PLATFORM_DEPTH_Y = 18
 const PLATFORM_STRIP_H = 28
 const PORT_RADIUS = 4
 const PORT_RADIUS_SELECTED = 6
+const DEVICE_ZOOM_MIN = 0.2
+const DEVICE_ZOOM_MAX = 3
 
 const { user } = useAuth()
 const { request } = useApi()
@@ -463,6 +499,14 @@ let resizeObserver: ResizeObserver | null = null
 let deviceViewportBound = false
 /** Avoid resetting user pan/zoom on every focus redraw in devices mode. */
 let deviceFitAppliedForSnapshot: string | null = null
+/** User pan/zoom/+/- ; suppresses auto fit until manual fit or data set change. */
+const userAdjustedViewport = ref(false)
+/** Locked column count so panel/resize does not silently reflow racks. */
+let lockedDeviceColCount: number | null = null
+let lockedLayoutSnapshotKey: string | null = null
+let semanticZoomLatch: SemanticZoomState | null = null
+
+const deviceZoomPercent = computed(() => Math.round(stageScale.value * 100))
 
 const focusedRoom = computed(() => {
   const id = focusedRoomId.value ?? topology.value?.focusedRoomId ?? null
@@ -599,18 +643,69 @@ function resetDeviceViewport(): void {
   stage.position({ x: 0, y: 0 })
   syncDeviceOverlay()
   deviceFitAppliedForSnapshot = null
+  userAdjustedViewport.value = false
+  lockedDeviceColCount = null
+  lockedLayoutSnapshotKey = null
+  semanticZoomLatch = null
 }
 
-function fitDeviceToScreen(): void {
-  if (!stage || !laidSnapshot.value) return
-  const transform = computeFitToScreenTransform(laidSnapshot.value.racks, {
+/** True while applyFitTransform triggers drawScene — blocks nested auto-fit. */
+let fitSemanticRedrawDepth = 0
+
+function applyFitTransform(
+  racks: Array<{ x: number; y: number; width: number; height: number }>,
+): void {
+  if (!stage) return
+  const transform = computeFitToScreenTransform(racks, {
     width: stage.width(),
     height: stage.height(),
   }, { padding: DEVICE_FIT_PADDING })
   stage.scale({ x: transform.scale, y: transform.scale })
   stage.position({ x: transform.x, y: transform.y })
   syncDeviceOverlay()
+  userAdjustedViewport.value = false
+  semanticZoomLatch = resolveSemanticZoom(transform.scale, null)
+  // Rebuild name/port nodes at final scale (F1). Guard + depth avoid recursive fit.
+  fitSemanticRedrawDepth += 1
+  try {
+    drawScene()
+  } finally {
+    fitSemanticRedrawDepth -= 1
+  }
+}
+
+function fitDeviceToScreen(): void {
+  if (!stage || !laidSnapshot.value) return
+  applyFitTransform(laidSnapshot.value.racks)
+}
+
+/** Fit primary racks only (可读优先); floor/pseudo racks may sit outside. */
+function fitDeviceRacks(): void {
+  if (!stage || !laidSnapshot.value) return
+  const racks = laidSnapshot.value.racks.filter(isPrimaryDeviceRack)
+  applyFitTransform(racks.length > 0 ? racks : laidSnapshot.value.racks)
+}
+
+function fitDeviceAll(): void {
+  fitDeviceToScreen()
+}
+
+function zoomDeviceBy(factor: number): void {
+  if (!stage || topology.value?.mode !== 'devices') return
+  const oldScale = stage.scaleX()
+  const newScale = Math.min(DEVICE_ZOOM_MAX, Math.max(DEVICE_ZOOM_MIN, oldScale * factor))
+  const center = { x: stage.width() / 2, y: stage.height() / 2 }
+  const next = zoomViewportAroundPoint(
+    { scale: oldScale, x: stage.x(), y: stage.y() },
+    newScale,
+    center,
+  )
+  stage.scale({ x: next.scale, y: next.scale })
+  stage.position({ x: next.x, y: next.y })
+  userAdjustedViewport.value = true
+  syncDeviceOverlay()
   stage.batchDraw()
+  drawScene()
 }
 
 function deviceSnapshotKey(snapshot: CableSnapshot): string {
@@ -632,14 +727,21 @@ function bindDeviceViewportControls(): void {
     const pointer = stage!.getPointerPosition()
     if (!pointer) return
     const zoomIn = event.evt.deltaY < 0
-    const newScale = Math.min(3, Math.max(0.2, oldScale * (zoomIn ? 1.1 : 1 / 1.1)))
-    stage!.scale({ x: newScale, y: newScale })
-    stage!.position({
-      x: pointer.x - (pointer.x - stage!.x()) * (newScale / oldScale),
-      y: pointer.y - (pointer.y - stage!.y()) * (newScale / oldScale),
-    })
+    const newScale = Math.min(
+      DEVICE_ZOOM_MAX,
+      Math.max(DEVICE_ZOOM_MIN, oldScale * (zoomIn ? 1.1 : 1 / 1.1)),
+    )
+    const next = zoomViewportAroundPoint(
+      { scale: oldScale, x: stage!.x(), y: stage!.y() },
+      newScale,
+      pointer,
+    )
+    stage!.scale({ x: next.scale, y: next.scale })
+    stage!.position({ x: next.x, y: next.y })
+    userAdjustedViewport.value = true
     syncDeviceOverlay()
     stage!.batchDraw()
+    drawScene()
   })
 
   let panning = false
@@ -654,6 +756,7 @@ function bindDeviceViewportControls(): void {
       x: pos.x + event.evt.movementX,
       y: pos.y + event.evt.movementY,
     })
+    userAdjustedViewport.value = true
     syncDeviceOverlay()
     stage!.batchDraw()
   })
@@ -786,116 +889,26 @@ function strokeWidthForCount(count: number): number {
 }
 
 function layoutDeviceSnapshot(snapshot: CableSnapshot): CableSnapshot {
-  const filtered = filterActiveDeviceSnapshot(snapshot)
-  const floorRack = filtered.racks.find((r) => r.code === 'FLOOR')
-  const rackRacks = filtered.racks
-    .filter((r) => r.code !== 'FLOOR' && !r.code.startsWith('STUB-'))
-    .sort((a, b) => a.code.localeCompare(b.code))
-  const floorDevices = floorRack
-    ? filtered.devices.filter((d) => d.rackId === floorRack.rackId)
-    : []
+  const availW = stage?.width() || stageSize.value.width || 1536
+  const availH = stage?.height() || stageSize.value.height || 760
+  const key = deviceSnapshotKey(snapshot)
 
-  const devicesByRack = new Map<string, DeviceInfo[]>()
-  for (const device of filtered.devices) {
-    if (floorRack && device.rackId === floorRack.rackId) continue
-    const list = devicesByRack.get(device.rackId) ?? []
-    list.push(device)
-    devicesByRack.set(device.rackId, list)
+  if (lockedLayoutSnapshotKey !== key) {
+    lockedLayoutSnapshotKey = key
+    lockedDeviceColCount = null
   }
 
-  const laidRacks: RackInfo[] = []
-  const laidDevices: DeviceInfo[] = []
-  const colCount = 4
-  let cursorY = 110
-  const rowCount = Math.max(1, Math.ceil(rackRacks.length / colCount))
-  for (let row = 0; row < rowCount && rackRacks.length > 0; row++) {
-    const slice = rackRacks.slice(row * colCount, row * colCount + colCount)
-    let rowMaxH = COMPACT_EMPTY_RACK_H
-    for (let col = 0; col < slice.length; col++) {
-      const rack = slice[col]!
-      const devices = (devicesByRack.get(rack.rackId) ?? [])
-        .slice()
-        .sort((a, b) => a.startU - b.startU || a.deviceName.localeCompare(b.deviceName))
-      const maxEndU = devices.length > 0 ? Math.max(...devices.map((d) => d.endU)) : 0
-      const height = maxEndU > 0
-        ? Math.max(maxEndU * DEVICE_U_PX + 32, 120)
-        : COMPACT_EMPTY_RACK_H
-      rowMaxH = Math.max(rowMaxH, height)
-      laidRacks.push({
-        ...rack,
-        x: 80 + col * RACK_GAP_X,
-        y: cursorY,
-        width: DEVICE_RACK_W,
-        height,
-      })
-      for (const device of devices) {
-        laidDevices.push({ ...device })
-      }
-    }
-    cursorY += rowMaxH + 48
-  }
-
-  // Floor network + storage devices sit below the last rack row.
-  if (floorDevices.length > 0) {
-    const baseY = laidRacks.length > 0 ? cursorY : 110
-    const network = floorDevices.filter((d) =>
-      d.deviceType.includes('交换') || d.deviceType.includes('防火') || d.deviceName.startsWith('SW-') || d.deviceName.startsWith('FW-'),
-    )
-    const storage = floorDevices.filter((d) =>
-      d.deviceType.includes('存储') || d.deviceType.includes('备份') || d.deviceName.startsWith('STORAGE') || d.deviceName.startsWith('BAK'),
-    )
-    const placeFloorDevice = (device: DeviceInfo, x: number, y: number, slotU: number) => {
-      const floorId = `floor-${device.deviceId}`
-      laidRacks.push({
-        rackId: floorId,
-        code: device.deviceName,
-        x,
-        y,
-        width: DEVICE_RACK_W,
-        height: Math.max(device.endU - device.startU + 1, 1) * DEVICE_U_PX + 16,
-      })
-      laidDevices.push({
-        ...device,
-        rackId: floorId,
-        startU: 1,
-        endU: Math.max(1, device.endU - device.startU + 1),
-      })
-    }
-    network.forEach((device, i) => {
-      const x = 80 + i * RACK_GAP_X
-      placeFloorDevice(device, x, baseY, i + 1)
-    })
-    storage.forEach((device, i) => {
-      const x = 80 + i * RACK_GAP_X
-      placeFloorDevice(device, x, baseY + 180, i + 1)
-    })
-  }
-
-  const deviceRackByDeviceId = new Map(laidDevices.map((d) => [d.deviceId, d.rackId]))
-  const rackCodeByRackId = new Map(laidRacks.map((r) => [r.rackId, r.code]))
-  const remappedCables = filtered.cables.map((c) => {
-    const srcRackId = deviceRackByDeviceId.get(c.source.deviceId) ?? c.source.rackId
-    const tgtRackId = deviceRackByDeviceId.get(c.target.deviceId) ?? c.target.rackId
-    return {
-      ...c,
-      source: {
-        ...c.source,
-        rackId: srcRackId,
-        rackCode: (srcRackId && rackCodeByRackId.get(srcRackId)) ?? c.source.rackCode,
-      },
-      target: {
-        ...c.target,
-        rackId: tgtRackId,
-        rackCode: (tgtRackId && rackCodeByRackId.get(tgtRackId)) ?? c.target.rackCode,
-      },
-    }
+  const result = layoutDeviceLevelSnapshot(snapshot, {
+    availW,
+    availH,
+    lockedColCount: lockedDeviceColCount,
   })
 
-  return {
-    racks: laidRacks,
-    devices: laidDevices,
-    cables: remappedCables,
+  if (lockedDeviceColCount == null) {
+    lockedDeviceColCount = result.colCount
   }
+
+  return result.snapshot
 }
 
 function statusLampColor(status: string): string {
@@ -1130,6 +1143,7 @@ function drawDevicePanel(
   panelH: number,
   focusedDevice: boolean,
   endpointHighlighted: boolean,
+  showName: boolean,
 ): void {
   const kind = classifyDeviceKind(device.deviceType)
   const stroke = focusedDevice || endpointHighlighted ? '#39D2C0' : '#0D1117'
@@ -1245,24 +1259,27 @@ function drawDevicePanel(
     name: 'status-lamp',
   }))
 
-  group.add(new Konva.Text({
-    x: compact ? bodyW + 4 : 8,
-    y: compact ? 2 : Math.max(4, panelH / 2 - 7),
-    width: compact ? Math.max(0, panelW - bodyW - 4) : panelW - 28,
-    height: compact ? 14 : undefined,
-    text: device.deviceName,
-    fontSize: 11,
-    fill: '#F8F9FA',
-    ellipsis: true,
-    listening: false,
-    name: 'device-name',
-  }))
+  if (showName) {
+    group.add(new Konva.Text({
+      x: compact ? bodyW + 4 : 8,
+      y: compact ? 2 : Math.max(4, panelH / 2 - 7),
+      width: compact ? Math.max(0, panelW - bodyW - 4) : panelW - 28,
+      height: compact ? 14 : undefined,
+      text: device.deviceName,
+      fontSize: 11,
+      fill: '#F8F9FA',
+      ellipsis: true,
+      listening: false,
+      name: 'device-name',
+    }))
+  }
 }
 
 function drawPortAnchors(
   scene: CableScene,
   snapshot: CableSnapshot,
   selectedId: string | null,
+  semantic: SemanticZoomState,
 ): void {
   if (!layer) return
   const selected = selectedId
@@ -1285,11 +1302,17 @@ function drawPortAnchors(
     for (const endpoint of endpoints) {
       const key = portSlotKey(endpoint.deviceId, endpoint.portName)
       if (drawnPorts.has(key)) continue
-      drawnPorts.add(key)
       const selectedEndpoint = !!selected && (
         (selected.source.deviceId === endpoint.deviceId && selected.source.portName === endpoint.portName)
         || (selected.target.deviceId === endpoint.deviceId && selected.target.portName === endpoint.portName)
       )
+      const focusedEndpoint = !!focusDeviceId.value && endpoint.deviceId === focusDeviceId.value
+      // Ordinary anchors only at high semantic scale for focused device; selected ends always.
+      if (!selectedEndpoint) {
+        if (!semantic.showPortAnchors) continue
+        if (!focusedEndpoint) continue
+      }
+      drawnPorts.add(key)
       const radius = selectedEndpoint ? PORT_RADIUS_SELECTED : PORT_RADIUS
       layer.add(new Konva.Circle({
         x: endpoint.point.x,
@@ -1307,13 +1330,14 @@ function drawPortAnchors(
   let labelBundles: typeof scene.bundles = []
   let labelCables: typeof snapshot.cables = []
   if (selectedId) {
+    // Selected cable endpoint labels at any scale (P0-2 exception).
     const bundle = scene.bundles.find((b) => b.id === selectedId)
     const cable = snapshot.cables.find((c) => c.cableId === selectedId)
     if (bundle && cable && bundle.opacity > 0) {
       labelBundles = [bundle]
       labelCables = [cable]
     }
-  } else if (focusDeviceId.value) {
+  } else if (focusDeviceId.value && semantic.showPortLabels) {
     const focusedId = focusDeviceId.value
     labelCables = snapshot.cables.filter(
       (c) => c.source.deviceId === focusedId || c.target.deviceId === focusedId,
@@ -1394,6 +1418,9 @@ function drawDeviceScene(): void {
     }
   }
 
+  const semantic = resolveSemanticZoom(stage?.scaleX() ?? stageScale.value, semanticZoomLatch)
+  semanticZoomLatch = semantic
+
   const rackCodeById = new Map(snapshot.racks.map((r) => [r.rackId, r.code]))
   const devicesByRack = new Map<string, DeviceInfo[]>()
   for (const device of snapshot.devices) {
@@ -1424,14 +1451,17 @@ function drawDeviceScene(): void {
     const focusedDevice = focusDeviceId.value === device.deviceId
     const endpointHighlighted = relatedDeviceIds.has(device.deviceId)
       && (selectedCableId.value !== null || focusedDevice)
+    const showName = semantic.showDeviceNames
+      || focusedDevice
+      || endpointHighlighted
     const panelW = rack.width - 20
     const group = new Konva.Group({
       x: rack.x + 10,
       y: y + 2,
-      opacity: dimmed ? 0.28 : 1,
+      opacity: dimmed ? 0.35 : 1,
       name: `device-${device.deviceId}`,
     })
-    drawDevicePanel(group, device, panelW, height, focusedDevice, endpointHighlighted && !focusedDevice)
+    drawDevicePanel(group, device, panelW, height, focusedDevice, endpointHighlighted && !focusedDevice, showName)
     group.on('click', (event) => {
       event.cancelBubble = true
       focusDeviceId.value = device.deviceId
@@ -1467,7 +1497,7 @@ function drawDeviceScene(): void {
   }
 
   if (scene) {
-    drawPortAnchors(scene, snapshot, selectedCableId.value)
+    drawPortAnchors(scene, snapshot, selectedCableId.value, semantic)
   }
 
   const contentW = Math.max(
@@ -1489,9 +1519,16 @@ function drawDeviceScene(): void {
   applyDeviceViewportMode(true)
   bindDeviceViewportControls()
   const key = deviceSnapshotKey(originalSnapshot)
+  // Skip nested auto-fit while applyFitTransform is redrawing semantics.
+  if (fitSemanticRedrawDepth > 0) {
+    syncDeviceOverlay()
+    return
+  }
   if (deviceFitAppliedForSnapshot !== key) {
-    fitDeviceToScreen()
+    // Set guard before fit so nested drawScene from applyFitTransform does not re-fit.
     deviceFitAppliedForSnapshot = key
+    fitDeviceToScreen()
+    userAdjustedViewport.value = false
   } else {
     syncDeviceOverlay()
   }
@@ -1940,9 +1977,12 @@ function initStage(): void {
     stageSize.value = { width: w, height: h }
     stage.width(w)
     stage.height(h)
-    drawScene()
-    if (sizeChanged && topology.value?.mode === 'devices') {
+    if (shouldAutoFitOnDeviceResize(userAdjustedViewport.value, sizeChanged, topology.value?.mode)) {
+      lockedDeviceColCount = null
+      drawScene()
       fitDeviceToScreen()
+    } else {
+      drawScene()
     }
   })
   const roTarget = containerRef.value ?? konvaContainer.value
@@ -2382,6 +2422,7 @@ onUnmounted(() => {
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  position: relative;
 }
 
 .topology-body--with-panel .topology-canvas {
@@ -2485,6 +2526,73 @@ onUnmounted(() => {
   overflow: auto;
 }
 
+.cable-detail-panel--overlay {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 8;
+  /* border-box: width is outer size so F2 reservation matches measured rect */
+  box-sizing: border-box;
+  width: min(320px, 42%);
+  max-width: 320px;
+  min-width: 0;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+}
+
+.device-zoom-controls {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 7;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: calc(100% - 200px);
+  padding: 0.35rem 0.45rem;
+  border: 1px solid var(--topology-border);
+  border-radius: 8px;
+  background: rgba(11, 27, 49, 0.94);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+}
+
+/* F2: sit left of overlay detail panel so −/+/fit remain clickable; keep clear of left legend. */
+.device-zoom-controls--panel-open {
+  right: calc(12px + min(320px, 42%) + 12px);
+  max-width: min(420px, calc(100% - 200px - min(320px, 42%) - 24px));
+}
+
+.device-zoom-controls__btn {
+  min-width: 1.75rem;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--topology-border);
+  border-radius: 4px;
+  background: rgba(22, 40, 64, 0.95);
+  color: var(--topology-text);
+  font-size: 0.8rem;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.device-zoom-controls__btn:hover {
+  border-color: var(--topology-accent);
+}
+
+.device-zoom-controls__fit {
+  min-width: auto;
+}
+
+.device-zoom-controls__pct {
+  min-width: 2.75rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--topology-text);
+  font-variant-numeric: tabular-nums;
+}
+
 .cable-detail-panel__header {
   display: flex;
   justify-content: space-between;
@@ -2519,6 +2627,31 @@ onUnmounted(() => {
   grid-template-columns: 110px 1fr;
   gap: 0.4rem 0.5rem;
   font-size: 0.85rem;
+}
+
+.cable-detail-panel__groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.cable-detail-group {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 0.35rem 0.5rem;
+}
+
+.cable-detail-group__sub {
+  margin-top: 0.15rem;
+  color: var(--topology-muted);
+  font-size: 0.8rem;
+}
+
+.cable-detail-path {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.35;
 }
 
 .cable-detail-panel dt {

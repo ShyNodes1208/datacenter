@@ -2,8 +2,8 @@
 import { computed } from 'vue'
 import {
   PURPOSE_DASH,
-  SELECTED_STROKE_WIDTH,
   staticArrowPositions,
+  visualStrokeWidthForBundle,
   type CableBundle,
   type CableScene,
   type Point,
@@ -40,8 +40,7 @@ function bundleAllowsAnimation(bundle: CableBundle): boolean {
 }
 
 function bundleStrokeWidth(bundle: CableBundle): number {
-  if (bundle.highlighted) return SELECTED_STROKE_WIDTH
-  return bundle.isAggregated ? 3 + Math.min(bundle.count, 10) : 2
+  return visualStrokeWidthForBundle(bundle)
 }
 
 function routeD(route: Point[]): string {

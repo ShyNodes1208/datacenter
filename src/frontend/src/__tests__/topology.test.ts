@@ -12,13 +12,17 @@ import {
   buildPortSlotMap,
   buildSamePortExitOffsets,
   buildUniquePortLabelPlacements,
+  DEFAULT_CABLE_OPACITY,
+  DEFAULT_STROKE_WIDTH,
   DEVICE_U_PX,
   deviceEdgePoint,
   deviceNameLabelRect,
   filterVisibleDevices,
   formatPortLabel,
   filterActiveDeviceSnapshot,
+  isPrimaryDeviceRack,
   LABEL_STACK_STEP_Y,
+  layoutDeviceLevelSnapshot,
   NETWORK_COLORS,
   parseCableSnapshot,
   portLabelRect,
@@ -27,13 +31,22 @@ import {
   purposeDisplayName,
   purposeNetworkColor,
   resolveCableStrokeColor,
+  resolveSemanticZoom,
   rectsOverlap,
   routeIntersectsRect,
   sameRackRoute,
+  selectDeviceLayoutColumns,
+  SEMANTIC_SCALE_NAME,
+  SEMANTIC_SCALE_PORT,
+  SELECTED_STROKE_WIDTH,
   staticArrowPositions,
   UNSELECTED_OPACITY,
   ANIMATION_PERIOD_MS,
+  applyDeviceViewportAction,
   computeFitToScreenTransform,
+  viewportTransformsEqual,
+  visualStrokeWidthForBundle,
+  zoomViewportAroundPoint,
 } from '../composables/useCableScene'
 
 const requestMock = vi.fn()
@@ -925,8 +938,26 @@ describe('CR-002 visual fidelity (T-01 to T-20)', () => {
     expect(scene.bundles.find((b) => b.id === 'c2')?.highlighted).toBe(false)
   })
 
-  it('T-10: unselected cables use opacity 0.22', () => {
-    const snapshot = parseCableSnapshot(sampleCableScene)!
+  it('T-10: unselected cables use dim opacity when another is selected', () => {
+    const snapshot = parseCableSnapshot({
+      ...sampleCableScene,
+      cables: [
+        ...sampleCableScene.cables,
+        {
+          cableId: 'c2',
+          cableType: '光纤',
+          purpose: '正常',
+          source: {
+            deviceId: 'd1', deviceName: 'app-01', portName: 'eth9', speed: '1G',
+            rackId: 'k1', rackCode: 'R1',
+          },
+          target: {
+            deviceId: 'd2', deviceName: 'sw-01', portName: 'GE0/9', speed: '1G',
+            rackId: 'k1', rackCode: 'R1',
+          },
+        },
+      ],
+    })!
     const scene = buildCableScene(
       snapshot,
       { level: 'room', roomId: 'r1' },
@@ -934,9 +965,9 @@ describe('CR-002 visual fidelity (T-01 to T-20)', () => {
       'r1',
       { expandToCables: true, selectedCableId: 'c1' },
     )
-    // only one cable — create second via purpose filter path already covered; assert constant
-    expect(UNSELECTED_OPACITY).toBe(0.22)
-    expect(scene.bundles[0]?.opacity).toBe(1)
+    expect(UNSELECTED_OPACITY).toBe(0.1)
+    expect(scene.bundles.find((b) => b.id === 'c1')?.opacity).toBe(1)
+    expect(scene.bundles.find((b) => b.id === 'c2')?.opacity).toBe(UNSELECTED_OPACITY)
   })
 
   it('T-11: animation toggle defaults to off in TopologyView', async () => {
@@ -1732,7 +1763,7 @@ describe('TASK-20260813-133241 device UI', () => {
     expect(fnBody).not.toContain('A区')
   })
 
-  it('P5 ResizeObserver refits device mode only when container size changes', async () => {
+  it('P5 ResizeObserver refits device mode only when container size changes and user has not adjusted', async () => {
     const { readFileSync } = await import('node:fs')
     const { resolve } = await import('node:path')
     const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
@@ -1741,8 +1772,9 @@ describe('TASK-20260813-133241 device UI', () => {
     const fnBody = source.slice(fnStart, source.indexOf('watch(topology, () => {', fnStart))
     expect(fnBody).toContain('new ResizeObserver')
     expect(fnBody).toContain('sizeChanged')
-    expect(fnBody).toMatch(/mode\s*===\s*['"]devices['"]/)
+    expect(fnBody).toContain('shouldAutoFitOnDeviceResize')
     expect(fnBody).toContain('fitDeviceToScreen()')
+    expect(fnBody).toContain('userAdjustedViewport')
     expect(source).toContain('padding: DEVICE_FIT_PADDING')
   })
 
@@ -1789,9 +1821,10 @@ describe('TASK-20260813-133241 device UI', () => {
     const { readFileSync } = await import('node:fs')
     const { resolve } = await import('node:path')
     const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const scene = readFileSync(resolve(__dirname, '../composables/useCableScene.ts'), 'utf8')
     expect(source).not.toMatch(/min-height:\s*760px/)
     expect(source).toMatch(/100dvh|100vh/)
-    expect(source).toContain('DEVICE_RACK_W = 240')
+    expect(scene).toContain('DEVICE_RACK_W = 240')
     expect(source).toContain('DEVICE_U_PX')
     expect(source).not.toMatch(/const U_PX\s*=\s*\d+/)
   })
@@ -1873,18 +1906,18 @@ describe('TASK-20260813-133241 device UI', () => {
     const { readFileSync } = await import('node:fs')
     const { resolve } = await import('node:path')
     const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const scene = readFileSync(resolve(__dirname, '../composables/useCableScene.ts'), 'utf8')
     const layoutStart = source.indexOf('function layoutDeviceSnapshot(')
     expect(layoutStart).toBeGreaterThanOrEqual(0)
     const layoutEnd = source.indexOf('\nfunction', layoutStart + 1)
     const layoutBody = source.slice(layoutStart, layoutEnd > layoutStart ? layoutEnd : undefined)
-    expect(layoutBody).toContain('DEVICE_RACK_W')
-    expect(layoutBody).toContain('RACK_GAP_X')
-    expect(source).toContain('DEVICE_RACK_W = 240')
-    expect(source).toContain('RACK_GAP_X = 340')
+    expect(layoutBody).toContain('layoutDeviceLevelSnapshot')
+    expect(scene).toContain('DEVICE_RACK_W = 240')
+    expect(scene).toContain('DEVICE_RACK_GAP_X = 340')
     expect(340).toBeGreaterThanOrEqual(240)
-    expect(layoutBody).not.toMatch(/RACK_GAP_X\s*\/\s*Math\.max/)
-    expect(layoutBody).toMatch(/network\.forEach\([\s\S]*?x = 80 \+ i \* RACK_GAP_X/)
-    expect(layoutBody).toMatch(/storage\.forEach\([\s\S]*?x = 80 \+ i \* RACK_GAP_X/)
+    expect(scene).toMatch(/network\.forEach\([\s\S]*?DEVICE_LAYOUT_ORIGIN_X \+ i \* DEVICE_RACK_GAP_X/)
+    expect(scene).toMatch(/storage\.forEach\([\s\S]*?DEVICE_LAYOUT_ORIGIN_X \+ i \* DEVICE_RACK_GAP_X/)
+    expect(scene).not.toMatch(/DEVICE_RACK_GAP_X\s*\/\s*Math\.max/)
     const networkLength = 3
     const xs = Array.from({ length: networkLength }, (_, i) => 80 + i * 340)
     for (let i = 1; i < xs.length; i++) {
@@ -2189,5 +2222,457 @@ describe('TASK-20260813-164147 rack origin fallback', () => {
     expect(rackPosBlock).toContain('x: 80 + (positioned ? rack.x * 120 : index * 120)')
     expect(rackPosBlock).toContain('y: 100 + (positioned ? rack.y * 90 : 0)')
     expect(rackPosBlock).not.toMatch(/Number\.isFinite\(rack\.x\)\s*\?\s*rack\.x \* 120\s*:\s*index \* 120/)
+  })
+})
+
+describe('TASK-20260814-101757 device topology readability', () => {
+  function makeRacks(count: number, height = 42 * DEVICE_U_PX + 32) {
+    return Array.from({ length: count }, (_, i) => ({
+      rackId: `r${i + 1}`,
+      code: `R${String(i + 1).padStart(2, '0')}`,
+      x: 0,
+      y: 0,
+      width: 240,
+      height,
+    }))
+  }
+
+  function makeSnapshot(rackCount: number, heightU = 42): ReturnType<typeof parseCableSnapshot> {
+    const racks = makeRacks(rackCount, heightU * DEVICE_U_PX + 32)
+    const devices = racks.map((rack, i) => ({
+      deviceId: `d${i + 1}`,
+      deviceName: `srv-${i + 1}`,
+      rackId: rack.rackId,
+      deviceType: '服务器',
+      operationalStatus: '正常',
+      startU: 1,
+      endU: heightU,
+    }))
+    return {
+      racks,
+      devices,
+      cables: [],
+    }
+  }
+
+  it('layout: 1 / 4 / 10 racks choose columns; no overlap; wide 10-rack beats fixed 4-col', () => {
+    const wide = { width: 1800, height: 900 }
+    const narrow = { width: 900, height: 700 }
+
+    const one = layoutDeviceLevelSnapshot(makeSnapshot(1)!, { availW: wide.width, availH: wide.height })
+    expect(one.colCount).toBe(1)
+    expect(one.snapshot.racks).toHaveLength(1)
+
+    const four = layoutDeviceLevelSnapshot(makeSnapshot(4)!, { availW: wide.width, availH: wide.height })
+    expect(four.snapshot.racks).toHaveLength(4)
+    for (let i = 0; i < four.snapshot.racks.length; i++) {
+      for (let j = i + 1; j < four.snapshot.racks.length; j++) {
+        const a = four.snapshot.racks[i]!
+        const b = four.snapshot.racks[j]!
+        const overlapX = a.x < b.x + b.width && a.x + a.width > b.x
+        const overlapY = a.y < b.y + b.height && a.y + a.height > b.y
+        expect(overlapX && overlapY).toBe(false)
+      }
+    }
+
+    const tenWide = layoutDeviceLevelSnapshot(makeSnapshot(10)!, { availW: wide.width, availH: wide.height })
+    expect(tenWide.colCount).not.toBe(4)
+    expect([1, 2].includes(tenWide.rows) || tenWide.colCount >= 5).toBe(true)
+
+    const heights = Array.from({ length: 10 }, () => 42 * DEVICE_U_PX + 32)
+    const adaptive = selectDeviceLayoutColumns(heights, wide.width, wide.height)
+    const fixed4 = selectDeviceLayoutColumns(heights, wide.width, wide.height)
+    // Force compare against 4-col measurement via locked path
+    const locked4 = layoutDeviceLevelSnapshot(makeSnapshot(10)!, {
+      availW: wide.width,
+      availH: wide.height,
+      lockedColCount: 4,
+    })
+    expect(tenWide.fitScale).toBeGreaterThan(locked4.fitScale)
+    expect(adaptive.fitScale).toBeGreaterThanOrEqual(fixed4.fitScale)
+
+    const tenNarrow = layoutDeviceLevelSnapshot(makeSnapshot(10)!, {
+      availW: narrow.width,
+      availH: narrow.height,
+    })
+    expect(tenNarrow.snapshot.racks).toHaveLength(10)
+
+    const again = layoutDeviceLevelSnapshot(makeSnapshot(10)!, { availW: wide.width, availH: wide.height })
+    expect(again.colCount).toBe(tenWide.colCount)
+    expect(again.snapshot.racks.map((r) => `${r.x},${r.y}`)).toEqual(
+      tenWide.snapshot.racks.map((r) => `${r.x},${r.y}`),
+    )
+  })
+
+  it('layout: lockedColCount keeps arrangement (panel must not reflow)', () => {
+    const snap = makeSnapshot(10)!
+    const first = layoutDeviceLevelSnapshot(snap, { availW: 1800, availH: 900 })
+    const locked = layoutDeviceLevelSnapshot(snap, {
+      availW: 1100,
+      availH: 900,
+      lockedColCount: first.colCount,
+    })
+    expect(locked.colCount).toBe(first.colCount)
+    expect(locked.snapshot.racks.map((r) => `${r.x},${r.y}`)).toEqual(
+      first.snapshot.racks.map((r) => `${r.x},${r.y}`),
+    )
+  })
+
+  it('layout: FLOOR devices remain below primary racks', () => {
+    const base = makeSnapshot(4)!
+    const withFloor = {
+      racks: [
+        ...base.racks,
+        { rackId: 'floor', code: 'FLOOR', x: 0, y: 0, width: 240, height: 100 },
+      ],
+      devices: [
+        ...base.devices,
+        {
+          deviceId: 'sw-floor',
+          deviceName: 'SW-CORE',
+          rackId: 'floor',
+          deviceType: '交换机',
+          operationalStatus: '正常',
+          startU: 1,
+          endU: 2,
+        },
+      ],
+      cables: [],
+    }
+    const laid = layoutDeviceLevelSnapshot(withFloor, { availW: 1600, availH: 900 })
+    const primary = laid.snapshot.racks.filter(isPrimaryDeviceRack)
+    const floorPseudo = laid.snapshot.racks.filter((r) => r.rackId.startsWith('floor-'))
+    expect(floorPseudo.length).toBeGreaterThan(0)
+    const maxPrimaryY = Math.max(...primary.map((r) => r.y + r.height))
+    expect(Math.min(...floorPseudo.map((r) => r.y))).toBeGreaterThanOrEqual(maxPrimaryY)
+  })
+
+  it('layout: ordinary FLOOR device is kept in fallback row (not dropped)', () => {
+    const base = makeSnapshot(2)!
+    const withFloor = {
+      racks: [
+        ...base.racks,
+        { rackId: 'floor', code: 'FLOOR', x: 0, y: 0, width: 240, height: 100 },
+      ],
+      devices: [
+        ...base.devices,
+        {
+          deviceId: 'pdu-floor',
+          deviceName: 'PDU-A1',
+          rackId: 'floor',
+          deviceType: '配电',
+          operationalStatus: '正常',
+          startU: 1,
+          endU: 1,
+        },
+        {
+          deviceId: 'sw-floor',
+          deviceName: 'SW-CORE',
+          rackId: 'floor',
+          deviceType: '交换机',
+          operationalStatus: '正常',
+          startU: 1,
+          endU: 2,
+        },
+        {
+          deviceId: 'st-floor',
+          deviceName: 'STORAGE-01',
+          rackId: 'floor',
+          deviceType: '存储',
+          operationalStatus: '正常',
+          startU: 1,
+          endU: 4,
+        },
+      ],
+      cables: [{
+        cableId: 'c-pdu',
+        cableType: '铜缆',
+        purpose: '正常',
+        status: '正常',
+        source: {
+          deviceId: 'pdu-floor',
+          deviceName: 'PDU-A1',
+          portName: 'out1',
+          speed: null,
+          rackId: 'floor',
+          rackCode: 'FLOOR',
+        },
+        target: {
+          deviceId: 'd1',
+          deviceName: 'srv-1',
+          portName: 'pwr',
+          speed: null,
+          rackId: 'r1',
+          rackCode: 'R01',
+        },
+      }],
+    }
+    const laid = layoutDeviceLevelSnapshot(withFloor, { availW: 1600, availH: 900 })
+    expect(laid.snapshot.devices.some((d) => d.deviceId === 'pdu-floor')).toBe(true)
+    expect(laid.snapshot.racks.some((r) => r.rackId === 'floor-pdu-floor')).toBe(true)
+    expect(laid.snapshot.cables.some((c) => c.cableId === 'c-pdu')).toBe(true)
+    const pduRack = laid.snapshot.racks.find((r) => r.rackId === 'floor-pdu-floor')!
+    const swRack = laid.snapshot.racks.find((r) => r.rackId === 'floor-sw-floor')!
+    const stRack = laid.snapshot.racks.find((r) => r.rackId === 'floor-st-floor')!
+    expect(pduRack.y).toBeGreaterThan(stRack.y)
+    expect(stRack.y).toBeGreaterThan(swRack.y)
+  })
+
+  it('semantic zoom: thresholds gate names/ports with hysteresis; selected labels exempt in view', async () => {
+    expect(SEMANTIC_SCALE_NAME).toBe(0.55)
+    expect(SEMANTIC_SCALE_PORT).toBe(0.9)
+
+    const low = resolveSemanticZoom(0.4, null)
+    expect(low.showDeviceNames).toBe(false)
+    expect(low.showPortAnchors).toBe(false)
+    expect(low.showPortLabels).toBe(false)
+
+    const mid = resolveSemanticZoom(0.7, low)
+    expect(mid.showDeviceNames).toBe(true)
+    expect(mid.showPortLabels).toBe(false)
+
+    const high = resolveSemanticZoom(0.95, mid)
+    expect(high.showDeviceNames).toBe(true)
+    expect(high.showPortAnchors).toBe(true)
+
+    // Hysteresis: dipping slightly below 0.55 keeps names if already on
+    const hold = resolveSemanticZoom(0.53, mid)
+    expect(hold.showDeviceNames).toBe(true)
+    const drop = resolveSemanticZoom(0.5, hold)
+    expect(drop.showDeviceNames).toBe(false)
+
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const fnStart = source.indexOf('function drawPortAnchors(')
+    const fnBody = source.slice(fnStart, source.indexOf('function drawDeviceScene()', fnStart))
+    expect(fnBody).toContain('Selected cable endpoint labels at any scale')
+    expect(fnBody).toContain('semantic.showPortLabels')
+    expect(source).toContain('showName')
+  })
+
+  it('cable styles: idle denoise, selected emphasis, unrelated dim, hit path present', async () => {
+    const snapshot = parseCableSnapshot({
+      ...sampleCableScene,
+      cables: [
+        ...sampleCableScene.cables,
+        {
+          cableId: 'c2',
+          cableType: '光纤',
+          purpose: '正常',
+          status: '正常',
+          source: {
+            deviceId: 'd1', deviceName: 'app-01', portName: 'eth9', speed: '1G',
+            rackId: 'k1', rackCode: 'R1',
+          },
+          target: {
+            deviceId: 'd2', deviceName: 'sw-01', portName: 'GE0/9', speed: '1G',
+            rackId: 'k1', rackCode: 'R1',
+          },
+        },
+      ],
+    })!
+
+    const idle = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true },
+    )
+    expect(DEFAULT_CABLE_OPACITY).toBeGreaterThanOrEqual(0.18)
+    expect(DEFAULT_CABLE_OPACITY).toBeLessThanOrEqual(0.25)
+    expect(idle.bundles.every((b) => b.opacity === DEFAULT_CABLE_OPACITY)).toBe(true)
+    expect(visualStrokeWidthForBundle({
+      highlighted: false,
+      isAggregated: false,
+      count: 1,
+    })).toBe(DEFAULT_STROKE_WIDTH)
+    expect(DEFAULT_STROKE_WIDTH).toBeGreaterThanOrEqual(1)
+    expect(DEFAULT_STROKE_WIDTH).toBeLessThanOrEqual(1.5)
+
+    const selected = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true, selectedCableId: 'c1' },
+    )
+    expect(selected.bundles.find((b) => b.id === 'c1')?.opacity).toBe(1)
+    expect(selected.bundles.find((b) => b.id === 'c1')?.highlighted).toBe(true)
+    expect(selected.bundles.find((b) => b.id === 'c2')?.opacity).toBe(UNSELECTED_OPACITY)
+    expect(UNSELECTED_OPACITY).toBeGreaterThanOrEqual(0.08)
+    expect(UNSELECTED_OPACITY).toBeLessThanOrEqual(0.12)
+    expect(SELECTED_STROKE_WIDTH).toBeGreaterThanOrEqual(4)
+    expect(SELECTED_STROKE_WIDTH).toBeLessThanOrEqual(5)
+
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const layer = readFileSync(resolve(__dirname, '../components/CableLayer.vue'), 'utf8')
+    expect(layer).toContain('cable-hit-area')
+    expect(layer).toMatch(/stroke-width=["']14["']/)
+    expect(layer).toContain("@click.stop=\"emit('bundle-click', bundle.id)\"")
+    expect(layer).toContain("bundle.opacity > 0 ? 'auto' : 'none'")
+  })
+
+  it('viewport keep: zoom/pan/selection/panel/RO/manual-fit preserve or reset transform by rule', () => {
+    const racks = [
+      { x: 80, y: 110, width: 240, height: 42 * DEVICE_U_PX + 32 },
+      { x: 420, y: 110, width: 240, height: 42 * DEVICE_U_PX + 32 },
+      { x: 760, y: 110, width: 240, height: 42 * DEVICE_U_PX + 32 },
+      { x: 1100, y: 110, width: 240, height: 42 * DEVICE_U_PX + 32 },
+      { x: 80, y: 110 + 42 * DEVICE_U_PX + 80, width: 240, height: 42 * DEVICE_U_PX + 32 },
+      { x: 420, y: 110 + 42 * DEVICE_U_PX + 80, width: 240, height: 42 * DEVICE_U_PX + 32 },
+    ]
+    const viewport = { width: 1200, height: 700 }
+    const fit = computeFitToScreenTransform(racks, viewport, { padding: 72 })
+    expect(fit.scale).toBeLessThan(1)
+    expect(fit.scale).toBeLessThan(SEMANTIC_SCALE_NAME)
+
+    let state = {
+      transform: { scale: 1, x: 0, y: 0 },
+      userAdjusted: false,
+      fitAppliedForSnapshot: null as string | null,
+    }
+
+    // 4) First enter allows fit; userAdjusted resets
+    state = applyDeviceViewportAction(state, {
+      type: 'first-enter-fit',
+      snapshotKey: 'snap-a',
+      fit,
+    })
+    expect(state.userAdjusted).toBe(false)
+    expect(state.fitAppliedForSnapshot).toBe('snap-a')
+    expect(viewportTransformsEqual(state.transform, fit)).toBe(true)
+    expect(resolveSemanticZoom(state.transform.scale, null).showDeviceNames).toBe(false)
+
+    // User zooms in past port threshold
+    const afterZoom = applyDeviceViewportAction(state, {
+      type: 'user-zoom',
+      newScale: Math.min(3, Math.max(0.2, state.transform.scale * 1.2 * 1.2 * 1.2)),
+      point: { x: viewport.width / 2, y: viewport.height / 2 },
+    })
+    expect(afterZoom.userAdjusted).toBe(true)
+    expect(afterZoom.transform.scale).toBeGreaterThan(state.transform.scale)
+    // Same math TopologyView +/- uses
+    expect(viewportTransformsEqual(
+      afterZoom.transform,
+      zoomViewportAroundPoint(
+        state.transform,
+        afterZoom.transform.scale,
+        { x: viewport.width / 2, y: viewport.height / 2 },
+      ),
+    )).toBe(true)
+    state = afterZoom
+
+    const zoomed = { ...state.transform }
+
+    // 1) Cable click keeps scale/x/y (≤1e-6)
+    state = applyDeviceViewportAction(state, { type: 'cable-click' })
+    expect(viewportTransformsEqual(state.transform, zoomed)).toBe(true)
+    expect(state.userAdjusted).toBe(true)
+
+    // User pan
+    state = applyDeviceViewportAction(state, { type: 'user-pan', dx: 40, dy: -25 })
+    const panned = { ...state.transform }
+    expect(state.userAdjusted).toBe(true)
+    expect(panned.x).toBe(zoomed.x + 40)
+    expect(panned.y).toBe(zoomed.y - 25)
+
+    // 2) Cable click after pan keeps position
+    state = applyDeviceViewportAction(state, { type: 'cable-click' })
+    expect(viewportTransformsEqual(state.transform, panned)).toBe(true)
+
+    // Device click also keeps transform
+    state = applyDeviceViewportAction(state, { type: 'device-click' })
+    expect(viewportTransformsEqual(state.transform, panned)).toBe(true)
+
+    // 3) Open/close detail panel does not lower scale
+    const scaleBeforePanel = state.transform.scale
+    state = applyDeviceViewportAction(state, { type: 'panel-open' })
+    expect(state.transform.scale).toBeGreaterThanOrEqual(scaleBeforePanel - 1e-6)
+    expect(viewportTransformsEqual(state.transform, panned)).toBe(true)
+    state = applyDeviceViewportAction(state, { type: 'panel-close' })
+    expect(viewportTransformsEqual(state.transform, panned)).toBe(true)
+
+    // 5) User-adjusted ResizeObserver: size change does not reset transform
+    const refit = computeFitToScreenTransform(racks, { width: 900, height: 600 }, { padding: 72 })
+    state = applyDeviceViewportAction(state, {
+      type: 'resize',
+      sizeChanged: true,
+      mode: 'devices',
+      fit: refit,
+    })
+    expect(viewportTransformsEqual(state.transform, panned)).toBe(true)
+    expect(state.userAdjusted).toBe(true)
+
+    // 6) Manual fit restores global view and clears userAdjusted
+    state = applyDeviceViewportAction(state, { type: 'manual-fit', fit })
+    expect(state.userAdjusted).toBe(false)
+    expect(viewportTransformsEqual(state.transform, fit)).toBe(true)
+
+    // Unadjusted resize may refit
+    const widerFit = computeFitToScreenTransform(racks, { width: 1600, height: 800 }, { padding: 72 })
+    state = applyDeviceViewportAction(state, {
+      type: 'resize',
+      sizeChanged: true,
+      mode: 'devices',
+      fit: widerFit,
+    })
+    expect(state.userAdjusted).toBe(false)
+    expect(viewportTransformsEqual(state.transform, widerFit)).toBe(true)
+  })
+
+  it('selected cable keeps alert stroke color (not overridden by highlight)', () => {
+    const snapshot = parseCableSnapshot({
+      ...sampleCableScene,
+      cables: [{
+        ...sampleCableScene.cables[0],
+        status: '告警',
+      }],
+    })!
+    const scene = buildCableScene(
+      snapshot,
+      { level: 'room', roomId: 'r1' },
+      { purposes: [], cableTypes: [] },
+      'r1',
+      { expandToCables: true, selectedCableId: 'c1' },
+    )
+    expect(scene.bundles[0]?.highlighted).toBe(true)
+    expect(scene.bundles[0]?.strokeColor).toBe(NETWORK_COLORS.alert)
+  })
+
+  it('F2: overlay panel outer width matches zoom-controls panel-open reservation', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+
+    const overlayStart = source.indexOf('.cable-detail-panel--overlay {')
+    expect(overlayStart).toBeGreaterThanOrEqual(0)
+    const overlayEnd = source.indexOf('\n}', overlayStart)
+    const overlayCss = source.slice(overlayStart, overlayEnd + 2)
+    // border-box so width:min(320px,42%) is outer width (padding/border included)
+    expect(overlayCss).toMatch(/box-sizing:\s*border-box/)
+    expect(overlayCss).toMatch(/width:\s*min\(320px,\s*42%\)/)
+    // Must not allow outer width above the reserved 320px band
+    expect(overlayCss).not.toMatch(/max-width:\s*360px/)
+    expect(overlayCss).toMatch(/max-width:\s*min\(320px,\s*42%\)|max-width:\s*320px/)
+
+    const openStart = source.indexOf('.device-zoom-controls--panel-open {')
+    expect(openStart).toBeGreaterThanOrEqual(0)
+    const openEnd = source.indexOf('\n}', openStart)
+    const openCss = source.slice(openStart, openEnd + 2)
+    expect(openCss).toContain('right: calc(12px + min(320px, 42%) + 12px)')
+
+    // Geometry check: content-box 320+32pad+2border = 354 overlaps reserved 320;
+    // border-box outer = 320 clears controls.
+    const panelPadX = 16
+    const panelBorderX = 1
+    const reserved = 320
+    const contentBoxOuter = 320 + panelPadX * 2 + panelBorderX * 2
+    expect(contentBoxOuter).toBe(354)
+    expect(contentBoxOuter).toBeGreaterThan(reserved)
+    const borderBoxOuter = 320
+    expect(borderBoxOuter).toBeLessThanOrEqual(reserved)
   })
 })

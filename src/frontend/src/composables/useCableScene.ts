@@ -156,17 +156,391 @@ export const PURPOSE_DASH: Record<string, string> = {
 /** Device-level U height in scene pixels. Shared by TopologyView panels and cable anchors. */
 export const DEVICE_U_PX = 20
 
-/** Unselected cable opacity when another cable/device is focused (FR-VIS-10). */
-export const UNSELECTED_OPACITY = 0.22
+/** Idle (no selection/focus) cable opacity — keeps lines below device panels. */
+export const DEFAULT_CABLE_OPACITY = 0.22
 
-/** Selected cable stroke width in canvas pixels (FR-VIS-10). */
-export const SELECTED_STROKE_WIDTH = 4
+/** Unrelated cable opacity when another cable/device is focused (FR-VIS-10 / P0-3). */
+export const UNSELECTED_OPACITY = 0.1
+
+/** Idle cable stroke width in canvas pixels. */
+export const DEFAULT_STROKE_WIDTH = 1.25
+
+/** Selected cable stroke width in canvas pixels (FR-VIS-10 / P0-3). */
+export const SELECTED_STROKE_WIDTH = 4.5
+
+/** Semantic zoom: hide ordinary device names / port chrome below this scale. */
+export const SEMANTIC_SCALE_NAME = 0.55
+
+/** Semantic zoom: show focused-device port anchors/labels at or above this scale. */
+export const SEMANTIC_SCALE_PORT = 0.9
+
+/** Hysteresis band around semantic thresholds to avoid flicker while zooming. */
+export const SEMANTIC_SCALE_HYSTERESIS = 0.03
+
+/** Device-level rack grid layout constants (shared by layout + TopologyView). */
+export const DEVICE_RACK_W = 240
+export const DEVICE_RACK_GAP_X = 340
+export const DEVICE_ROW_GAP_Y = 48
+export const DEVICE_LAYOUT_ORIGIN_X = 80
+export const DEVICE_LAYOUT_ORIGIN_Y = 110
+export const DEVICE_COMPACT_EMPTY_RACK_H = 240
+/** Reserve for cable channels + legend when scoring fitScale. */
+export const DEVICE_LAYOUT_MARGIN_X = 96
+export const DEVICE_LAYOUT_MARGIN_Y = 72
+export const DEVICE_LAYOUT_MAX_FIT_SCALE = 2
 
 /** Static arrow spacing along a route (FR-VIS-09). */
 export const ARROW_SPACING_PX = 80
 
 /** Decorative animation period in ms (FR-VIS-11). */
 export const ANIMATION_PERIOD_MS = 1400
+
+export interface SemanticZoomState {
+  showDeviceNames: boolean
+  showPortAnchors: boolean
+  showPortLabels: boolean
+}
+
+/** Resolve semantic zoom flags with hysteresis (no framework state required). */
+export function resolveSemanticZoom(
+  scale: number,
+  previous: SemanticZoomState | null = null,
+): SemanticZoomState {
+  const h = SEMANTIC_SCALE_HYSTERESIS
+  const prev = previous ?? {
+    showDeviceNames: scale >= SEMANTIC_SCALE_NAME,
+    showPortAnchors: scale >= SEMANTIC_SCALE_PORT,
+    showPortLabels: scale >= SEMANTIC_SCALE_PORT,
+  }
+
+  const showDeviceNames = prev.showDeviceNames
+    ? scale >= SEMANTIC_SCALE_NAME - h
+    : scale >= SEMANTIC_SCALE_NAME
+  const showPorts = prev.showPortAnchors
+    ? scale >= SEMANTIC_SCALE_PORT - h
+    : scale >= SEMANTIC_SCALE_PORT
+
+  return {
+    showDeviceNames,
+    showPortAnchors: showPorts,
+    showPortLabels: showPorts,
+  }
+}
+
+export function rackDisplayHeight(
+  devices: Array<{ endU: number }>,
+  emptyHeight = DEVICE_COMPACT_EMPTY_RACK_H,
+  uPx = DEVICE_U_PX,
+): number {
+  if (devices.length === 0) return emptyHeight
+  const maxEndU = Math.max(...devices.map((d) => d.endU))
+  return maxEndU > 0 ? Math.max(maxEndU * uPx + 32, 120) : emptyHeight
+}
+
+export function measureDeviceGridLayout(
+  rackHeights: number[],
+  colCount: number,
+  options?: {
+    gapX?: number
+    rowGapY?: number
+    originX?: number
+    originY?: number
+    rackW?: number
+    extraHeight?: number
+  },
+): { contentW: number; contentH: number; rows: number; rowHeights: number[] } {
+  const gapX = options?.gapX ?? DEVICE_RACK_GAP_X
+  const rowGapY = options?.rowGapY ?? DEVICE_ROW_GAP_Y
+  const originX = options?.originX ?? DEVICE_LAYOUT_ORIGIN_X
+  const originY = options?.originY ?? DEVICE_LAYOUT_ORIGIN_Y
+  const rackW = options?.rackW ?? DEVICE_RACK_W
+  const extraHeight = options?.extraHeight ?? 0
+  const n = rackHeights.length
+  const cols = Math.max(1, Math.min(colCount, Math.max(1, n)))
+  const rows = Math.max(1, Math.ceil(n / cols))
+  const rowHeights: number[] = []
+  for (let row = 0; row < rows; row++) {
+    const slice = rackHeights.slice(row * cols, row * cols + cols)
+    rowHeights.push(slice.length ? Math.max(...slice) : DEVICE_COMPACT_EMPTY_RACK_H)
+  }
+  const contentW = n === 0
+    ? originX + rackW
+    : originX + (cols - 1) * gapX + rackW + originX
+  const rowsH = rowHeights.reduce((sum, h) => sum + h, 0)
+  const contentH = originY + rowsH + Math.max(0, rows - 1) * rowGapY + extraHeight + originY
+  return { contentW, contentH, rows, rowHeights }
+}
+
+/**
+ * Choose column count maximizing fitScale = min(availW/contentW, availH/contentH, maxScale).
+ * Ties prefer fewer columns (more horizontal cable channel).
+ */
+export function selectDeviceLayoutColumns(
+  rackHeights: number[],
+  availW: number,
+  availH: number,
+  options?: {
+    maxScale?: number
+    marginX?: number
+    marginY?: number
+    extraHeight?: number
+    gapX?: number
+    rowGapY?: number
+    originX?: number
+    originY?: number
+    rackW?: number
+  },
+): { colCount: number; contentW: number; contentH: number; fitScale: number; rows: number } {
+  const n = rackHeights.length
+  const maxScale = options?.maxScale ?? DEVICE_LAYOUT_MAX_FIT_SCALE
+  const marginX = options?.marginX ?? DEVICE_LAYOUT_MARGIN_X
+  const marginY = options?.marginY ?? DEVICE_LAYOUT_MARGIN_Y
+  const usableW = Math.max(1, availW - marginX)
+  const usableH = Math.max(1, availH - marginY)
+
+  if (n === 0) {
+    return { colCount: 1, contentW: 1, contentH: 1, fitScale: 1, rows: 1 }
+  }
+
+  let best = {
+    colCount: 1,
+    contentW: 1,
+    contentH: 1,
+    fitScale: -1,
+    rows: n,
+  }
+
+  for (let cols = 1; cols <= n; cols++) {
+    const measured = measureDeviceGridLayout(rackHeights, cols, options)
+    const fitScale = Math.min(
+      maxScale,
+      usableW / measured.contentW,
+      usableH / measured.contentH,
+    )
+    if (
+      fitScale > best.fitScale + 1e-9
+      || (Math.abs(fitScale - best.fitScale) <= 1e-9 && cols < best.colCount)
+    ) {
+      best = {
+        colCount: cols,
+        contentW: measured.contentW,
+        contentH: measured.contentH,
+        fitScale,
+        rows: measured.rows,
+      }
+    }
+  }
+
+  return best
+}
+
+export interface DeviceLayoutResult {
+  snapshot: CableSnapshot
+  colCount: number
+  contentW: number
+  contentH: number
+  fitScale: number
+  rows: number
+}
+
+/** Layout device-level racks into an adaptive grid; floor devices stay below the last row. */
+export function layoutDeviceLevelSnapshot(
+  snapshot: CableSnapshot,
+  options: {
+    availW: number
+    availH: number
+    /** When set, skip column search and use this count (panel open / locked layout). */
+    lockedColCount?: number | null
+  },
+): DeviceLayoutResult {
+  const filtered = filterActiveDeviceSnapshot(snapshot)
+  const floorRack = filtered.racks.find((r) => r.code === 'FLOOR')
+  const rackRacks = filtered.racks
+    .filter((r) => r.code !== 'FLOOR' && !r.code.startsWith('STUB-'))
+    .sort((a, b) => a.code.localeCompare(b.code))
+  const floorDevices = floorRack
+    ? filtered.devices.filter((d) => d.rackId === floorRack.rackId)
+    : []
+
+  const devicesByRack = new Map<string, DeviceInfo[]>()
+  for (const device of filtered.devices) {
+    if (floorRack && device.rackId === floorRack.rackId) continue
+    const list = devicesByRack.get(device.rackId) ?? []
+    list.push(device)
+    devicesByRack.set(device.rackId, list)
+  }
+
+  const rackHeights = rackRacks.map((rack) => {
+    const devices = (devicesByRack.get(rack.rackId) ?? [])
+      .slice()
+      .sort((a, b) => a.startU - b.startU || a.deviceName.localeCompare(b.deviceName))
+    return rackDisplayHeight(devices)
+  })
+
+  const floorExtra = floorDevices.length > 0
+    ? (floorDevices.some((d) =>
+      d.deviceType.includes('存储') || d.deviceType.includes('备份')
+      || d.deviceName.startsWith('STORAGE') || d.deviceName.startsWith('BAK'),
+    ) ? 180 + 120 : 120) + DEVICE_ROW_GAP_Y
+    : 0
+
+  const selected = options.lockedColCount != null && options.lockedColCount > 0
+    ? (() => {
+      const cols = Math.max(1, Math.min(options.lockedColCount!, Math.max(1, rackRacks.length || 1)))
+      const measured = measureDeviceGridLayout(rackHeights, cols, { extraHeight: floorExtra })
+      const usableW = Math.max(1, options.availW - DEVICE_LAYOUT_MARGIN_X)
+      const usableH = Math.max(1, options.availH - DEVICE_LAYOUT_MARGIN_Y)
+      return {
+        colCount: cols,
+        contentW: measured.contentW,
+        contentH: measured.contentH,
+        fitScale: Math.min(
+          DEVICE_LAYOUT_MAX_FIT_SCALE,
+          usableW / measured.contentW,
+          usableH / measured.contentH,
+        ),
+        rows: measured.rows,
+      }
+    })()
+    : selectDeviceLayoutColumns(rackHeights, options.availW, options.availH, {
+      extraHeight: floorExtra,
+    })
+
+  const colCount = rackRacks.length === 0 ? 1 : selected.colCount
+  const laidRacks: RackInfo[] = []
+  const laidDevices: DeviceInfo[] = []
+  let cursorY = DEVICE_LAYOUT_ORIGIN_Y
+  const rowCount = Math.max(1, Math.ceil(rackRacks.length / colCount))
+
+  for (let row = 0; row < rowCount && rackRacks.length > 0; row++) {
+    const slice = rackRacks.slice(row * colCount, row * colCount + colCount)
+    let rowMaxH = DEVICE_COMPACT_EMPTY_RACK_H
+    for (let col = 0; col < slice.length; col++) {
+      const rack = slice[col]!
+      const devices = (devicesByRack.get(rack.rackId) ?? [])
+        .slice()
+        .sort((a, b) => a.startU - b.startU || a.deviceName.localeCompare(b.deviceName))
+      const height = rackDisplayHeight(devices)
+      rowMaxH = Math.max(rowMaxH, height)
+      laidRacks.push({
+        ...rack,
+        x: DEVICE_LAYOUT_ORIGIN_X + col * DEVICE_RACK_GAP_X,
+        y: cursorY,
+        width: DEVICE_RACK_W,
+        height,
+      })
+      for (const device of devices) {
+        laidDevices.push({ ...device })
+      }
+    }
+    cursorY += rowMaxH + DEVICE_ROW_GAP_Y
+  }
+
+  if (floorDevices.length > 0) {
+    const baseY = laidRacks.length > 0 ? cursorY : DEVICE_LAYOUT_ORIGIN_Y
+    const network = floorDevices.filter((d) =>
+      d.deviceType.includes('交换') || d.deviceType.includes('防火')
+      || d.deviceName.startsWith('SW-') || d.deviceName.startsWith('FW-'),
+    )
+    const storage = floorDevices.filter((d) =>
+      d.deviceType.includes('存储') || d.deviceType.includes('备份')
+      || d.deviceName.startsWith('STORAGE') || d.deviceName.startsWith('BAK'),
+    )
+    const classified = new Set([
+      ...network.map((d) => d.deviceId),
+      ...storage.map((d) => d.deviceId),
+    ])
+    const other = floorDevices.filter((d) => !classified.has(d.deviceId))
+    const placeFloorDevice = (device: DeviceInfo, x: number, y: number) => {
+      const floorId = `floor-${device.deviceId}`
+      laidRacks.push({
+        rackId: floorId,
+        code: device.deviceName,
+        x,
+        y,
+        width: DEVICE_RACK_W,
+        height: Math.max(device.endU - device.startU + 1, 1) * DEVICE_U_PX + 16,
+      })
+      laidDevices.push({
+        ...device,
+        rackId: floorId,
+        startU: 1,
+        endU: Math.max(1, device.endU - device.startU + 1),
+      })
+    }
+    network.forEach((device, i) => {
+      placeFloorDevice(device, DEVICE_LAYOUT_ORIGIN_X + i * DEVICE_RACK_GAP_X, baseY)
+    })
+    storage.forEach((device, i) => {
+      placeFloorDevice(device, DEVICE_LAYOUT_ORIGIN_X + i * DEVICE_RACK_GAP_X, baseY + 180)
+    })
+    // Unclassified FLOOR devices: keep last row so nothing is dropped from layout/cables.
+    other.forEach((device, i) => {
+      placeFloorDevice(device, DEVICE_LAYOUT_ORIGIN_X + i * DEVICE_RACK_GAP_X, baseY + 360)
+    })
+  }
+
+  const deviceRackByDeviceId = new Map(laidDevices.map((d) => [d.deviceId, d.rackId]))
+  const rackCodeByRackId = new Map(laidRacks.map((r) => [r.rackId, r.code]))
+  const remappedCables = filtered.cables.map((c) => {
+    const srcRackId = deviceRackByDeviceId.get(c.source.deviceId) ?? c.source.rackId
+    const tgtRackId = deviceRackByDeviceId.get(c.target.deviceId) ?? c.target.rackId
+    return {
+      ...c,
+      source: {
+        ...c.source,
+        rackId: srcRackId,
+        rackCode: (srcRackId && rackCodeByRackId.get(srcRackId)) ?? c.source.rackCode,
+      },
+      target: {
+        ...c.target,
+        rackId: tgtRackId,
+        rackCode: (tgtRackId && rackCodeByRackId.get(tgtRackId)) ?? c.target.rackCode,
+      },
+    }
+  })
+
+  const bounds = laidRacks.length === 0
+    ? { contentW: selected.contentW, contentH: selected.contentH }
+    : {
+      contentW: Math.max(
+        ...laidRacks.map((r) => r.x + r.width),
+      ) + DEVICE_LAYOUT_ORIGIN_X,
+      contentH: Math.max(
+        ...laidRacks.map((r) => r.y + r.height),
+      ) + DEVICE_LAYOUT_ORIGIN_Y,
+    }
+
+  return {
+    snapshot: {
+      racks: laidRacks,
+      devices: laidDevices,
+      cables: remappedCables,
+    },
+    colCount,
+    contentW: bounds.contentW,
+    contentH: bounds.contentH,
+    fitScale: selected.fitScale,
+    rows: selected.rows,
+  }
+}
+
+/** Racks used by "适应机柜" (exclude floor pseudo-racks). */
+export function isPrimaryDeviceRack(rack: { rackId: string; code: string }): boolean {
+  return rack.code !== 'FLOOR' && !rack.rackId.startsWith('floor-')
+}
+
+export function visualStrokeWidthForBundle(bundle: {
+  highlighted: boolean
+  isAggregated: boolean
+  count: number
+}): number {
+  if (bundle.highlighted) return SELECTED_STROKE_WIDTH
+  if (bundle.isAggregated) {
+    return Math.max(DEFAULT_STROKE_WIDTH, (3 + Math.min(bundle.count, 10)) * 0.55)
+  }
+  return DEFAULT_STROKE_WIDTH
+}
 
 /** CableType → stroke color (legacy / room-level aggregation). */
 export const CABLE_TYPE_COLORS: Record<string, string> = {
@@ -991,7 +1365,7 @@ export function aggregateCables(
       sourceRackId,
       targetRackId,
       route,
-      opacity: 1,
+      opacity: DEFAULT_CABLE_OPACITY,
       highlighted: false,
       animated: false,
       isAggregated: group.length > 1,
@@ -1019,7 +1393,7 @@ function cableToBundle(
     sourceRackId: c.source.rackId ?? '__none__',
     targetRackId: c.target.rackId ?? '__none__',
     route: routeForCable(c, rackMap, deviceMap, portSlots, exitOffsets),
-    opacity: 1,
+    opacity: DEFAULT_CABLE_OPACITY,
     highlighted: false,
     animated: false,
     isAggregated: false,
@@ -1204,6 +1578,7 @@ export function buildCableScene(
         b.animated = false
       }
     }
+    // else: keep DEFAULT_CABLE_OPACITY from cableToBundle (idle denoise)
 
     return {
       bundles,
@@ -1405,6 +1780,138 @@ export function mapSnapshotToFloorplan(
       }
     }),
     cables: snapshot.cables,
+  }
+}
+
+/** Stage pan/zoom transform used by device-level viewport keep logic. */
+export type ViewportTransform = { scale: number; x: number; y: number }
+
+const VIEWPORT_EPS = 1e-6
+
+export function viewportTransformsEqual(
+  a: ViewportTransform,
+  b: ViewportTransform,
+  eps = VIEWPORT_EPS,
+): boolean {
+  return Math.abs(a.scale - b.scale) <= eps
+    && Math.abs(a.x - b.x) <= eps
+    && Math.abs(a.y - b.y) <= eps
+}
+
+/** Zoom around a screen point (wheel / +/-). */
+export function zoomViewportAroundPoint(
+  current: ViewportTransform,
+  newScale: number,
+  point: { x: number; y: number },
+): ViewportTransform {
+  const scale = newScale
+  if (current.scale <= 0 || scale === current.scale) {
+    return { scale, x: current.x, y: current.y }
+  }
+  return {
+    scale,
+    x: point.x - (point.x - current.x) * (scale / current.scale),
+    y: point.y - (point.y - current.y) * (scale / current.scale),
+  }
+}
+
+/** ResizeObserver: refit only when size changed and user has not adjusted. */
+export function shouldAutoFitOnDeviceResize(
+  userAdjusted: boolean,
+  sizeChanged: boolean,
+  mode: string | null | undefined,
+): boolean {
+  return sizeChanged && mode === 'devices' && !userAdjusted
+}
+
+/**
+ * Behavioral model of device viewport keep (selection / panel / first fit / RO / manual fit).
+ * TopologyView must follow the same rules; tests assert this contract without Konva/DOM.
+ */
+export function applyDeviceViewportAction(
+  state: {
+    transform: ViewportTransform
+    userAdjusted: boolean
+    fitAppliedForSnapshot: string | null
+  },
+  action:
+    | { type: 'first-enter-fit'; snapshotKey: string; fit: ViewportTransform }
+    | { type: 'user-zoom'; newScale: number; point: { x: number; y: number } }
+    | { type: 'user-pan'; dx: number; dy: number }
+    | { type: 'cable-click' }
+    | { type: 'device-click' }
+    | { type: 'panel-open' }
+    | { type: 'panel-close' }
+    | { type: 'resize'; sizeChanged: boolean; mode: string; fit: ViewportTransform }
+    | { type: 'manual-fit'; fit: ViewportTransform },
+): {
+  transform: ViewportTransform
+  userAdjusted: boolean
+  fitAppliedForSnapshot: string | null
+} {
+  switch (action.type) {
+    case 'first-enter-fit': {
+      if (state.fitAppliedForSnapshot === action.snapshotKey) {
+        return { ...state, transform: { ...state.transform } }
+      }
+      return {
+        transform: { ...action.fit },
+        userAdjusted: false,
+        fitAppliedForSnapshot: action.snapshotKey,
+      }
+    }
+    case 'user-zoom':
+      return {
+        transform: zoomViewportAroundPoint(state.transform, action.newScale, action.point),
+        userAdjusted: true,
+        fitAppliedForSnapshot: state.fitAppliedForSnapshot,
+      }
+    case 'user-pan':
+      return {
+        transform: {
+          scale: state.transform.scale,
+          x: state.transform.x + action.dx,
+          y: state.transform.y + action.dy,
+        },
+        userAdjusted: true,
+        fitAppliedForSnapshot: state.fitAppliedForSnapshot,
+      }
+    case 'cable-click':
+    case 'device-click':
+    case 'panel-open':
+    case 'panel-close':
+      // Selection / overlay panel must not alter stage transform.
+      return {
+        transform: { ...state.transform },
+        userAdjusted: state.userAdjusted,
+        fitAppliedForSnapshot: state.fitAppliedForSnapshot,
+      }
+    case 'resize': {
+      if (!shouldAutoFitOnDeviceResize(state.userAdjusted, action.sizeChanged, action.mode)) {
+        return {
+          transform: { ...state.transform },
+          userAdjusted: state.userAdjusted,
+          fitAppliedForSnapshot: state.fitAppliedForSnapshot,
+        }
+      }
+      return {
+        transform: { ...action.fit },
+        userAdjusted: false,
+        fitAppliedForSnapshot: state.fitAppliedForSnapshot,
+      }
+    }
+    case 'manual-fit':
+      return {
+        transform: { ...action.fit },
+        userAdjusted: false,
+        fitAppliedForSnapshot: state.fitAppliedForSnapshot,
+      }
+    default:
+      return {
+        transform: { ...state.transform },
+        userAdjusted: state.userAdjusted,
+        fitAppliedForSnapshot: state.fitAppliedForSnapshot,
+      }
   }
 }
 
