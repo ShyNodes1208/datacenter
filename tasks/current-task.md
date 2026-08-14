@@ -1,6 +1,6 @@
 ﻿# Current Task
 
-- Status：IDLE（2026-08-14，TASK-20260814-120641 COMPLETED，2990677 已推送）
+- Status：READY_FOR_RETEST（2026-08-14，TASK-20260814-140520 走廊路由+机柜点击优先，等待 Codex 复审）
 - Branch：feature/TASK-20260813-133241-device-ui
 - Backend：220 tests PASS
 - Frontend：195 tests PASS（vitest）
