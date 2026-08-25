@@ -1,6 +1,6 @@
 ﻿# Current Task
 
-- Status：BLOCKED（2026-08-25；TASK-20260825-092201 设备级视口交互修复，等待提交与用户授权推送）
+- Status：COMPLETED（2026-08-25；TASK-20260825-092201 设备级视口交互修复；最终治理提交/推送及本地远端哈希复核立即待执行）
 - Branch：feature/TASK-20260810-000003-topology-map
 - Backend：220 tests PASS
 - Frontend：195 tests PASS（vitest）
@@ -24,11 +24,11 @@
 ## 当前状态
 
 - 当前任务：`TASK-20260825-092201` — 设备级视口交互修复。
-- 状态：`BLOCKED`；Owner：Cursor Frontend；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
+- 状态：`COMPLETED`（最终生效待最终治理提交/推送后的本地/远端哈希复核）；Owner：Cursor Frontend；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
 - 范围：仅设备级拓扑的缩放、拖拽事件路径与相关前端测试；不改后端、API、数据库、种子数据或依赖。
-- 当前任务规格：`.ai/TASK.md`。Cursor Frontend 已完成实现，Codex Reviewer 已 PASS；两条允许路径在 `tasks/MODULE-LOCKS.md` 保持 `HANDED_OFF`。
-- 阻塞原因：尚未形成只包含任务范围的提交并推送 GitHub；工作区还存在既存的用户未提交文件，远端写入须经用户授权。
-- 下一步：用户确认提交/推送授权后，核对范围、创建任务提交、推送、释放锁，再由 Codex Reviewer 转 `COMPLETED`。
+- 当前任务规格：`.ai/TASK.md`。Cursor Frontend 已完成实现，Codex Reviewer 独立 PASS；两条允许路径已在 `tasks/MODULE-LOCKS.md` 释放。
+- 提交与推送：实现提交 `53ea43e` 已推送；当前 `HEAD` 与 `origin/feature/TASK-20260810-000003-topology-map` 均为 `f0b16b13e7579eb4d0bb5d8580ef6f2b3ebe03ef`，其为 `53ea43e` 的后继无关文档提交。
+- 最终完成条件：最终治理状态记录须立即创建本地提交并推送；推送后复核工作区干净且本地/远端哈希一致，届时本 `COMPLETED` 终态生效。
 
 ## 数据概览
 
