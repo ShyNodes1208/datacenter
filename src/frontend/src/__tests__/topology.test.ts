@@ -3500,4 +3500,37 @@ describe('TASK-20260814-140520 corridor routing + rack focus', () => {
     expect(filtered.bundles.some((b) => b.memberIds.includes('c-mgmt'))).toBe(false)
     expect(filtered.bundles.every((b) => b.purpose === '存储')).toBe(true)
   })
+
+  it('TASK-20260825-092201: viewport events bubble through rack, device and cable overlays', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+
+    expect(source).toContain('@wheel.prevent="onDeviceViewportWheel"')
+    expect(source).toContain('@mousedown="onDeviceViewportMouseDown"')
+    expect(source).toContain('@mousemove="onDeviceViewportMouseMove"')
+    expect(source).toContain('@mouseup="onDeviceViewportMouseUp"')
+    expect(source).toContain('@mouseleave="onDeviceViewportMouseLeave"')
+    expect(source).toMatch(/function onDeviceViewportWheel[\s\S]*applyDeviceZoom/)
+    expect(source).toMatch(/function onDeviceViewportMouseDown[\s\S]*devicePan/)
+    expect(source).toMatch(/function onDeviceViewportMouseMove[\s\S]*DEVICE_DRAG_THRESHOLD_PX/)
+    expect(source).toMatch(/function onDeviceViewportMouseMove[\s\S]*stage\.position/)
+    expect(source).toMatch(/function onRackHitClick[\s\S]*consumeSuppressedViewportClick/)
+    expect(source).toMatch(/function onDeviceHitClick[\s\S]*consumeSuppressedViewportClick/)
+    expect(source).toMatch(/function onCableBundleClick[\s\S]*consumeSuppressedViewportClick/)
+  })
+
+  it('TASK-20260825-092201: continuous wheel zoom redraws only across semantic thresholds', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const start = source.indexOf('function applyDeviceZoom(')
+    const body = source.slice(start, source.indexOf('function deviceSnapshotKey(', start))
+
+    expect(body).toContain('zoomViewportAroundPoint')
+    expect(body).toContain('stage.batchDraw()')
+    expect(body).toContain('semanticZoomChanged(beforeSemantic, afterSemantic)')
+    expect(body).toContain('if (semanticZoomChanged(beforeSemantic, afterSemantic)) drawScene()')
+    expect(body).not.toMatch(/stage\.batchDraw\(\)\s*\n\s*drawScene\(\)/)
+  })
 })

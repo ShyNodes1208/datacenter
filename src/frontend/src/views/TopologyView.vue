@@ -219,6 +219,11 @@
         ref="containerRef"
         class="topology-canvas"
         :class="{ 'topology-canvas--devices': topology?.mode === 'devices' }"
+        @wheel.prevent="onDeviceViewportWheel"
+        @mousedown="onDeviceViewportMouseDown"
+        @mousemove="onDeviceViewportMouseMove"
+        @mouseup="onDeviceViewportMouseUp"
+        @mouseleave="onDeviceViewportMouseLeave"
       >
         <div ref="konvaContainer" class="konva-stage"></div>
         <div
@@ -540,6 +545,7 @@ const PORT_RADIUS = 4
 const PORT_RADIUS_SELECTED = 6
 const DEVICE_ZOOM_MIN = 0.2
 const DEVICE_ZOOM_MAX = 3
+const DEVICE_DRAG_THRESHOLD_PX = 6
 
 const { user } = useAuth()
 const { request } = useApi()
@@ -587,7 +593,6 @@ let layer: Konva.Layer | null = null
 let roomGroups = new Map<string, Konva.Group>()
 let roomCableAnimation: Konva.Animation | null = null
 let resizeObserver: ResizeObserver | null = null
-let deviceViewportBound = false
 /** Avoid resetting user pan/zoom on every focus redraw in devices mode. */
 let deviceFitAppliedForSnapshot: string | null = null
 /** User pan/zoom/+/- ; suppresses auto fit until manual fit or data set change. */
@@ -596,6 +601,8 @@ const userAdjustedViewport = ref(false)
 let lockedDeviceColCount: number | null = null
 let lockedLayoutSnapshotKey: string | null = null
 let semanticZoomLatch: SemanticZoomState | null = null
+let devicePan: { startX: number; startY: number; lastX: number; lastY: number; moved: boolean } | null = null
+let suppressViewportClick = false
 
 const deviceZoomPercent = computed(() => Math.round(stageScale.value * 100))
 
@@ -887,20 +894,34 @@ function fitDeviceAll(): void {
 
 function zoomDeviceBy(factor: number): void {
   if (!stage || topology.value?.mode !== 'devices') return
+  applyDeviceZoom(factor, { x: stage.width() / 2, y: stage.height() / 2 })
+}
+
+function semanticZoomChanged(before: SemanticZoomState, after: SemanticZoomState): boolean {
+  return before.showDeviceNames !== after.showDeviceNames
+    || before.showPortAnchors !== after.showPortAnchors
+    || before.showPortLabels !== after.showPortLabels
+}
+
+function applyDeviceZoom(factor: number, point: { x: number; y: number }): void {
+  if (!stage || topology.value?.mode !== 'devices') return
   const oldScale = stage.scaleX()
   const newScale = Math.min(DEVICE_ZOOM_MAX, Math.max(DEVICE_ZOOM_MIN, oldScale * factor))
-  const center = { x: stage.width() / 2, y: stage.height() / 2 }
   const next = zoomViewportAroundPoint(
     { scale: oldScale, x: stage.x(), y: stage.y() },
     newScale,
-    center,
+    point,
   )
+  const beforeSemantic = semanticZoomLatch ?? resolveSemanticZoom(oldScale, null)
+  const afterSemantic = resolveSemanticZoom(newScale, beforeSemantic)
   stage.scale({ x: next.scale, y: next.scale })
   stage.position({ x: next.x, y: next.y })
   userAdjustedViewport.value = true
   syncDeviceOverlay()
   stage.batchDraw()
-  drawScene()
+  semanticZoomLatch = afterSemantic
+  // Rebuild only when semantic content (names/ports) changes at a zoom threshold.
+  if (semanticZoomChanged(beforeSemantic, afterSemantic)) drawScene()
 }
 
 function deviceSnapshotKey(snapshot: CableSnapshot): string {
@@ -911,56 +932,75 @@ function deviceSnapshotKey(snapshot: CableSnapshot): string {
   ].join('|')
 }
 
-function bindDeviceViewportControls(): void {
-  if (!stage || deviceViewportBound) return
-  deviceViewportBound = true
+function viewportPointer(event: MouseEvent): { x: number; y: number } {
+  const rect = konvaContainer.value?.getBoundingClientRect() ?? containerRef.value?.getBoundingClientRect()
+  return {
+    x: event.clientX - (rect?.left ?? 0),
+    y: event.clientY - (rect?.top ?? 0),
+  }
+}
 
-  stage.on('wheel', (event) => {
-    if (topology.value?.mode !== 'devices') return
-    event.evt.preventDefault()
-    const oldScale = stage!.scaleX()
-    const pointer = stage!.getPointerPosition()
-    if (!pointer) return
-    const zoomIn = event.evt.deltaY < 0
-    const newScale = Math.min(
-      DEVICE_ZOOM_MAX,
-      Math.max(DEVICE_ZOOM_MIN, oldScale * (zoomIn ? 1.1 : 1 / 1.1)),
-    )
-    const next = zoomViewportAroundPoint(
-      { scale: oldScale, x: stage!.x(), y: stage!.y() },
-      newScale,
-      pointer,
-    )
-    stage!.scale({ x: next.scale, y: next.scale })
-    stage!.position({ x: next.x, y: next.y })
-    userAdjustedViewport.value = true
-    syncDeviceOverlay()
-    stage!.batchDraw()
-    drawScene()
-  })
+function isViewportControlTarget(target: EventTarget | null): boolean {
+  return target instanceof Element && !!target.closest('.device-zoom-controls, .cable-detail-panel')
+}
 
-  let panning = false
-  stage.on('mousedown.devicePan', (event) => {
-    if (topology.value?.mode !== 'devices') return
-    if (event.target === stage) panning = true
+function onDeviceViewportWheel(event: WheelEvent): void {
+  if (topology.value?.mode !== 'devices' || isViewportControlTarget(event.target)) return
+  applyDeviceZoom(event.deltaY < 0 ? 1.1 : 1 / 1.1, viewportPointer(event))
+}
+
+function onDeviceViewportMouseDown(event: MouseEvent): void {
+  if (topology.value?.mode !== 'devices' || event.button !== 0 || isViewportControlTarget(event.target)) return
+  devicePan = {
+    startX: event.clientX,
+    startY: event.clientY,
+    lastX: event.clientX,
+    lastY: event.clientY,
+    moved: false,
+  }
+}
+
+function onDeviceViewportMouseMove(event: MouseEvent): void {
+  if (!devicePan || topology.value?.mode !== 'devices' || !stage) return
+  if (!devicePan.moved) {
+    const movedDistance = Math.hypot(event.clientX - devicePan.startX, event.clientY - devicePan.startY)
+    if (movedDistance < DEVICE_DRAG_THRESHOLD_PX) return
+    devicePan.moved = true
+  }
+  const pos = stage.position()
+  stage.position({
+    x: pos.x + event.clientX - devicePan.lastX,
+    y: pos.y + event.clientY - devicePan.lastY,
   })
-  stage.on('mousemove.devicePan', (event) => {
-    if (!panning || topology.value?.mode !== 'devices') return
-    const pos = stage!.position()
-    stage!.position({
-      x: pos.x + event.evt.movementX,
-      y: pos.y + event.evt.movementY,
-    })
-    userAdjustedViewport.value = true
-    syncDeviceOverlay()
-    stage!.batchDraw()
-  })
-  stage.on('mouseup.devicePan', () => {
-    panning = false
-  })
-  stage.on('mouseleave.devicePan', () => {
-    panning = false
-  })
+  devicePan.lastX = event.clientX
+  devicePan.lastY = event.clientY
+  userAdjustedViewport.value = true
+  syncDeviceOverlay()
+  stage.batchDraw()
+  event.preventDefault()
+}
+
+function endDeviceViewportMouse(event: MouseEvent): void {
+  if (devicePan?.moved) {
+    suppressViewportClick = true
+    window.setTimeout(() => { suppressViewportClick = false }, 0)
+    event.preventDefault()
+  }
+  devicePan = null
+}
+
+function onDeviceViewportMouseUp(event: MouseEvent): void {
+  endDeviceViewportMouse(event)
+}
+
+function onDeviceViewportMouseLeave(event: MouseEvent): void {
+  endDeviceViewportMouse(event)
+}
+
+function consumeSuppressedViewportClick(): boolean {
+  if (!suppressViewportClick) return false
+  suppressViewportClick = false
+  return true
 }
 
 function applyDeviceViewportMode(enabled: boolean): void {
@@ -1059,6 +1099,7 @@ function clearCableSelection(): void {
 }
 
 function onCableBundleClick(bundleId: string): void {
+  if (consumeSuppressedViewportClick()) return
   focusDeviceId.value = null
   const bundle = deviceCableScene.value?.bundles.find((b) => b.id === bundleId)
   if (bundle?.isAggregated) {
@@ -1083,6 +1124,7 @@ function onBundleMemberClick(cableId: string): void {
 }
 
 function onCableBackgroundClick(): void {
+  if (consumeSuppressedViewportClick()) return
   if (expandedBundleKey.value) {
     expandedBundleKey.value = null
     selectedBundleId.value = null
@@ -1099,6 +1141,7 @@ function onCableBackgroundClick(): void {
 }
 
 function onRackHitClick(rackId: string): void {
+  if (consumeSuppressedViewportClick()) return
   focusDeviceId.value = null
   selectedCableId.value = null
   selectedBundleId.value = null
@@ -1112,6 +1155,7 @@ function onRackHitClick(rackId: string): void {
 }
 
 function onDeviceHitClick(deviceId: string, rackId: string): void {
+  if (consumeSuppressedViewportClick()) return
   // Device hits only register when focusedRackId matches (overlay gating); guard Konva fallback.
   if (focusedRackId.value !== rackId) return
   expandedBundleKey.value = null
@@ -1904,7 +1948,6 @@ function drawDeviceScene(): void {
   })
 
   applyDeviceViewportMode(true)
-  bindDeviceViewportControls()
   const key = deviceSnapshotKey(originalSnapshot)
   // Skip nested auto-fit while applyFitTransform is redrawing semantics.
   if (fitSemanticRedrawDepth > 0) {
@@ -2553,7 +2596,6 @@ onUnmounted(() => {
   stage?.destroy()
   stage = null
   layer = null
-  deviceViewportBound = false
   document.body.style.cursor = 'default'
 })
 </script>

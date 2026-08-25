@@ -392,3 +392,5 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 | TASK-20260814-140520 | src/frontend/src/components/CableLayer.vue | Cursor | 2026-08-14 +08:00 | RELEASED | Codex 审核 PASS（第 5 轮修复 + 交接簿记修复）→ 任务 COMPLETED | 2026-08-14 (Claude) |
 | TASK-20260814-140520 | src/frontend/src/composables/useCableScene.ts | Cursor | 2026-08-14 +08:00 | RELEASED | Codex 审核 PASS（第 5 轮修复 + 交接簿记修复）→ 任务 COMPLETED | 2026-08-14 (Claude) |
 | TASK-20260814-140520 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-14 +08:00 | RELEASED | Codex 审核 PASS（第 5 轮修复 + 交接簿记修复）→ 任务 COMPLETED | 2026-08-14 (Claude) |
+| TASK-20260825-092201 | src/frontend/src/views/TopologyView.vue | Cursor Frontend | 2026-08-25 09:27 +08:00 | HANDED_OFF | Cursor Frontend 实现完成，等待 Codex Reviewer 独立审核 | |
+| TASK-20260825-092201 | src/frontend/src/__tests__/topology.test.ts | Cursor Frontend | 2026-08-25 09:27 +08:00 | HANDED_OFF | Cursor Frontend 测试完成，等待 Codex Reviewer 独立审核 | |

@@ -1,7 +1,7 @@
 ﻿# Current Task
 
-- Status：IDLE（2026-08-14，TASK-20260814-140520 COMPLETED，6128697 已推送）
-- Branch：feature/TASK-20260813-133241-device-ui
+- Status：BLOCKED（2026-08-25；TASK-20260825-092201 设备级视口交互修复，等待提交与用户授权推送）
+- Branch：feature/TASK-20260810-000003-topology-map
 - Backend：220 tests PASS
 - Frontend：195 tests PASS（vitest）
 
@@ -21,15 +21,14 @@
 | TASK-20260814-120641: 设备级机柜间线路束聚合 | feature/TASK-20260810-000003-topology-map | COMPLETED（Codex PASS 1 轮；2990677 已推送；锁已释放） |
 | TASK-20260814-140520: 走廊路由+机柜点击优先+聚焦聚合 | feature/TASK-20260810-000003-topology-map | COMPLETED（Codex PASS 第 5 轮；6128697 已推送；锁已释放） |
 
-## TASK-20260813-085046 机房/机柜点击修复
+## 当前状态
 
-详见 `.ai/TASK.md`。两个根因（Playwright 浏览器证据）：
-
-1. drawRoomPlatform 全部子图形 `listening: false` → 机房 Group 零命中区域 → 点击永不触发
-2. click 处理器触发场景重建（直接 drawScene 或经 router→syncFromRoute→load）→ 销毁节点 → Konva dblclick 无法凑齐两次同节点点击
-
-修复：透明命中矩形 + 定向选中高亮 + syncFromRoute rooms 模式守卫。
-浏览器验收（Claude 独立执行）：单击选中/tab 启用 ✓、首次双击机房进设备级 ✓、双击机柜进设备级 ✓、单击机柜不误触 ✓。vitest 153/153。
+- 当前任务：`TASK-20260825-092201` — 设备级视口交互修复。
+- 状态：`BLOCKED`；Owner：Cursor Frontend；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
+- 范围：仅设备级拓扑的缩放、拖拽事件路径与相关前端测试；不改后端、API、数据库、种子数据或依赖。
+- 当前任务规格：`.ai/TASK.md`。Cursor Frontend 已完成实现，Codex Reviewer 已 PASS；两条允许路径在 `tasks/MODULE-LOCKS.md` 保持 `HANDED_OFF`。
+- 阻塞原因：尚未形成只包含任务范围的提交并推送 GitHub；工作区还存在既存的用户未提交文件，远端写入须经用户授权。
+- 下一步：用户确认提交/推送授权后，核对范围、创建任务提交、推送、释放锁，再由 Codex Reviewer 转 `COMPLETED`。
 
 ## 数据概览
 
