@@ -1,6 +1,6 @@
 ﻿# Current Task
 
-- Status：COMPLETED（2026-08-25；TASK-20260825-092201 设备级视口交互修复；最终治理提交/推送及本地远端哈希复核立即待执行）
+- Status：COMPLETED（2026-08-25；TASK-20260825-092201 设备级视口交互修复；最终治理记录已推送，本地/远端哈希已复核）
 - Branch：feature/TASK-20260810-000003-topology-map
 - Backend：220 tests PASS
 - Frontend：195 tests PASS（vitest）
@@ -24,11 +24,11 @@
 ## 当前状态
 
 - 当前任务：`TASK-20260825-092201` — 设备级视口交互修复。
-- 状态：`COMPLETED`（最终生效待最终治理提交/推送后的本地/远端哈希复核）；Owner：Cursor Frontend；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
+- 状态：`COMPLETED`；Owner：Cursor Frontend；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
 - 范围：仅设备级拓扑的缩放、拖拽事件路径与相关前端测试；不改后端、API、数据库、种子数据或依赖。
 - 当前任务规格：`.ai/TASK.md`。Cursor Frontend 已完成实现，Codex Reviewer 独立 PASS；两条允许路径已在 `tasks/MODULE-LOCKS.md` 释放。
-- 提交与推送：实现提交 `53ea43e` 已推送；当前 `HEAD` 与 `origin/feature/TASK-20260810-000003-topology-map` 均为 `f0b16b13e7579eb4d0bb5d8580ef6f2b3ebe03ef`，其为 `53ea43e` 的后继无关文档提交。
-- 最终完成条件：最终治理状态记录须立即创建本地提交并推送；推送后复核工作区干净且本地/远端哈希一致，届时本 `COMPLETED` 终态生效。
+- 提交与推送：实现提交 `53ea43e`、独立文档提交 `f0b16b1` 与最终治理记录均已推送；工作区干净，本地/远端哈希一致。
+- 最终完成条件：全部满足——独立 Reviewer PASS、测试/类型检查/构建通过、模块锁已释放、提交已推送、工作区干净且本地/远端哈希一致。
 
 ## 数据概览
 
