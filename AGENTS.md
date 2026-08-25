@@ -52,7 +52,7 @@
 - 代码审核 → 派发给 Codex Reviewer
 - Claude + DeepSeek 负责方案设计和最终复核
 
-**本角色为项目的唯一总设计师和协调者，Claude + DeepSeek 角色已被本角色覆盖。**
+**本角色与「Codex + Terra」同为统筹 Agent（双统筹体系，2026-08-20 用户确认：DeepSeek 涨价，两体系交替干活）。同一时间只有一个统筹 Agent 活动（`agent ds` / `agent terra` 二选一，见 §11），活动者承担本节职责；切换前必须完成 §11 交接。**
 
 ### Codex Backend
 
@@ -117,7 +117,7 @@ Reviewer 默认不直接修改被审核代码。
 6. 所有设备上下架和位置变更必须保留审计记录。
 7. 设备 U 位必须进行范围和冲突校验。
 8. 所有重要功能必须有可执行的验收标准。
-9. 所有 Agent 开始任务前必须读取 AGENTS.md、docs/architecture/AGENT-WORKFLOW.md 和 current-task.md。
+9. 所有 Agent 开始任务前必须读取 AGENTS.md、docs/architecture/AGENT-WORKFLOW.md 和 tasks/current-task.md。
 10. 同一时间只能有一个 Agent 修改同一个业务模块；认领、父子路径冲突检测、交接和释放必须登记在 tasks/MODULE-LOCKS.md，并遵守权威工作流。
 
 ## 5. Git 规则
@@ -391,3 +391,37 @@ Agent 已清楚说明风险、成本和替代方案后，如果用户仍明确�
 - 没有当前验收依据的架构建议；
 - 没有真实风险依据的额外审核。
 <!-- GLOBAL_PRODUCT_MANAGER_RULE_END -->
+
+## 11. 共享状态与双 Agent 启动流程（2026-08-20 追加）
+
+本文件与 CLAUDE.md 是入口规则；项目事实的单一来源在 `.ai/`（本地，不入 Git）与 `docs/`。
+
+### 统筹 Agent 启动流程（Claude+DeepSeek 或 Codex+Terra）
+
+进入项目后：
+
+1. 确认 Git root / branch / status
+2. 读本文件 + 对应入口（Claude Code 读 CLAUDE.md；Codex 读 AGENTS.md）
+3. 按序读 `.ai/PROJECT.md` → `.ai/ARCHITECTURE.md` → `.ai/PLAN.md` → `.ai/TASKS.md` → `.ai/HANDOFF.md`
+4. 相关时再读 `.ai/DECISIONS.md`、`.ai/REVIEW.md`
+5. 先总结当前目标/进度/未完成/Git 状态，再开始新工作；优先按共享状态定位文件，避免全仓库无差别扫描
+
+### 交接（切换 Agent 前必须）
+
+- 更新 `.ai/HANDOFF.md`（Last Agent/Model/Updated、Current Goal、Completed、In Progress、Pending、Files Changed、Tests、Known Problems、Important Decisions、Next Recommended Action、Git Status Summary）
+- 更新 `.ai/TASKS.md`；有重要决策写 `.ai/DECISIONS.md`
+- 可用 `agent handoff` 自查（只读）；Git commit/push 由用户执行
+
+### 双统筹 Agent 命令
+
+- `agent ds`：Claude Code + DeepSeek V4 Pro 统筹
+- `agent terra`：Codex CLI + GPT-5.6 Terra 统筹
+- `agent status`：项目/分支/Git/当前 Agent/交接状态
+- `.ai/.agent-lock` 防止两个 Agent 同时修改工作树；冲突时后启动者必须确认后才可覆盖（stale lock 自动清理）
+
+### 与既有角色体系的关系
+
+- 统筹 Agent 默认不写业务代码：实现仍由 Cursor（前端）/ Codex Backend（后端）完成
+- 独立审核始终为 Codex Reviewer（独立 session，重新读 git diff + 需求 + PLAN + TASK）
+- GPT-5.6 Sol 仅用于重大架构裁决/冲突结论/疑难 Bug/大规模重构/高风险操作（控制额度）
+- ai-workflow 单任务文件与共享状态文件并存：`.ai/TASK.md`=当前单任务规格，`.ai/TASKS.md`=任务板，`.ai/REVIEW.md`=最近一次审核结果
