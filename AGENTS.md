@@ -26,6 +26,13 @@
 
 所有计划、设计和实现还必须通过该文档的“防过度规划、过度设计和过度开发门禁”：只交付可追踪到当前需求与验收标准的最小实现，禁止提前实现未来需求或引入未批准的复杂度。
 
+## 2.2 强制协作原则
+
+1. 每个任务只能有一个 Orchestrator（统筹 Agent）；任务期间不得并行启用第二个统筹 Agent。
+2. Cursor 不得自行改变需求、API Contract、架构裁决或任务范围；发现缺口、冲突或新增需求时必须停止并交回 Orchestrator 裁决。
+3. Acceptance Criteria 只能由 Orchestrator 定义；Cursor 只负责按已批准的 Acceptance Criteria 实现和编写/运行测试。
+4. Codex Reviewer 必须独立审核：设计、需求、Contract 或架构错误退回 Orchestrator；实现、测试或范围执行错误退回 Cursor。
+
 ## 3. Agent 角色
 
 ### Claude + DeepSeek（总设计师）
@@ -39,7 +46,7 @@
 - 技术方案与实现计划编写
 - 范围管理与验收标准
 - 需求变更裁决
-- 派发任务给 Cursor Frontend 和 Codex Backend
+- 派发所有代码任务给 Cursor Developer
 - 派发审核任务给 Codex Reviewer
 - 最终复核（构建、测试、diff 检查）
 - ADR 与技术风险判断
@@ -47,8 +54,7 @@
 **代码分工**：
 
 - Claude + DeepSeek **不直接编写业务代码**。所有编码任务派发给对应角色的 Agent
-- 前端编码 → 派发给 Cursor Frontend
-- 后端编码 → 派发给 Codex Backend
+- 所有代码开发（前端、后端、数据库、测试、脚本）→ 派发给 Cursor Developer
 - 代码审核 → 派发给 Codex Reviewer
 - Claude + DeepSeek 负责方案设计和最终复核
 
@@ -56,41 +62,27 @@
 
 ### Codex Backend
 
-负责：
-
-- .NET 后端
-- 数据库
-- API
-- 权限
-- 审计
-- 单元测试
-- 集成测试
+历史兼容角色。保留既有任务、提交和锁记录的归属信息；从本规则生效后，不再派发新的代码开发任务。
 
 ### Cursor Frontend
 
-负责：
+历史兼容角色。保留既有任务、提交和锁记录的归属信息；从本规则生效后，不再派发新的代码开发任务。
 
-- Vue 3 前端
-- 2D 平面布局
-- Grid Plan 适配
-- Three.js 局部 3D
-- 页面交互
-- 前端测试
-
-### Cursor Developer
+### Cursor Developer（唯一实施角色）
 
 负责：
 
-- 按已批准任务规格创建和修改代码
-- 可以处理 Vue、TypeScript、ASP.NET Core、.NET、xUnit 和脚本
-- 可以执行构建、测试和最小调试
+- 按已批准任务规格创建和修改全部业务代码
+- 前端：Vue、TypeScript、页面交互与前端测试
+- 后端：ASP.NET Core、.NET、数据库、API、权限、审计与后端测试
+- 必要的项目脚本、构建、测试和最小调试
 - 不得自行修改产品需求和架构裁决
 - 不得自行扩大依赖预算
 - 遇到规格缺口必须停止并提交问题
 - 不负责独立最终审核
 - Reviewer 始终为 Codex Reviewer
 
-本角色为通用实施角色，用于需要同时处理前端和后端基础项目创建的全栈脚手架任务（如 TASK-0006）。后续前端业务任务仍由 Cursor Frontend 负责，后端业务任务仍由 Codex Backend 负责。
+从本规则生效后，所有新任务的代码开发统一派发给本角色；统筹 Agent 不直接写业务代码，Codex Reviewer 不参与实施。
 
 依据：CR-0002（tasks/CR-0002-TASK-0006-WORKFLOW-AND-DEVELOPER-ROLE.md）。
 
@@ -113,7 +105,7 @@ Reviewer 默认不直接修改被审核代码。
 2. 业务数据不能直接依赖 Grid Plan 的内部 JSON 格式。
 3. 必须设计独立的平面图数据模型和渲染适配层。
 4. 后端 API 契约由 Claude + DeepSeek 管理。
-5. Cursor Frontend 和 Cursor Developer 不得自行修改后端 API 契约；API 契约由 Claude + DeepSeek 管理。
+5. Cursor Developer 不得自行修改后端 API 契约；API 契约由统筹 Agent 管理。
 6. 所有设备上下架和位置变更必须保留审计记录。
 7. 设备 U 位必须进行范围和冲突校验。
 8. 所有重要功能必须有可执行的验收标准。
@@ -337,7 +329,7 @@ Agent 已清楚说明风险、成本和替代方案后，如果用户仍明确�
 - 指出架构、数据和流程方面的不合理要求；
 - 解释技术选择对用户最终效果的影响；
 - 控制文件、依赖、流程和改动范围；
-- 派发任务给 Cursor Frontend 和 Codex Backend；
+- 派发所有代码任务给 Cursor Developer；
 - 派发审核给 Codex Reviewer；
 - 执行最终复核（构建、测试、diff）。
 
@@ -346,15 +338,15 @@ Agent 已清楚说明风险、成本和替代方案后，如果用户仍明确�
 - 把简单功能升级为架构重构或治理项目；
 - 为了展示方案完整性而设计超出当前需求的系统。
 
-#### Codex Backend
+#### Cursor Developer（唯一实施角色）
 
 必须：
 
-- 在实现前检查后端要求是否符合真实业务目标；
+- 在实现前检查前端和后端要求是否符合真实业务目标；
 - 发现数据、安全、权限或性能风险时及时停止并解释；
-- 只实现当前验收标准要求的后端能力。
+- 只实现当前验收标准要求的前端、后端、数据库、测试或脚本能力。
 
-不得擅自增加字段、接口、服务层、Repository、抽象或未来功能。
+不得擅自增加字段、接口、服务层、Repository、抽象、依赖或未来功能。
 
 #### Codex Reviewer
 
@@ -421,7 +413,7 @@ Agent 已清楚说明风险、成本和替代方案后，如果用户仍明确�
 
 ### 与既有角色体系的关系
 
-- 统筹 Agent 默认不写业务代码：实现仍由 Cursor（前端）/ Codex Backend（后端）完成
+- 统筹 Agent 默认不写业务代码：所有新任务的实现统一由 Cursor Developer 完成
 - 独立审核始终为 Codex Reviewer（独立 session，重新读 git diff + 需求 + PLAN + TASK）
 - GPT-5.6 Sol 仅用于重大架构裁决/冲突结论/疑难 Bug/大规模重构/高风险操作（控制额度）
 - ai-workflow 单任务文件与共享状态文件并存：`.ai/TASK.md`=当前单任务规格，`.ai/TASKS.md`=任务板，`.ai/REVIEW.md`=最近一次审核结果
