@@ -1,6 +1,6 @@
 ﻿# Current Task
 
-- Status：READY_FOR_REVIEW（2026-08-27；TASK-20260827-172017 设备详情显示已连接设备的位置；`pwsh` 校验已批准 N/A）
+- Status：COMPLETED（2026-08-27；TASK-20260827-172017 设备详情显示已连接设备的位置；Codex Reviewer 最终 PASS）
 - Branch：feature/TASK-20260810-000003-topology-map
 - Backend Owner：Codex Backend；Frontend Owner：Cursor Frontend；Reviewer：Codex Reviewer
 - Requirement：设备详情中显示对端设备、端口、机柜、U 位；对端未上架时显示“未上架”。
@@ -25,9 +25,9 @@
 ## 当前状态
 
 - 当前任务：`TASK-20260827-172017` — 设备详情显示已连接设备的位置。
-- 状态：`READY_FOR_REVIEW`；后端 Owner：Codex Backend；前端 Owner：Cursor Frontend；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
-- 阶段证据：本轮后端 `ServerIntegrationTests` 44/44 通过；前端 221/221、typecheck、build、`git diff --check` 通过；四条阶段 A/B 锁已 `HANDED_OFF`。
-- 工作流校验：用户于 2026-08-27 明确选择不安装 `pwsh`，已批准该脚本为本任务 N/A；未变更系统依赖。剩余门禁为用户提交与推送。
+- 状态：`COMPLETED`；后端 Owner：Codex Backend；前端 Owner：Cursor Frontend；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
+- 最终证据：独立 Reviewer PASS；后端 222/222、前端 221/221、typecheck、build、`git diff --check` 通过；四条阶段 A/B 锁已 `RELEASED`。
+- 工作流校验：用户于 2026-08-27 明确选择不安装 `pwsh`，已批准该脚本为本任务 N/A；未变更系统依赖。功能提交 `4b9799b`、部署文档提交 `4a84664` 已推送；本治理提交推送后复核工作区和本地/远端哈希。
 - 范围：扩展既有端口查询返回对端 U 位，并在现有设备详情页显示对端设备、端口、机柜和 U 位；未上架显示“未上架”。
 - 当前任务规格：`.ai/TASK.md` 与 `tasks/TASK-20260827-172017-DEVICE-CONNECTION-LOCATION.md`。
 - 不做：数据库、迁移、新端点、拓扑、线缆写操作、依赖或新页面。

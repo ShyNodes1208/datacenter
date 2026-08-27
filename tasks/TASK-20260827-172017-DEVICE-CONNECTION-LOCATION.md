@@ -4,7 +4,7 @@
 
 ## 基本信息
 
-- Status：READY_FOR_REVIEW
+- Status：COMPLETED
 - Task Owner：Cursor Frontend
 - Backend Owner：Codex Backend
 - Frontend Owner：Cursor Frontend
@@ -77,6 +77,7 @@ git diff --check
 | 2026-08-27 17:35 +08:00 | Codex + Terra（Owner-only handoff） | IN_PROGRESS | READY_FOR_REVIEW | 阶段 A `ServerIntegrationTests` 44/44；阶段 B 前端 221/221、typecheck、build、`git diff --check` 通过；四锁均为 `HANDED_OFF`。 |
 | 2026-08-27 17:48 +08:00 | Codex + Terra | READY_FOR_REVIEW | BLOCKED | 独立 Reviewer 的实现审核为 PASS；本轮复验后端 44/44、前端 221/221、typecheck、build、`git diff --check` 均通过。工作流脚本无法执行：`pwsh: command not found`。四条锁保持 `HANDED_OFF`。 |
 | 2026-08-27 17:49 +08:00 | Codex + Terra | BLOCKED | READY_FOR_REVIEW | 用户明确选择不安装 `pwsh`，并批准本任务将工作流脚本校验记为 N/A；业务验证与独立实现审核证据完整，四条锁继续 `HANDED_OFF`。 |
+| 2026-08-27 20:57 +08:00 | Codex Reviewer | READY_FOR_REVIEW | COMPLETED | 独立最终门禁 PASS：后端 222/222、前端 221/221、typecheck、build 与 `git diff --check` 通过；工作流脚本为用户批准的 N/A；功能提交 `4b9799b` 与部署文档提交 `4a84664` 已推送，迁移前工作区干净且 `HEAD = origin`；四条实施锁已释放。 |
 
 ## 工作流校验豁免
 
@@ -85,7 +86,11 @@ git diff --check
 - 处理：该命令记为批准的 N/A；不安装或变更任何系统依赖。
 - 剩余完成门禁：用户执行提交与推送，并复核干净工作区和本地/远端哈希；四条模块锁继续保持 `HANDED_OFF`，直至最终完成或取消。
 
-## 完成门禁
+## 最终完成证据
 
-- 后端完成后，其锁必须 `HANDED_OFF`；前端只在确认接口字段后认领自身路径。
-- 最终由独立 Codex Reviewer 审核；通过相关测试、工作流校验、`git diff --check`、提交与推送、锁释放和本地/远端哈希一致后才可转 `COMPLETED`。
+- 独立 Reviewer：Codex Reviewer；结论：PASS，无开放缺陷。
+- 修改范围：仅既有端口查询新增 `connectedToURange`、设备详情展示与对应测试；无端点、模型、迁移、依赖或拓扑改动。
+- 验证：`dotnet test tests/backend/Datacenter.Api.Tests/Datacenter.Api.Tests.csproj` 222/222 通过；`npm test` 221/221 通过；`npm run typecheck`、`npm run build` 和 `git diff --check` 通过。
+- 工作流校验：N/A（用户于 2026-08-27 明确批准不安装 `pwsh`，仅豁免该脚本）。
+- 功能提交：`4b9799b47eb74642b3f32b63a64220792aa6b7e1`（已推送）；部署文档提交：`4a8466405d744cf6e9fda570833a943dc0ed9cee`（已推送）。
+- 迁移前复核：工作区干净，`HEAD = origin/feature/TASK-20260810-000003-topology-map = 4a84664`；四条实施锁已由 Reviewer 释放。本治理提交推送后再次复核本地/远端哈希和工作区。
