@@ -1,9 +1,10 @@
 ﻿# Current Task
 
-- Status：COMPLETED（2026-08-25；TASK-20260825-092201 设备级视口交互修复；最终治理记录已推送，本地/远端哈希已复核）
+- Status：READY_FOR_REVIEW（2026-08-27；TASK-20260827-172017 设备详情显示已连接设备的位置；`pwsh` 校验已批准 N/A）
 - Branch：feature/TASK-20260810-000003-topology-map
-- Backend：220 tests PASS
-- Frontend：195 tests PASS（vitest）
+- Backend Owner：Codex Backend；Frontend Owner：Cursor Frontend；Reviewer：Codex Reviewer
+- Requirement：设备详情中显示对端设备、端口、机柜、U 位；对端未上架时显示“未上架”。
+- Spec：`tasks/TASK-20260827-172017-DEVICE-CONNECTION-LOCATION.md`
 
 ## 当前任务
 
@@ -23,12 +24,13 @@
 
 ## 当前状态
 
-- 当前任务：`TASK-20260825-092201` — 设备级视口交互修复。
-- 状态：`COMPLETED`；Owner：Cursor Frontend；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
-- 范围：仅设备级拓扑的缩放、拖拽事件路径与相关前端测试；不改后端、API、数据库、种子数据或依赖。
-- 当前任务规格：`.ai/TASK.md`。Cursor Frontend 已完成实现，Codex Reviewer 独立 PASS；两条允许路径已在 `tasks/MODULE-LOCKS.md` 释放。
-- 提交与推送：实现提交 `53ea43e`、独立文档提交 `f0b16b1` 与最终治理记录均已推送；工作区干净，本地/远端哈希一致。
-- 最终完成条件：全部满足——独立 Reviewer PASS、测试/类型检查/构建通过、模块锁已释放、提交已推送、工作区干净且本地/远端哈希一致。
+- 当前任务：`TASK-20260827-172017` — 设备详情显示已连接设备的位置。
+- 状态：`READY_FOR_REVIEW`；后端 Owner：Codex Backend；前端 Owner：Cursor Frontend；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
+- 阶段证据：本轮后端 `ServerIntegrationTests` 44/44 通过；前端 221/221、typecheck、build、`git diff --check` 通过；四条阶段 A/B 锁已 `HANDED_OFF`。
+- 工作流校验：用户于 2026-08-27 明确选择不安装 `pwsh`，已批准该脚本为本任务 N/A；未变更系统依赖。剩余门禁为用户提交与推送。
+- 范围：扩展既有端口查询返回对端 U 位，并在现有设备详情页显示对端设备、端口、机柜和 U 位；未上架显示“未上架”。
+- 当前任务规格：`.ai/TASK.md` 与 `tasks/TASK-20260827-172017-DEVICE-CONNECTION-LOCATION.md`。
+- 不做：数据库、迁移、新端点、拓扑、线缆写操作、依赖或新页面。
 
 ## 数据概览
 

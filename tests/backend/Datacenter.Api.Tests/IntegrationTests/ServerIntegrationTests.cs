@@ -616,13 +616,109 @@ public sealed class ServerIntegrationTests(AuthTestFixture fixture)
         Assert.Equal("运行状态值无效", await ReadErrorAsync(response));
     }
 
+    [Fact]
+    public async Task ListPortsReturnsCounterpartyActivePositionURange()
+    {
+        var sourceServer = await ReplaceConnectedServerDataAsync("在架");
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.ReadOnlyViewer);
+
+        using var response = await client.GetAsync($"/api/servers/{sourceServer.Id}/ports");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        var port = Assert.Single(document.RootElement.EnumerateArray());
+        Assert.Equal("R001", port.GetProperty("connectedToRackCode").GetString());
+        Assert.True(port.TryGetProperty("connectedToURange", out var connectedToURange));
+        Assert.Equal("17-18", connectedToURange.GetString());
+    }
+
+    [Fact]
+    public async Task ListPortsReturnsNullCounterpartyPositionWhenCounterpartyIsUnmounted()
+    {
+        var sourceServer = await ReplaceConnectedServerDataAsync("已下架");
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.ReadOnlyViewer);
+
+        using var response = await client.GetAsync($"/api/servers/{sourceServer.Id}/ports");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        var port = Assert.Single(document.RootElement.EnumerateArray());
+        Assert.Null(port.GetProperty("connectedToRackCode").GetString());
+        Assert.True(port.TryGetProperty("connectedToURange", out var connectedToURange));
+        Assert.Null(connectedToURange.GetString());
+    }
+
     private async Task ReplaceServersAsync(params Server[] servers)
     {
         await using var scope = fixture.Factory.Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        dbContext.Cables.RemoveRange(await dbContext.Cables.ToListAsync());
+        dbContext.Ports.RemoveRange(await dbContext.Ports.ToListAsync());
+        dbContext.AuditRecords.RemoveRange(await dbContext.AuditRecords.ToListAsync());
+        dbContext.ServerPositions.RemoveRange(await dbContext.ServerPositions.ToListAsync());
         dbContext.Servers.RemoveRange(await dbContext.Servers.ToListAsync());
         dbContext.Servers.AddRange(servers);
         await dbContext.SaveChangesAsync();
+    }
+
+    private async Task<Server> ReplaceConnectedServerDataAsync(string counterpartyPositionStatus)
+    {
+        var room = new Room { Name = "端口连接测试机房", Status = "启用" };
+        var rack = new Rack { RoomId = room.Id, Code = "R001", HeightU = 42, X = 0, Y = 0, Z = 0 };
+        var sourceServer = new Server
+        {
+            Name = "source-server",
+            ManagementIP = "10.0.0.1",
+            DeviceType = "机架式服务器",
+            DeviceHeight = 1
+        };
+        var targetServer = new Server
+        {
+            Name = "target-server",
+            ManagementIP = "10.0.0.2",
+            DeviceType = "机架式服务器",
+            DeviceHeight = 2,
+            PositionStatus = counterpartyPositionStatus == "在架" ? "在架" : "已下架"
+        };
+        var sourcePort = new Port { ServerId = sourceServer.Id, PortName = "eth0", PortType = "RJ45" };
+        var targetPort = new Port { ServerId = targetServer.Id, PortName = "eth1", PortType = "RJ45" };
+        var counterpartyPosition = new ServerPosition
+        {
+            ServerId = targetServer.Id,
+            RackId = rack.Id,
+            StartU = 17,
+            EndU = 18,
+            Status = counterpartyPositionStatus
+        };
+        var cable = new Cable
+        {
+            SourcePortId = sourcePort.Id,
+            TargetPortId = targetPort.Id,
+            CableType = "网线"
+        };
+
+        await using var scope = fixture.Factory.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        dbContext.Cables.RemoveRange(await dbContext.Cables.ToListAsync());
+        dbContext.Ports.RemoveRange(await dbContext.Ports.ToListAsync());
+        dbContext.AuditRecords.RemoveRange(await dbContext.AuditRecords.ToListAsync());
+        dbContext.ServerPositions.RemoveRange(await dbContext.ServerPositions.ToListAsync());
+        dbContext.DevicePositions.RemoveRange(await dbContext.DevicePositions.ToListAsync());
+        dbContext.Servers.RemoveRange(await dbContext.Servers.ToListAsync());
+        dbContext.Racks.RemoveRange(await dbContext.Racks.ToListAsync());
+        dbContext.Rooms.RemoveRange(await dbContext.Rooms.ToListAsync());
+        await dbContext.SaveChangesAsync();
+
+        dbContext.Rooms.Add(room);
+        dbContext.Racks.Add(rack);
+        dbContext.Servers.AddRange(sourceServer, targetServer);
+        dbContext.Ports.AddRange(sourcePort, targetPort);
+        dbContext.ServerPositions.Add(counterpartyPosition);
+        dbContext.Cables.Add(cable);
+        await dbContext.SaveChangesAsync();
+        return sourceServer;
     }
 
     private async Task<int> CountServersAsync(string? name = null)

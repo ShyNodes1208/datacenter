@@ -6,6 +6,10 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 
 | Task ID | Module or Path | Owner | Claimed At | Status | Release Condition | Released At |
 |---|---|---|---|---|---|---|
+| TASK-20260827-172017 | src/frontend/src/views/ServerDetailView.vue | Cursor Frontend | 2026-08-27 17:28 +08:00 | HANDED_OFF | Phase B implementation complete; Codex Reviewer independent review, then final task completion or cancellation | |
+| TASK-20260827-172017 | src/frontend/src/__tests__/server-detail-view.test.ts | Cursor Frontend | 2026-08-27 17:28 +08:00 | HANDED_OFF | Phase B implementation complete; Codex Reviewer independent review, then final task completion or cancellation | |
+| TASK-20260827-172017 | src/backend/Datacenter.Api/Controllers/PortsController.cs | Codex Backend | 2026-08-27 17:25 +08:00 | HANDED_OFF | 阶段 A 已完成；Codex Reviewer 独立审核后，在任务完成或取消时释放 | |
+| TASK-20260827-172017 | tests/backend/Datacenter.Api.Tests/IntegrationTests/ServerIntegrationTests.cs | Codex Backend | 2026-08-27 17:25 +08:00 | HANDED_OFF | 阶段 A 已完成；Codex Reviewer 独立审核后，在任务完成或取消时释放 | |
 | TASK-20260810-000003 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-11 18:30:00 +08:00 | RELEASED | CR-002 审核完成 → 新 Task ID TASK-20260812-070929 | 2026-08-12 (Claude) |
 | TASK-20260810-000003 | src/frontend/src/components/CableLayer.vue | Cursor | 2026-08-11 18:30:00 +08:00 | RELEASED | CR-002 审核完成 → 新 Task ID TASK-20260812-070929 | 2026-08-12 (Claude) |
 | TASK-20260810-000003 | src/frontend/src/composables/useCableScene.ts | Cursor | 2026-08-11 18:30:00 +08:00 | RELEASED | CR-002 审核完成 → 新 Task ID TASK-20260812-070929 | 2026-08-12 (Claude) |

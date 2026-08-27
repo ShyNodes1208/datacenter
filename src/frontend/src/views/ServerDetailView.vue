@@ -45,6 +45,8 @@ type PortItem = {
   connectedToPortName: string | null
   connectedToServerName: string | null
   connectedToServerId: string | null
+  connectedToRackCode: string | null
+  connectedToURange: string | null
 }
 
 type ConnectPortOption = {
@@ -222,6 +224,8 @@ function parsePortItem(raw: unknown): PortItem | null {
     connectedToPortName: typeof r.connectedToPortName === 'string' ? r.connectedToPortName : null,
     connectedToServerName: typeof r.connectedToServerName === 'string' ? r.connectedToServerName : null,
     connectedToServerId: parseOptionalGuid(r.connectedToServerId),
+    connectedToRackCode: typeof r.connectedToRackCode === 'string' ? r.connectedToRackCode : null,
+    connectedToURange: typeof r.connectedToURange === 'string' ? r.connectedToURange : null,
   }
 }
 
@@ -471,7 +475,11 @@ onMounted(() => {
               <td>
                 <span v-if="port.connectedToServerName" class="connected-link">
                   → <a href="#" @click.prevent="goToServer(port.connectedToServerId)">{{ port.connectedToServerName }}</a>
-                  ({{ port.connectedToPortName }})
+                  ({{ port.connectedToPortName }}) ·
+                  <template v-if="port.connectedToRackCode && port.connectedToURange">
+                    机柜 {{ port.connectedToRackCode }} · U{{ port.connectedToURange }}
+                  </template>
+                  <template v-else>未上架</template>
                 </span>
                 <span v-else class="muted">未连接</span>
               </td>
