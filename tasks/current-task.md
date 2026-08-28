@@ -26,11 +26,11 @@
 
 - 当前任务：`TASK-20260828-device-topology-performance` — 设备级拓扑性能修复。
 - 状态：`READY_FOR_REVIEW`；Owner：Cursor Developer；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
-- 范围：仅改合成设备 IP 地址段和既有无数据库测试，保证 6,270 个新增地址不与历史 10.* 设备地址重叠。
-- 不做：不运行种子脚本；不修改数据库、API、迁移、机柜数量、设备、线缆、依赖或页面。
-- 当前任务规格：`tasks/TASK-20260828-150000-SEED-IP-NAMESPACE.md`。
-- 验收命令：`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest scripts/test_seed_acceptance_data.py -v`、`git diff --check`；种子脚本不在验收中执行。
-- 最终证据：Codex Reviewer PASS；无数据库 unittest 2/2 PASS、git diff --check PASS；`HEAD`、上游与 merge-base 均为 `649e17be741cecfaef1ba93a95bc7e0b0a63510c`；工作树干净、未执行种子脚本、两条模块锁已释放。
+- 范围：设备级拓扑使用 rack Map、低语义缩放减少设备细节绘制、HTML hit targets 仅按筛选后的可见设备生成；保留点击/聚焦/二次详情行为。
+- 不做：不修改 API、数据库、数据模型、线缆业务规则、依赖或其他页面。
+- 当前任务规格：`tasks/TASK-20260828-device-topology-performance.md`。
+- 验收命令：前端 test、typecheck、build、`git diff --check`。
+- 最终证据：typecheck/build PASS；vitest 223 tests PASS，1 个既有 F2 因本机 localhost:5173 未启动失败；diff check PASS；未修改数据库/API/依赖。
 
 ## 数据概览
 
