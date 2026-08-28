@@ -266,10 +266,10 @@
             data-testid="device-hit-target"
             :data-device-id="hit.deviceId"
             :data-rack-id="hit.rackId"
-            :class="{ 'rack-hit-overlay__device--active': focusedRackId === hit.rackId }"
+            :class="{ 'rack-hit-overlay__device--active': focusedRackId === hit.rackId || !!focusDeviceId }"
             :style="hit.style"
             :aria-label="`聚焦设备 ${hit.deviceId}`"
-            :tabindex="focusedRackId === hit.rackId ? 0 : -1"
+            :tabindex="focusedRackId === hit.rackId || !!focusDeviceId ? 0 : -1"
             @click.stop="onDeviceHitClick(hit.deviceId, hit.rackId)"
           />
         </div>
@@ -1161,7 +1161,7 @@ function onDeviceHitClick(deviceId: string, rackId: string): void {
     return
   }
   // Device hits only register when focusedRackId matches (overlay gating); guard Konva fallback.
-  if (focusedRackId.value !== rackId) return
+  if (focusedRackId.value !== rackId && focusDeviceId.value === null) return
   expandedBundleKey.value = null
   selectedBundleId.value = null
   selectedCableId.value = null
@@ -1897,7 +1897,7 @@ function drawDeviceScene(): void {
     drawDevicePanel(group, device, panelW, height, focusedDevice, endpointHighlighted && !focusedDevice, showName)
     group.on('click', (event) => {
       event.cancelBubble = true
-      if (focusedRackId.value !== rack.rackId) {
+      if (focusedRackId.value !== rack.rackId && focusDeviceId.value === null) {
         onRackHitClick(rack.rackId)
         return
       }

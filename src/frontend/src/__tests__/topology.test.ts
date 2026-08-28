@@ -799,6 +799,58 @@ describe('TopologyView', () => {
 })
 
 describe('TASK-20260828-073500 device detail navigation', () => {
+  it('executes first-focus, same-device navigation, different-device focus, and drag suppression', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const start = source.indexOf('function onDeviceHitClick(')
+    const end = source.indexOf('\nfunction onCableBundleHover', start)
+    const typedHandler = source.slice(start, end)
+    const handlerSource = typedHandler
+      .replace('function onDeviceHitClick(deviceId: string, rackId: string): void {', 'function onDeviceHitClick(deviceId, rackId) {')
+    const focusDeviceId = { value: null as string | null }
+    const focusedRackId = { value: 'rack-a' as string | null }
+    const router = { push: vi.fn() }
+    let suppressed = false
+    const handler = new Function(
+      'consumeSuppressedViewportClick',
+      'focusDeviceId',
+      'focusedRackId',
+      'expandedBundleKey',
+      'selectedBundleId',
+      'selectedCableId',
+      'router',
+      'drawScene',
+      `${handlerSource}; return onDeviceHitClick`,
+    )(
+      () => suppressed,
+      focusDeviceId,
+      focusedRackId,
+      { value: null },
+      { value: null },
+      { value: null },
+      router,
+      vi.fn(),
+    ) as (deviceId: string, rackId: string) => void
+
+    handler('device/a', 'rack-a')
+    expect(focusDeviceId.value).toBe('device/a')
+    expect(router.push).not.toHaveBeenCalled()
+    handler('device/a', 'rack-a')
+    expect(router.push).toHaveBeenCalledTimes(1)
+    expect(router.push).toHaveBeenCalledWith('/servers/device%2Fa')
+    focusDeviceId.value = 'device/a'
+    focusedRackId.value = null
+    handler('device-b', 'rack-b')
+    expect(focusDeviceId.value).toBe('device-b')
+    expect(router.push).toHaveBeenCalledTimes(1)
+    suppressed = true
+    handler('device-b', 'rack-b')
+    expect(router.push).toHaveBeenCalledTimes(1)
+    expect(source).toContain("focusedRackId === hit.rackId || !!focusDeviceId")
+    expect(source).toMatch(/if \(focusedRackId\.value !== rack\.rackId && focusDeviceId\.value === null\)/)
+  })
+
   it('focuses first, navigates only on the same device second click, switches devices without navigating, and suppresses drag clicks', async () => {
     const { readFileSync } = await import('node:fs')
     const { resolve } = await import('node:path')
@@ -3138,17 +3190,17 @@ describe('TASK-20260814-140520 corridor routing + rack focus', () => {
     const { readFileSync } = await import('node:fs')
     const { resolve } = await import('node:path')
     const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
-    // Idle: rack > device — devices default to pointer-events:none, active only for focused rack.
-    expect(source).toContain("'rack-hit-overlay__device--active': focusedRackId === hit.rackId")
+    // Idle: rack > device — devices default to pointer-events:none, active for focused rack/device state.
+    expect(source).toContain("'rack-hit-overlay__device--active': focusedRackId === hit.rackId || !!focusDeviceId")
     expect(source).toMatch(/\.rack-hit-overlay__device\s*\{[\s\S]*pointer-events:\s*none/)
     expect(source).toMatch(/\.rack-hit-overlay__device--active\s*\{[\s\S]*pointer-events:\s*auto/)
     expect(source).toMatch(/\.rack-hit-overlay__device--active\s*\{[\s\S]*z-index:\s*1/)
-    // Rack click clears device focus; device click requires matching focusedRackId.
+    // Rack click clears device focus; first device click still requires matching focusedRackId.
     expect(source).toMatch(/function onRackHitClick[\s\S]*focusDeviceId\.value = null/)
-    expect(source).toMatch(/function onDeviceHitClick[\s\S]*if \(focusedRackId\.value !== rackId\) return/)
+    expect(source).toMatch(/function onDeviceHitClick[\s\S]*if \(focusedRackId\.value !== rackId && focusDeviceId\.value === null\) return/)
     expect(source).toMatch(/function onDeviceHitClick[\s\S]*focusDeviceId\.value = deviceId/)
     // Konva fallback: unfocused rack device panel delegates to rack click.
-    expect(source).toMatch(/if \(focusedRackId\.value !== rack\.rackId\)[\s\S]*onRackHitClick\(rack\.rackId\)/)
+    expect(source).toMatch(/if \(focusedRackId\.value !== rack\.rackId && focusDeviceId\.value === null\)[\s\S]*onRackHitClick\(rack\.rackId\)/)
   })
 
   it('rack rectangle blocks cable selection (overlay z-index above cable layer)', async () => {

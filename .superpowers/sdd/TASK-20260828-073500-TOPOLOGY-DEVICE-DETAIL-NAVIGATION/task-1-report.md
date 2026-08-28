@@ -66,3 +66,35 @@ Result: PASS (exit 0).
 ## Known concerns
 
 - The existing Playwright rack-hit integration test requires a Vite server at port 5173. This environment denied binding 5173 / had it occupied, so that unrelated test could not run. The task-specific test, typecheck, build, and diff check pass.
+
+## Round 1 fix evidence
+
+- B-01 fixed: focused-device DOM hit targets remain active while a device is focused; the Konva device handler delegates directly to `onDeviceHitClick` whenever a device is focused, while the initial rack gate remains intact.
+- M-01 fixed: the test now executes the extracted production `onDeviceHitClick` handler with mutable focus state and a mocked router, proving first focus only, one encoded same-device route, different-device focus without routing, and drag suppression. It also checks the DOM/Konva gate wiring.
+- TDD RED: before the fix, the executable harness failed because `device-b` remained blocked by the rack gate (`expected device-b, received device-a`).
+- GREEN: `npm test -- topology.test.ts -t 'TASK-20260828-073500|idle state'` → 3 passed, 116 skipped.
+- Round 1 status transition: `CHANGES_REQUESTED → IN_FIX`; both scoped locks `HANDED_OFF → CLAIMED`, then after verification `CLAIMED → HANDED_OFF`; task `IN_FIX → READY_FOR_RETEST`.
+
+## Round 1 verification commands
+
+```text
+npm test -- topology.test.ts -t 'TASK-20260828-073500|idle state'
+PASS: 3 passed, 116 skipped.
+
+npm test -- topology.test.ts
+FAIL: 1 existing F2 Playwright test; 118 passed. Failure is unavailable http://localhost:5173.
+
+npm test
+FAIL: 1 existing F2 Playwright test; 222 passed. Failure is unavailable http://localhost:5173.
+
+npm run typecheck
+PASS (exit 0).
+
+npm run build
+PASS (155 modules transformed; exit 0).
+
+git diff --check
+PASS (exit 0).
+```
+
+Fix commit: recorded in the final handoff message; local only, not pushed.

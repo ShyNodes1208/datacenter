@@ -4,7 +4,7 @@
 
 ## 基本信息
 
-- Status：CHANGES_REQUESTED
+- Status：READY_FOR_RETEST
 - Owner：Cursor Developer
 - Reviewer：Codex Reviewer
 - Branch：`feature/TASK-20260828-073500-device-detail-navigation`
@@ -56,6 +56,9 @@ git diff --check
 | 2026-08-28 07:35 +08:00 | Codex + Terra | DRAFT | READY | 用户明确确认“第一次聚焦、第二次跳详情”；Owner/Reviewer 独立、范围与验收完整，且目标路径无活跃锁。 |
 | 2026-08-28 08:00 +08:00 | Cursor Developer | READY | IN_PROGRESS | 两个精确目标路径无父子路径冲突，已登记为 CLAIMED。 |
 | 2026-08-28 08:59 +08:00 | Cursor Developer | IN_PROGRESS | READY_FOR_REVIEW | 实现、测试、typecheck、build、diff check 完成；两项锁由 CLAIMED 转 HANDED_OFF；等待 Codex Reviewer 独立审核。 |
+| 2026-08-28 09:10 +08:00 | Codex Reviewer | READY_FOR_REVIEW | CHANGES_REQUESTED | B-01 阻断二次点击实际可达性；M-01 要求可执行交互测试。 |
+| 2026-08-28 09:12 +08:00 | Cursor Developer | CHANGES_REQUESTED | IN_FIX | 已复核无父子路径冲突；两项 HANDED_OFF 锁重新 CLAIMED，开始修复 B-01/M-01。 |
+| 2026-08-28 09:20 +08:00 | Cursor Developer | IN_FIX | READY_FOR_RETEST | B-01/M-01 已修复；行为测试、typecheck、build、diff check 完成；两项锁 CLAIMED → HANDED_OFF，等待 Reviewer 复测。 |
 | 2026-08-28 09:02 +08:00 | Codex Reviewer | READY_FOR_REVIEW | CHANGES_REQUESTED | B-01：第二次点击无法到达跳转分支；M-01：测试只匹配源码文本，未覆盖真实事件流。详见 `.superpowers/sdd/.../task-1-review.md`。 |
 
 ## Cursor Developer 接手条件
