@@ -59,7 +59,7 @@ Result: PASS (exit 0).
 
 ## Commit
 
-- Commit: recorded after this report is added; see final commit hash in handoff message.
+- Commit: `aeb4769e9c0f6ce1b56f215ba91d8ea5ecaec118`.
 - Commit message: `feat(topology): navigate to device details on second click`
 - Push result: N/A — local commit only as instructed; no remote write performed.
 
