@@ -1,10 +1,10 @@
 ﻿# Current Task
 
-- Status：COMPLETED（2026-08-27；TASK-20260827-172017 设备详情显示已连接设备的位置；Codex Reviewer 最终 PASS）
+- Status：READY（2026-08-28；TASK-20260828-073500 设备级拓扑二次点击进入设备详情）
 - Branch：feature/TASK-20260810-000003-topology-map
-- Backend Owner：Codex Backend；Frontend Owner：Cursor Frontend；Reviewer：Codex Reviewer
-- Requirement：设备详情中显示对端设备、端口、机柜、U 位；对端未上架时显示“未上架”。
-- Spec：`tasks/TASK-20260827-172017-DEVICE-CONNECTION-LOCATION.md`
+- Owner：Cursor Developer；Reviewer：Codex Reviewer
+- Requirement：设备级拓扑第一次点击设备聚焦链路，再次点击同一设备跳转既有详情页。
+- Spec：`tasks/TASK-20260828-073500-TOPOLOGY-DEVICE-DETAIL-NAVIGATION.md`
 
 ## 当前任务
 
@@ -24,13 +24,11 @@
 
 ## 当前状态
 
-- 当前任务：`TASK-20260827-172017` — 设备详情显示已连接设备的位置。
-- 状态：`COMPLETED`；后端 Owner：Codex Backend；前端 Owner：Cursor Frontend；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
-- 最终证据：独立 Reviewer PASS；后端 222/222、前端 221/221、typecheck、build、`git diff --check` 通过；四条阶段 A/B 锁已 `RELEASED`。
-- 工作流校验：用户于 2026-08-27 明确选择不安装 `pwsh`，已批准该脚本为本任务 N/A；未变更系统依赖。功能提交 `4b9799b`、部署文档提交 `4a84664` 已推送；本治理提交推送后复核工作区和本地/远端哈希。
-- 范围：扩展既有端口查询返回对端 U 位，并在现有设备详情页显示对端设备、端口、机柜和 U 位；未上架显示“未上架”。
-- 当前任务规格：`.ai/TASK.md` 与 `tasks/TASK-20260827-172017-DEVICE-CONNECTION-LOCATION.md`。
-- 不做：数据库、迁移、新端点、拓扑、线缆写操作、依赖或新页面。
+- 当前任务：`TASK-20260828-073500` — 设备级拓扑二次点击进入设备详情。
+- 状态：`READY`；Owner：Cursor Developer；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
+- 范围：首次点击设备维持现有链路聚焦，第二次点击相同设备进入既有详情页；只允许修改 `TopologyView.vue` 和 `topology.test.ts`。
+- 不做：后端 API、数据库、迁移、设备详情页、依赖、新页面或新手势。
+- 当前任务规格：`tasks/TASK-20260828-073500-TOPOLOGY-DEVICE-DETAIL-NAVIGATION.md`。
 
 ## 数据概览
 
