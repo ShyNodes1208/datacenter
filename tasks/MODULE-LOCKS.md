@@ -8,8 +8,6 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 |---|---|---|---|---|---|---|
 | TASK-20260828-134500 | scripts/seed-acceptance-data.py | Cursor Developer | 2026-08-28 13:55 +08:00 | HANDED_OFF | READY_FOR_REVIEW → independent Reviewer completion | — |
 | TASK-20260828-134500 | scripts/test_seed_acceptance_data.py | Cursor Developer | 2026-08-28 13:55 +08:00 | HANDED_OFF | READY_FOR_REVIEW → independent Reviewer completion | — |
-| TASK-20260828-134500 | scripts/seed-acceptance-data.py | Cursor Developer | 2026-08-28 13:55 +08:00 | CLAIMED | IN_PROGRESS → READY_FOR_REVIEW; hand off to Codex Reviewer | — |
-| TASK-20260828-134500 | scripts/test_seed_acceptance_data.py | Cursor Developer | 2026-08-28 13:55 +08:00 | CLAIMED | IN_PROGRESS → READY_FOR_REVIEW; hand off to Codex Reviewer | — |
 | TASK-20260828-073500 | src/frontend/src/views/TopologyView.vue | Cursor Developer | 2026-08-28 08:00 +08:00 | RELEASED | Codex Reviewer final PASS; task COMPLETED; evidence: npm test 223/223, typecheck/build/diff check PASS; pre-transition HEAD/upstream `b1790c681ae68b121613d2866557701466044dfd` | 2026-08-28 10:08 +08:00 |
 | TASK-20260828-073500 | src/frontend/src/__tests__/topology.test.ts | Cursor Developer | 2026-08-28 08:00 +08:00 | RELEASED | Codex Reviewer final PASS; task COMPLETED; evidence: npm test 223/223, typecheck/build/diff check PASS; pre-transition HEAD/upstream `b1790c681ae68b121613d2866557701466044dfd` | 2026-08-28 10:08 +08:00 |
 | TASK-20260827-172017 | src/frontend/src/views/ServerDetailView.vue | Cursor Frontend | 2026-08-27 17:28 +08:00 | RELEASED | Codex Reviewer final PASS; TASK-20260827-172017 COMPLETED | 2026-08-27 20:57 +08:00 |

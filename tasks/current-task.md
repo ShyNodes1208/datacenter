@@ -1,6 +1,6 @@
 ﻿# Current Task
 
-- Status：READY_FOR_REVIEW（2026-08-28；TASK-20260828-134500 验收种子机柜数量调整）
+- Status：READY_FOR_RETEST（2026-08-28；TASK-20260828-134500 验收种子机柜数量调整）
 - Branch：feature/TASK-20260828-134500-rack-seed-counts
 - Owner：Cursor Developer；Reviewer：Codex Reviewer
 - Requirement：验收种子脚本配置上海 100、北京 150、广州 80 个机柜；本任务不执行脚本。
@@ -25,7 +25,7 @@
 ## 当前状态
 
 - 当前任务：`TASK-20260828-134500` — 验收种子机柜数量调整。
-- 状态：`READY_FOR_REVIEW`；Owner：Cursor Developer；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
+- 状态：`READY_FOR_RETEST`；Owner：Cursor Developer；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
 - 范围：仅修改种子脚本与无数据库单元测试，配置上海 100、北京 150、广州 80 个机柜并同步汇总校验。
 - 不做：不运行种子脚本；不修改数据库、API、迁移、设备、线缆、依赖或页面。
 - 当前任务规格：`tasks/TASK-20260828-134500-ACCEPTANCE-SEED-RACK-COUNTS.md`。
