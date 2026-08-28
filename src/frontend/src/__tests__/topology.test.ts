@@ -798,6 +798,22 @@ describe('TopologyView', () => {
 
 })
 
+describe('TASK-20260828-073500 device detail navigation', () => {
+  it('focuses first, navigates only on the same device second click, switches devices without navigating, and suppresses drag clicks', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const start = source.indexOf('function onDeviceHitClick(')
+    const end = source.indexOf('\nfunction onCableBundleHover', start)
+    const handler = source.slice(start, end)
+
+    expect(handler).toMatch(/if \(consumeSuppressedViewportClick\(\)\) return/)
+    expect(handler).toMatch(/if \(focusDeviceId\.value === deviceId\)[\s\S]*router\.push\(`\/servers\/\$\{encodeURIComponent\(deviceId\)\}`\)/)
+    expect(handler).toMatch(/router\.push\(`\/servers\/\$\{encodeURIComponent\(deviceId\)\}`\)[\s\S]*return[\s\S]*focusDeviceId\.value = deviceId/)
+    expect(handler).toMatch(/focusDeviceId\.value = deviceId[\s\S]*focusedRackId\.value = null[\s\S]*drawScene\(\)/)
+  })
+})
+
 describe('CR-002 visual fidelity (T-01 to T-20)', () => {
   it('T-01: can enter rack level from room topology loader', async () => {
     requestMock.mockResolvedValue({

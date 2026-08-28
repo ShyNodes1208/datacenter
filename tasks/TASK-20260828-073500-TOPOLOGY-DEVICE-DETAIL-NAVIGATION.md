@@ -4,7 +4,7 @@
 
 ## 基本信息
 
-- Status：READY
+- Status：READY_FOR_REVIEW
 - Owner：Cursor Developer
 - Reviewer：Codex Reviewer
 - Branch：`feature/TASK-20260828-073500-device-detail-navigation`
@@ -54,6 +54,8 @@ git diff --check
 |---|---|---|---|---|
 | 2026-08-28 07:35 +08:00 | Codex + Terra | IDLE | DRAFT | 已核对拓扑的现有设备聚焦、详情路由和详情页连接信息。 |
 | 2026-08-28 07:35 +08:00 | Codex + Terra | DRAFT | READY | 用户明确确认“第一次聚焦、第二次跳详情”；Owner/Reviewer 独立、范围与验收完整，且目标路径无活跃锁。 |
+| 2026-08-28 08:00 +08:00 | Cursor Developer | READY | IN_PROGRESS | 两个精确目标路径无父子路径冲突，已登记为 CLAIMED。 |
+| 2026-08-28 08:59 +08:00 | Cursor Developer | IN_PROGRESS | READY_FOR_REVIEW | 实现、测试、typecheck、build、diff check 完成；两项锁由 CLAIMED 转 HANDED_OFF；等待 Codex Reviewer 独立审核。 |
 
 ## Cursor Developer 接手条件
 

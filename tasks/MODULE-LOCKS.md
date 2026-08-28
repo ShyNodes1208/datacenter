@@ -6,6 +6,8 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 
 | Task ID | Module or Path | Owner | Claimed At | Status | Release Condition | Released At |
 |---|---|---|---|---|---|---|
+| TASK-20260828-073500 | src/frontend/src/views/TopologyView.vue | Cursor Developer | 2026-08-28 08:00 +08:00 | HANDED_OFF | READY_FOR_REVIEW → Reviewer completion; implementation commit and report recorded | — |
+| TASK-20260828-073500 | src/frontend/src/__tests__/topology.test.ts | Cursor Developer | 2026-08-28 08:00 +08:00 | HANDED_OFF | READY_FOR_REVIEW → Reviewer completion; implementation commit and report recorded | — |
 | TASK-20260827-172017 | src/frontend/src/views/ServerDetailView.vue | Cursor Frontend | 2026-08-27 17:28 +08:00 | RELEASED | Codex Reviewer final PASS; TASK-20260827-172017 COMPLETED | 2026-08-27 20:57 +08:00 |
 | TASK-20260827-172017 | src/frontend/src/__tests__/server-detail-view.test.ts | Cursor Frontend | 2026-08-27 17:28 +08:00 | RELEASED | Codex Reviewer final PASS; TASK-20260827-172017 COMPLETED | 2026-08-27 20:57 +08:00 |
 | TASK-20260827-172017 | src/backend/Datacenter.Api/Controllers/PortsController.cs | Codex Backend | 2026-08-27 17:25 +08:00 | RELEASED | Codex Reviewer final PASS; TASK-20260827-172017 COMPLETED | 2026-08-27 20:57 +08:00 |

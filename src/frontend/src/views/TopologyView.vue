@@ -1156,6 +1156,10 @@ function onRackHitClick(rackId: string): void {
 
 function onDeviceHitClick(deviceId: string, rackId: string): void {
   if (consumeSuppressedViewportClick()) return
+  if (focusDeviceId.value === deviceId) {
+    router.push(`/servers/${encodeURIComponent(deviceId)}`)
+    return
+  }
   // Device hits only register when focusedRackId matches (overlay gating); guard Konva fallback.
   if (focusedRackId.value !== rackId) return
   expandedBundleKey.value = null
