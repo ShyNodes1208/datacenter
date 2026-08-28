@@ -76,6 +76,22 @@ const userMock = ref<{ id: string; username: string; role: string } | null>({
   role: '机房管理员',
 })
 
+describe('TASK-20260828-device-topology-performance', () => {
+  it('uses a rack map, keeps low-zoom device drawing minimal, and builds hits from visible devices', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const start = source.indexOf('function drawDeviceScene()')
+    const end = source.indexOf('\nfunction drawScene()', start)
+    const body = source.slice(start, end)
+    expect(body).toContain('const rackById = new Map(snapshot.racks.map')
+    expect(body).toContain('const rack = rackById.get(device.rackId)')
+    expect(body).toContain('showDeviceDetails')
+    expect(body).toContain("group.on('click'")
+    expect(source).toMatch(/const deviceHitTargets = computed\([\s\S]*filterVisibleDevices\([\s\S]*return visible\.flatMap/)
+  })
+})
+
 vi.mock('../composables/useApi', () => ({
   useApi: () => ({
     request: (...args: unknown[]) => requestMock(...args),

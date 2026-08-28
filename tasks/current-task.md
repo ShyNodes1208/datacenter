@@ -1,10 +1,10 @@
 ﻿# Current Task
 
-- Status：COMPLETED（2026-08-28；TASK-20260828-150000 验收种子合成设备 IP 地址段修复）
-- Branch：fix/TASK-20260828-150000-seed-ip-namespace
+- Status：READY_FOR_REVIEW（2026-08-28；TASK-20260828-device-topology-performance）
+- Branch：fix/TASK-20260828-device-topology-performance
 - Owner：Cursor Developer；Reviewer：Codex Reviewer
-- Requirement：将新增合成设备 IP 移入未占用的 172.17–172.19 地址段，避免与旧设备冲突；本任务不执行脚本。
-- Spec：`tasks/TASK-20260828-150000-SEED-IP-NAMESPACE.md`
+- Requirement：设备级拓扑在大规模设备数据下保持可操作响应。
+- Spec：`tasks/TASK-20260828-device-topology-performance.md`
 
 ## 当前任务
 
@@ -24,8 +24,8 @@
 
 ## 当前状态
 
-- 当前任务：`TASK-20260828-150000` — 验收种子合成设备 IP 地址段修复。
-- 状态：`COMPLETED`；Owner：Cursor Developer；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
+- 当前任务：`TASK-20260828-device-topology-performance` — 设备级拓扑性能修复。
+- 状态：`READY_FOR_REVIEW`；Owner：Cursor Developer；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
 - 范围：仅改合成设备 IP 地址段和既有无数据库测试，保证 6,270 个新增地址不与历史 10.* 设备地址重叠。
 - 不做：不运行种子脚本；不修改数据库、API、迁移、机柜数量、设备、线缆、依赖或页面。
 - 当前任务规格：`tasks/TASK-20260828-150000-SEED-IP-NAMESPACE.md`。

@@ -1527,6 +1527,7 @@ function drawDevicePanel(
   focusedDevice: boolean,
   endpointHighlighted: boolean,
   showName: boolean,
+  showDeviceDetails: boolean,
 ): void {
   const kind = classifyDeviceKind(device.deviceType)
   const stroke = focusedDevice || endpointHighlighted ? '#39D2C0' : '#0D1117'
@@ -1565,7 +1566,7 @@ function drawDevicePanel(
   }))
 
   // Type-specific panel details
-  if (kind === 'server') {
+  if (showDeviceDetails && kind === 'server') {
     for (let i = 0; i < 4; i++) {
       group.add(new Konva.Rect({
         x: 8 + i * 14,
@@ -1578,7 +1579,7 @@ function drawDevicePanel(
         listening: false,
       }))
     }
-  } else if (kind === 'switch') {
+  } else if (showDeviceDetails && kind === 'switch') {
     const slots = Math.min(12, Math.max(4, Math.floor((bodyW - 20) / 10)))
     for (let i = 0; i < slots; i++) {
       group.add(new Konva.Rect({
@@ -1592,7 +1593,7 @@ function drawDevicePanel(
         listening: false,
       }))
     }
-  } else if (kind === 'firewall') {
+  } else if (showDeviceDetails && kind === 'firewall') {
     group.add(new Konva.Text({
       x: bodyW - 28,
       y: 4,
@@ -1613,7 +1614,7 @@ function drawDevicePanel(
         listening: false,
       }))
     }
-  } else if (kind === 'storage') {
+  } else if (showDeviceDetails && kind === 'storage') {
     for (let row = 0; row < 2; row++) {
       for (let col = 0; col < 5; col++) {
         group.add(new Konva.Rect({
@@ -1630,17 +1631,18 @@ function drawDevicePanel(
     }
   }
 
-  // Status lamp
-  group.add(new Konva.Circle({
-    x: bodyW - 10,
-    y: 10,
-    radius: 4,
-    fill: statusLampColor(device.operationalStatus),
-    stroke: '#0D1117',
-    strokeWidth: 1,
-    listening: false,
-    name: 'status-lamp',
-  }))
+  if (showDeviceDetails) {
+    group.add(new Konva.Circle({
+      x: bodyW - 10,
+      y: 10,
+      radius: 4,
+      fill: statusLampColor(device.operationalStatus),
+      stroke: '#0D1117',
+      strokeWidth: 1,
+      listening: false,
+      name: 'status-lamp',
+    }))
+  }
 
   if (showName) {
     group.add(new Konva.Text({
@@ -1840,6 +1842,7 @@ function drawDeviceScene(): void {
   semanticZoomLatch = semantic
 
   const rackCodeById = new Map(snapshot.racks.map((r) => [r.rackId, r.code]))
+  const rackById = new Map(snapshot.racks.map((r) => [r.rackId, r]))
   const devicesByRack = new Map<string, DeviceInfo[]>()
   for (const device of snapshot.devices) {
     const list = devicesByRack.get(device.rackId) ?? []
@@ -1863,7 +1866,7 @@ function drawDeviceScene(): void {
   }
 
   for (const device of visibleDevices) {
-    const rack = snapshot.racks.find((r) => r.rackId === device.rackId)
+    const rack = rackById.get(device.rackId)
     if (!rack) continue
     const uHeight = Math.max(1, device.endU - device.startU + 1)
     const y = rack.y + (device.startU - 1) * DEVICE_U_PX
@@ -1887,6 +1890,10 @@ function drawDeviceScene(): void {
     const showName = semantic.showDeviceNames
       || focusedDevice
       || endpointHighlighted
+    const showDeviceDetails = semantic.showDeviceNames
+      || semantic.showPortAnchors
+      || focusedDevice
+      || endpointHighlighted
     const panelW = rack.width - 20
     const group = new Konva.Group({
       x: rack.x + 10,
@@ -1894,7 +1901,7 @@ function drawDeviceScene(): void {
       opacity: dimmed ? 0.35 : 1,
       name: `device-${device.deviceId}`,
     })
-    drawDevicePanel(group, device, panelW, height, focusedDevice, endpointHighlighted && !focusedDevice, showName)
+    drawDevicePanel(group, device, panelW, height, focusedDevice, endpointHighlighted && !focusedDevice, showName, showDeviceDetails)
     group.on('click', (event) => {
       event.cancelBubble = true
       if (focusedRackId.value !== rack.rackId && focusDeviceId.value === null) {
