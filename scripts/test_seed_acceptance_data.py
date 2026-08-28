@@ -26,6 +26,18 @@ class AcceptanceSeedRackCountsTests(unittest.TestCase):
         )
         self.assertEqual(sum(room[4] for room in seed.KEPT_ROOMS), 330)
 
+    def test_synthetic_management_ips_are_unique_for_330_racks(self):
+        seed = load_seed_module()
+        ips = [
+            seed.synthetic_management_ip(room_index, rack_n, device_ordinal)
+            for room_index, rack_count in ((1, 100), (2, 150), (3, 80))
+            for rack_n in range(1, rack_count + 1)
+            for device_ordinal in range(1, 20)
+        ]
+        self.assertEqual(len(ips), 6270)
+        self.assertEqual(len(set(ips)), 6270)
+        self.assertEqual(seed.synthetic_management_ip(3, 80, 19), "10.3.80.19")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -40,6 +40,10 @@ CABLE_PURPOSES = ["业务网络", "上联", "存储网络", "管理网络"]
 CABLE_STATUSES = ["正常", "正常", "正常", "告警"]
 
 
+def synthetic_management_ip(room_index: int, rack_n: int, device_ordinal: int) -> str:
+    return f"10.{room_index}.{rack_n}.{device_ordinal}"
+
+
 def uid() -> str:
     return str(uuid.uuid4()).upper()
 
@@ -505,7 +509,8 @@ def fill_synthetic_devices(
                 max_h = max(1, remaining // needed) if needed else remaining
                 height = min(planned, max_h, remaining, 4)
                 name = f"{prefix}-{room['abbr']}-{n:03d}"
-                ip = f"10.{room_index}.{rack_n}.{min(n, 254)}"
+                device_ordinal = counts.get(rack_id, 0) + 1
+                ip = synthetic_management_ip(room_index, rack_n, device_ordinal)
                 sid, new = ensure_server(conn, name, dtype, height, ip)
                 if not new:
                     row = conn.execute(
@@ -529,7 +534,8 @@ def fill_synthetic_devices(
                     break
                 dtype, prefix = SYNTHETIC_TYPES[(n - 1) % len(SYNTHETIC_TYPES)]
                 name = f"{prefix}-{room['abbr']}-{n:03d}"
-                ip = f"10.{room_index}.{rack_n}.{min(n, 254)}"
+                device_ordinal = counts.get(rack_id, 0) + 1
+                ip = synthetic_management_ip(room_index, rack_n, device_ordinal)
                 sid, new = ensure_server(conn, name, dtype, 1, ip)
                 if not new:
                     row = conn.execute(
