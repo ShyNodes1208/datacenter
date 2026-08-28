@@ -7,7 +7,7 @@
 - Status：READY
 - Owner：Cursor Developer
 - Reviewer：Codex Reviewer
-- Branch：`feature/TASK-20260810-000003-topology-map`
+- Branch：`feature/TASK-20260828-073500-device-detail-navigation`
 - Requirement Source：用户 2026-08-28 已确认：设备级拓扑保留第一次点击设备的链路聚焦；再次点击同一已聚焦设备进入设备详情页。
 - Product Baseline：`docs/product/MVP-PRODUCT-BASELINE.md`
 - Architecture Reference：`docs/architecture/MVP-ARCHITECTURE-BASELINE.md`、`docs/architecture/AGENT-WORKFLOW.md`
@@ -16,7 +16,7 @@
 
 用户在设备级拓扑中可先单击设备查看其相关链路和端口；再次单击同一设备后进入该设备的既有详情页。详情页继续展示设备自身资料和所有已登记连接的对端设备、机柜、U 位及端口。
 
-## 最小实现范围
+## Task 1: Cursor Developer 实施范围
 
 1. 仅修改 `src/frontend/src/views/TopologyView.vue`：当用户点击当前已聚焦设备时，调用既有路由跳转到 `/servers/:id`；首次点击或点击另一设备仍维持现有聚焦行为。
 2. 仅修改 `src/frontend/src/__tests__/topology.test.ts`：先写失败测试，再覆盖首次聚焦、同设备二次点击跳转、切换设备仍聚焦以及拖动画布不跳转。

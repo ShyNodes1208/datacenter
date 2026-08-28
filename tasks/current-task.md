@@ -1,7 +1,7 @@
 ﻿# Current Task
 
 - Status：READY（2026-08-28；TASK-20260828-073500 设备级拓扑二次点击进入设备详情）
-- Branch：feature/TASK-20260810-000003-topology-map
+- Branch：feature/TASK-20260828-073500-device-detail-navigation
 - Owner：Cursor Developer；Reviewer：Codex Reviewer
 - Requirement：设备级拓扑第一次点击设备聚焦链路，再次点击同一设备跳转既有详情页。
 - Spec：`tasks/TASK-20260828-073500-TOPOLOGY-DEVICE-DETAIL-NAVIGATION.md`
