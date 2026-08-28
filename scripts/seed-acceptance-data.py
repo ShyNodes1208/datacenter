@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Idempotent acceptance seed: 3 rooms × 10 racks + device fill (TASK-20260813-170555)."""
+"""Idempotent acceptance seed: 3 rooms × 330 racks + device fill (TASK-20260813-170555)."""
 
 from __future__ import annotations
 
@@ -17,15 +17,14 @@ SHANGHAI_LEGACY_NAME = "页面验证机房"
 SHANGHAI_NAME = "上海机房"
 SHANGHAI_LOCATION = "上海张江DC1"
 
-# (name, location, abbr, rack_prefix)
+# (name, location, abbr, rack_prefix, rack_count)
 KEPT_ROOMS = [
-    (SHANGHAI_NAME, SHANGHAI_LOCATION, "SH", "R1"),
-    ("北京机房", "北京", "BJ", "R2"),
-    ("广州机房", "广州", "GZ", "R3"),
+    (SHANGHAI_NAME, SHANGHAI_LOCATION, "SH", "R1", 100),
+    ("北京机房", "北京", "BJ", "R2", 150),
+    ("广州机房", "广州", "GZ", "R3", 80),
 ]
 
 RACK_U = 42
-RACKS_PER_ROOM = 10
 TARGET_PER_RACK = 19  # 18–20
 SYNTHETIC_TYPES = [
     ("服务器", "SRV"),
@@ -398,7 +397,7 @@ def seed_kept_rooms_and_racks(conn: sqlite3.Connection) -> tuple[list[dict], lis
     shanghai_id = ensure_shanghai_room(conn)
     rooms: list[dict] = []
     flat_racks: list[str] = []
-    for name, location, abbr, prefix in KEPT_ROOMS:
+    for name, location, abbr, prefix, rack_count in KEPT_ROOMS:
         if name == SHANGHAI_NAME:
             rid = shanghai_id
             created = False
@@ -406,7 +405,7 @@ def seed_kept_rooms_and_racks(conn: sqlite3.Connection) -> tuple[list[dict], lis
             rid, created = ensure_room(conn, name, location)
         log("CREATE" if created else "SKIP", f"room {name} ({rid})")
         rack_ids: list[str] = []
-        for i in range(1, RACKS_PER_ROOM + 1):
+        for i in range(1, rack_count + 1):
             code = f"{prefix}-{i:02d}"
             rack_id, rack_new = ensure_rack(conn, rid, code)
             rack_ids.append(rack_id)
@@ -831,12 +830,14 @@ def print_summary(conn: sqlite3.Connection, kept_room_ids: list[str]) -> bool:
     if room_count != 3:
         ok = False
         reasons.append(f"Rooms={room_count} expected 3")
-    if rack_count != 30:
+    expected_rack_counts = [room[4] for room in KEPT_ROOMS]
+    expected_rack_total = sum(expected_rack_counts)
+    if rack_count != expected_rack_total:
         ok = False
-        reasons.append(f"Racks={rack_count} expected 30")
-    if any(n != 10 for n in per_room_racks):
+        reasons.append(f"Racks={rack_count} expected {expected_rack_total}")
+    if per_room_racks != expected_rack_counts:
         ok = False
-        reasons.append(f"per-room racks={per_room_racks} expected 10 each")
+        reasons.append(f"per-room racks={per_room_racks} expected {expected_rack_counts}")
     if rmin < 1 or rmax > 42:
         ok = False
         reasons.append(f"per-rack device count min={rmin} max={rmax} out of bounds")
