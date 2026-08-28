@@ -1,6 +1,6 @@
 ﻿# Current Task
 
-- Status：READY_FOR_RETEST（2026-08-28；TASK-20260828-073500 设备级拓扑二次点击进入设备详情）
+- Status：COMPLETED（2026-08-28；TASK-20260828-073500 设备级拓扑二次点击进入设备详情）
 - Branch：feature/TASK-20260828-073500-device-detail-navigation
 - Owner：Cursor Developer；Reviewer：Codex Reviewer
 - Requirement：设备级拓扑第一次点击设备聚焦链路，再次点击同一设备跳转既有详情页。
@@ -25,10 +25,11 @@
 ## 当前状态
 
 - 当前任务：`TASK-20260828-073500` — 设备级拓扑二次点击进入设备详情。
-- 状态：`READY_FOR_RETEST`；Owner：Cursor Developer；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
+- 状态：`COMPLETED`；Owner：Cursor Developer；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
 - 范围：首次点击设备维持现有链路聚焦，第二次点击相同设备进入既有详情页；只允许修改 `TopologyView.vue` 和 `topology.test.ts`。
 - 不做：后端 API、数据库、迁移、设备详情页、依赖、新页面或新手势。
 - 当前任务规格：`tasks/TASK-20260828-073500-TOPOLOGY-DEVICE-DETAIL-NAVIGATION.md`。
+- 最终证据：Codex Reviewer PASS；`npm test` 223/223 PASS、typecheck PASS、build PASS、`git diff --check` PASS；审核前 `HEAD` 与上游均为 `b1790c681ae68b121613d2866557701466044dfd`；两项模块锁已释放。
 
 ## 数据概览
 

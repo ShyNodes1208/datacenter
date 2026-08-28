@@ -4,7 +4,7 @@
 
 ## 基本信息
 
-- Status：READY_FOR_RETEST
+- Status：COMPLETED
 - Owner：Cursor Developer
 - Reviewer：Codex Reviewer
 - Branch：`feature/TASK-20260828-073500-device-detail-navigation`
@@ -59,6 +59,7 @@ git diff --check
 | 2026-08-28 09:10 +08:00 | Codex Reviewer | READY_FOR_REVIEW | CHANGES_REQUESTED | B-01 阻断二次点击实际可达性；M-01 要求可执行交互测试。 |
 | 2026-08-28 09:12 +08:00 | Cursor Developer | CHANGES_REQUESTED | IN_FIX | 已复核无父子路径冲突；两项 HANDED_OFF 锁重新 CLAIMED，开始修复 B-01/M-01。 |
 | 2026-08-28 09:20 +08:00 | Cursor Developer | IN_FIX | READY_FOR_RETEST | B-01/M-01 已修复；行为测试、typecheck、build、diff check 完成；两项锁 CLAIMED → HANDED_OFF，等待 Reviewer 复测。 |
+| 2026-08-28 10:08 +08:00 | Codex Reviewer | READY_FOR_RETEST | COMPLETED | Final review PASS；`HEAD`、`@{u}` 和 merge-base 均为 `b1790c681ae68b121613d2866557701466044dfd`；`npm test` 223/223 PASS、typecheck PASS、build PASS、`git diff --check` PASS；两项模块锁已 RELEASED。 |
 
 ## Cursor Developer 接手条件
 
