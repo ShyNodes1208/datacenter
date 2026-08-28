@@ -6,6 +6,8 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 
 | Task ID | Module or Path | Owner | Claimed At | Status | Release Condition | Released At |
 |---|---|---|---|---|---|---|
+| TASK-20260828-150000 | scripts/seed-acceptance-data.py | Cursor Developer | 2026-08-28 15:05 +08:00 | HANDED_OFF | READY_FOR_REVIEW → independent Reviewer completion | — |
+| TASK-20260828-150000 | scripts/test_seed_acceptance_data.py | Cursor Developer | 2026-08-28 15:05 +08:00 | HANDED_OFF | READY_FOR_REVIEW → independent Reviewer completion | — |
 | TASK-20260828-143000 | scripts/seed-acceptance-data.py | Cursor Developer | 2026-08-28 14:35 +08:00 | RELEASED | Codex Reviewer final PASS; task COMPLETED; unittest 2/2 and diff check PASS; py_compile handoff evidence PASS; no seed execution/API/database change | 2026-08-28 14:46 +08:00 |
 | TASK-20260828-143000 | scripts/test_seed_acceptance_data.py | Cursor Developer | 2026-08-28 14:35 +08:00 | RELEASED | Codex Reviewer final PASS; task COMPLETED; unittest 2/2 and diff check PASS; py_compile handoff evidence PASS; no seed execution/API/database change | 2026-08-28 14:46 +08:00 |
 | TASK-20260828-134500 | scripts/seed-acceptance-data.py | Cursor Developer | 2026-08-28 13:55 +08:00 | RELEASED | Codex Reviewer final PASS; task COMPLETED; unittest 1/1, py_compile, diff check PASS; no seed execution/API/database change | 2026-08-28 14:16 +08:00 |

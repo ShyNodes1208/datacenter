@@ -36,7 +36,10 @@ class AcceptanceSeedRackCountsTests(unittest.TestCase):
         ]
         self.assertEqual(len(ips), 6270)
         self.assertEqual(len(set(ips)), 6270)
-        self.assertEqual(seed.synthetic_management_ip(3, 80, 19), "10.3.80.19")
+        self.assertEqual(seed.synthetic_management_ip(1, 1, 1), "172.17.1.1")
+        self.assertEqual(seed.synthetic_management_ip(2, 1, 1), "172.18.1.1")
+        self.assertEqual(seed.synthetic_management_ip(3, 1, 1), "172.19.1.1")
+        self.assertEqual(seed.synthetic_management_ip(3, 80, 19), "172.19.80.19")
 
 
 if __name__ == "__main__":

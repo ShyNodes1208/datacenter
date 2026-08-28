@@ -41,7 +41,7 @@ CABLE_STATUSES = ["正常", "正常", "正常", "告警"]
 
 
 def synthetic_management_ip(room_index: int, rack_n: int, device_ordinal: int) -> str:
-    return f"10.{room_index}.{rack_n}.{device_ordinal}"
+    return f"172.{16 + room_index}.{rack_n}.{device_ordinal}"
 
 
 def uid() -> str:
