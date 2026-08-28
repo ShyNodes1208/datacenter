@@ -1,6 +1,6 @@
 ﻿# Current Task
 
-- Status：READY_FOR_REVIEW（2026-08-28；TASK-20260828-143000 验收种子设备管理 IP 唯一性修复）
+- Status：COMPLETED（2026-08-28；TASK-20260828-143000 验收种子设备管理 IP 唯一性修复）
 - Branch：fix/TASK-20260828-143000-seed-ip-uniqueness
 - Owner：Cursor Developer；Reviewer：Codex Reviewer
 - Requirement：修复 330 机柜种子执行时的合成设备管理 IP 冲突；本任务不执行脚本。
@@ -25,12 +25,12 @@
 ## 当前状态
 
 - 当前任务：`TASK-20260828-143000` — 验收种子设备管理 IP 唯一性修复。
-- 状态：`READY_FOR_REVIEW`；Owner：Cursor Developer；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
+- 状态：`COMPLETED`；Owner：Cursor Developer；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
 - 范围：仅修复合成设备 IP 生成并扩展无数据库测试，保证 6,270 个 IP 不重复。
 - 不做：不运行种子脚本；不修改数据库、API、迁移、机柜数量、设备、线缆、依赖或页面。
 - 当前任务规格：`tasks/TASK-20260828-143000-SEED-IP-UNIQUENESS.md`。
 - 验收命令：`PYTHONDONTWRITEBYTECODE=1 python3 -m unittest scripts/test_seed_acceptance_data.py -v`、`git diff --check`；种子脚本不在验收中执行。
-- 最终证据：Codex Reviewer PASS；无数据库 unittest 1/1 PASS、py_compile PASS、git diff --check PASS；基线 `b24bf9bdf53fb8b55d7b7f24a8e6956a2a2aca5c` 至 `d6d8dfe5960a6b62d6b90f0f5776be44ee4dd6c4` 为 3 个本地提交；工作树干净、未执行种子脚本、两条模块锁已释放。
+- 最终证据：Codex Reviewer PASS；无数据库 unittest 2/2 PASS、py_compile 交接证据 PASS、git diff --check PASS；`HEAD`、上游与 merge-base 均为 `4ba176c7fd594efab2685d81f9d9a971d515274e`；工作树干净、未执行种子脚本、两条模块锁已释放。
 
 ## 数据概览
 
