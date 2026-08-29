@@ -1,6 +1,6 @@
 # TASK-20260828-device-topology-performance
 
-- Status：READY_FOR_REVIEW（测试执行受隔离 worktree 缺少依赖阻塞）
+- Status：COMPLETED（2026-08-29；Codex Reviewer final PASS）
 - Owner：Cursor Developer；Reviewer：Codex Reviewer
 - Branch：fix/TASK-20260828-device-topology-performance
 
@@ -34,3 +34,9 @@
 ## 非目标
 - 不重写 Konva/CableLayer 架构。
 - 不修改后端 API、数据库模型或线缆业务规则。
+
+## Final review
+
+- 2026-08-29 Codex Reviewer 独立复验：在临时本地 Vite 服务可访问的环境中，`npm test` 为 224/224 PASS，`npm run typecheck`、`npm run build`、`git diff --check` 均 PASS。
+- 实现范围仅为 `TopologyView.vue` 和 `topology.test.ts`；审核未发现 API、数据库、依赖、数据模型或线缆业务规则变更。
+- 实现提交 `198708f` 已通过合并提交 `3af4702` 推送至 `origin/feature/TASK-20260810-000003-topology-map`；任务锁已释放。

@@ -1,6 +1,6 @@
 ﻿# Current Task
 
-- Status：READY_FOR_REVIEW（2026-08-28；TASK-20260828-device-topology-performance）
+- Status：COMPLETED（2026-08-29；TASK-20260828-device-topology-performance）
 - Branch：fix/TASK-20260828-device-topology-performance
 - Owner：Cursor Developer；Reviewer：Codex Reviewer
 - Requirement：设备级拓扑在大规模设备数据下保持可操作响应。
@@ -25,12 +25,12 @@
 ## 当前状态
 
 - 当前任务：`TASK-20260828-device-topology-performance` — 设备级拓扑性能修复。
-- 状态：`READY_FOR_REVIEW`；Owner：Cursor Developer；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
+- 状态：`COMPLETED`；Owner：Cursor Developer；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
 - 范围：设备级拓扑使用 rack Map、低语义缩放减少设备细节绘制、HTML hit targets 仅按筛选后的可见设备生成；保留点击/聚焦/二次详情行为。
 - 不做：不修改 API、数据库、数据模型、线缆业务规则、依赖或其他页面。
 - 当前任务规格：`tasks/TASK-20260828-device-topology-performance.md`。
 - 验收命令：前端 test、typecheck、build、`git diff --check`。
-- 最终证据：typecheck/build PASS；vitest 223 tests PASS，1 个既有 F2 因本机 localhost:5173 未启动失败；diff check PASS；未修改数据库/API/依赖。
+- 最终证据：独立 Reviewer 在本地 Vite 服务可访问的环境中复验：vitest 224/224 PASS、typecheck PASS、build PASS、`git diff --check` PASS；未修改数据库/API/依赖。实现提交 `198708f` 已包含于合并提交 `3af4702`，后者已推送至 `origin/feature/TASK-20260810-000003-topology-map`。
 
 ## 数据概览
 
