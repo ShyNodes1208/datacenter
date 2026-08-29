@@ -1,6 +1,6 @@
 # TASK-20260829-device-topology-semantic-rendering
 
-- Status：READY
+- Status：BLOCKED（2026-08-29 +08:00；实现与静态验证完成，等待本地 dev server 以运行现有浏览器 harness 并记录 2,850 设备测量）
 - Requirement Source：用户于 2026-08-29 批准方案 A；同日浏览器诊断确认北京设备页为 2,850 台设备、150 个机柜、591 条线缆，浏览器渲染为主瓶颈。
 - Owner：Cursor Developer；Reviewer：Codex Reviewer
 - Branch：fix/TASK-20260829-device-topology-semantic-rendering
@@ -41,3 +41,10 @@
 
 - Cursor Developer：测试先行，提供 2,850 设备浏览器测量命令和结果；交接前运行前端 test、typecheck、build、diff check。
 - Codex Reviewer：独立重跑验证并审核无越界数据/API/依赖改动。
+
+## Blocker
+
+- 状态迁移：`IN_PROGRESS → BLOCKED`（2026-08-29 +08:00，Cursor Developer）。
+- 证据：`npm test` 225/226 通过；唯一失败的 `F2: real TopologyView rack-hit-target clicks set focusedRackId` 要求 `http://localhost:5173` 的 Vite dev server，但该服务器当前不可达。进程检查未发现 Vite 或 API 本地服务器，因此无法执行任务要求的 Playwright 2,850 设备进入/点击测量。
+- 解除条件：启动既有本地前端和 API dev server 后，重跑完整前端测试及 Playwright 测量；成功后再记录结果、将锁改为 `HANDED_OFF` 并转 `READY_FOR_REVIEW`。
+- 锁：两个批准的源文件锁保持 `CLAIMED`；不修改其他业务模块。

@@ -77,7 +77,7 @@ const userMock = ref<{ id: string; username: string; role: string } | null>({
 })
 
 describe('TASK-20260828-device-topology-performance', () => {
-  it('uses a rack map, keeps low-zoom device drawing minimal, and builds hits from visible devices', async () => {
+  it('uses a rack map and keeps device rendering scoped to the focused rack', async () => {
     const { readFileSync } = await import('node:fs')
     const { resolve } = await import('node:path')
     const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
@@ -86,9 +86,50 @@ describe('TASK-20260828-device-topology-performance', () => {
     const body = source.slice(start, end)
     expect(body).toContain('const rackById = new Map(snapshot.racks.map')
     expect(body).toContain('const rack = rackById.get(device.rackId)')
-    expect(body).toContain('showDeviceDetails')
-    expect(body).toContain("group.on('click'")
-    expect(source).toMatch(/const deviceHitTargets = computed\([\s\S]*filterVisibleDevices\([\s\S]*return visible\.flatMap/)
+    expect(body).toContain('const devicesToRender = focusedRackId.value')
+    expect(body).toContain('for (const device of devicesToRender)')
+    expect(source).toMatch(/const deviceHitTargets = computed\([\s\S]*if \(!focusedRackId\.value\) return \[\][\s\S]*device\.rackId === focusedRackId\.value/)
+  })
+})
+
+describe('TASK-20260829-device-topology-semantic-rendering', () => {
+  it('renders device panels and device hit targets only for the focused rack', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const hitsStart = source.indexOf('const deviceHitTargets = computed(() =>')
+    const hitsEnd = source.indexOf('\nconst cableOverlayStyle', hitsStart)
+    const hits = source.slice(hitsStart, hitsEnd)
+    const drawStart = source.indexOf('function drawDeviceScene(): void {')
+    const drawEnd = source.indexOf('\nfunction drawRoomPlatform', drawStart)
+    const draw = source.slice(drawStart, drawEnd)
+
+    expect(hits).toMatch(/if \(!focusedRackId\.value\) return \[\]/)
+    expect(hits).toContain('device.rackId === focusedRackId.value')
+    expect(draw).toContain('const devicesToRender = focusedRackId.value')
+    expect(draw).toContain('for (const device of devicesToRender)')
+  })
+
+  it('reuses an unchanged device layout and lets the watcher own focused redraws', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const drawStart = source.indexOf('function drawDeviceScene(): void {')
+    const drawEnd = source.indexOf('\nfunction drawRoomPlatform', drawStart)
+    const draw = source.slice(drawStart, drawEnd)
+    const rackHandler = source.slice(
+      source.indexOf('function onRackHitClick('),
+      source.indexOf('\nfunction onDeviceHitClick', source.indexOf('function onRackHitClick(')),
+    )
+    const deviceHandler = source.slice(
+      source.indexOf('function onDeviceHitClick('),
+      source.indexOf('\nfunction onCableBundleHover', source.indexOf('function onDeviceHitClick(')),
+    )
+
+    expect(draw).toContain('laidSnapshotSource === originalSnapshot')
+    expect(draw).toContain('layoutDeviceSnapshot(originalSnapshot)')
+    expect(rackHandler).not.toContain('drawScene()')
+    expect(deviceHandler).not.toContain('drawScene()')
   })
 })
 
@@ -878,7 +919,8 @@ describe('TASK-20260828-073500 device detail navigation', () => {
     expect(handler).toMatch(/if \(consumeSuppressedViewportClick\(\)\) return/)
     expect(handler).toMatch(/if \(focusDeviceId\.value === deviceId\)[\s\S]*router\.push\(`\/servers\/\$\{encodeURIComponent\(deviceId\)\}`\)/)
     expect(handler).toMatch(/router\.push\(`\/servers\/\$\{encodeURIComponent\(deviceId\)\}`\)[\s\S]*return[\s\S]*focusDeviceId\.value = deviceId/)
-    expect(handler).toMatch(/focusDeviceId\.value = deviceId[\s\S]*focusedRackId\.value = null[\s\S]*drawScene\(\)/)
+    expect(handler).toMatch(/focusDeviceId\.value = deviceId/)
+    expect(handler).not.toContain('drawScene()')
   })
 })
 

@@ -600,6 +600,7 @@ const userAdjustedViewport = ref(false)
 /** Locked column count so panel/resize does not silently reflow racks. */
 let lockedDeviceColCount: number | null = null
 let lockedLayoutSnapshotKey: string | null = null
+let laidSnapshotSource: CableSnapshot | null = null
 let semanticZoomLatch: SemanticZoomState | null = null
 let devicePan: { startX: number; startY: number; lastX: number; lastY: number; moved: boolean } | null = null
 let suppressViewportClick = false
@@ -794,12 +795,13 @@ const deviceHitTargets = computed(() => {
     rackId: string
     style: Record<string, string>
   }>
+  if (!focusedRackId.value) return []
   const rackById = new Map(snapshot.racks.map((r) => [r.rackId, r]))
   const visible = filterVisibleDevices(snapshot.devices, {
     deviceNameQuery: deviceNameQuery.value,
     deviceTypes: selectedDeviceTypes.value,
   })
-  return visible.flatMap((device) => {
+  return visible.filter((device) => device.rackId === focusedRackId.value).flatMap((device) => {
     const rack = rackById.get(device.rackId)
     if (!rack || !isPrimaryDeviceRack(rack)) return []
     const uHeight = Math.max(1, device.endU - device.startU + 1)
@@ -848,6 +850,7 @@ function resetDeviceViewport(): void {
   userAdjustedViewport.value = false
   lockedDeviceColCount = null
   lockedLayoutSnapshotKey = null
+  laidSnapshotSource = null
   semanticZoomLatch = null
 }
 
@@ -1151,7 +1154,6 @@ function onRackHitClick(rackId: string): void {
   } else {
     focusedRackId.value = rackId
   }
-  drawScene()
 }
 
 function onDeviceHitClick(deviceId: string, rackId: string): void {
@@ -1166,8 +1168,6 @@ function onDeviceHitClick(deviceId: string, rackId: string): void {
   selectedBundleId.value = null
   selectedCableId.value = null
   focusDeviceId.value = deviceId
-  focusedRackId.value = null
-  drawScene()
 }
 
 function onCableBundleHover(payload: {
@@ -1764,9 +1764,14 @@ function drawPortAnchors(
 function drawDeviceScene(): void {
   if (!stage || !layer || !topology.value?.cableSnapshot) return
   const originalSnapshot = topology.value.cableSnapshot
-  const originalDevices = new Map(originalSnapshot.devices.map((d) => [d.deviceId, d]))
-  const snapshot = layoutDeviceSnapshot(originalSnapshot)
-  laidSnapshot.value = snapshot
+  const key = deviceSnapshotKey(originalSnapshot)
+  const snapshot = laidSnapshot.value && laidSnapshotSource === originalSnapshot
+    ? laidSnapshot.value
+    : layoutDeviceSnapshot(originalSnapshot)
+  if (laidSnapshotSource !== originalSnapshot) {
+    laidSnapshot.value = snapshot
+    laidSnapshotSource = originalSnapshot
+  }
   const scene = deviceCableScene.value
   const focused = focusedRoom.value
   const areaLabel = focused?.location || focused?.name || '设备区域'
@@ -1855,6 +1860,9 @@ function drawDeviceScene(): void {
     deviceNameQuery: deviceNameQuery.value,
     deviceTypes: selectedDeviceTypes.value,
   })
+  const devicesToRender = focusedRackId.value
+    ? visibleDevices.filter((device) => device.rackId === focusedRackId.value)
+    : []
 
   for (const rack of snapshot.racks) {
     const rackDevices = devicesByRack.get(rack.rackId) ?? []
@@ -1865,7 +1873,7 @@ function drawDeviceScene(): void {
     drawIsoRack(rack, rackDevices.length === 0, { focused: rackFocused, dimmed: rackDimmed })
   }
 
-  for (const device of visibleDevices) {
+  for (const device of devicesToRender) {
     const rack = rackById.get(device.rackId)
     if (!rack) continue
     const uHeight = Math.max(1, device.endU - device.startU + 1)
@@ -1912,7 +1920,7 @@ function drawDeviceScene(): void {
     })
     group.on('mouseenter', () => {
       const pointer = stage?.getPointerPosition()
-      const original = originalDevices.get(device.deviceId) ?? device
+      const original = device
       tooltip.value = {
         x: (pointer?.x ?? 0) + 12,
         y: (pointer?.y ?? 0) + 12,
@@ -1959,7 +1967,6 @@ function drawDeviceScene(): void {
   })
 
   applyDeviceViewportMode(true)
-  const key = deviceSnapshotKey(originalSnapshot)
   // Skip nested auto-fit while applyFitTransform is redrawing semantics.
   if (fitSemanticRedrawDepth > 0) {
     syncDeviceOverlay()
