@@ -134,6 +134,30 @@ describe('TASK-20260829-device-topology-semantic-rendering', () => {
     expect(rackHandler).not.toContain('drawScene()')
     expect(deviceHandler).not.toContain('drawScene()')
   })
+
+  it('redraws only the device detail layer when device focus state changes', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const watcherStart = source.indexOf('watch([\n  focusDeviceId,')
+    const watcherEnd = source.indexOf('\n/** Guard to prevent watch-triggered syncFromRoute', watcherStart)
+    const watcher = source.slice(watcherStart, watcherEnd)
+
+    expect(source).toContain('let deviceDetailLayer: Konva.Layer | null = null')
+    expect(source).toContain('function redrawDeviceDetails(): void')
+    expect(watcher).toContain('redrawDeviceDetails()')
+  })
+
+  it('lets Konva auto-batch the focused device detail redraw once', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const start = source.indexOf('function redrawDeviceDetails(): void {')
+    const body = source.slice(start, source.indexOf('\nfunction drawRoomPlatform', start))
+
+    expect(body).not.toContain('deviceDetailLayer.draw()')
+  })
+
 })
 
 describe('TASK-20260829-device-cable-canvas', () => {
