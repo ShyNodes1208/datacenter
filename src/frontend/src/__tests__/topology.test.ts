@@ -387,6 +387,39 @@ describe('TASK-20260829-device-cable-canvas', () => {
     expect(disconnect).toHaveBeenCalledOnce()
     expect(cancelAnimationFrame).toHaveBeenCalledTimes(2)
   })
+
+  it('Canvas integration uses the device renderer while shared consumers retain SVG', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const topology = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const rackView = readFileSync(resolve(__dirname, '../views/RackDeviceView.vue'), 'utf8')
+    const floorplan = readFileSync(resolve(__dirname, '../components/FloorplanCanvas.vue'), 'utf8')
+
+    expect(topology).toContain("import DeviceCableCanvas from '../components/DeviceCableCanvas.vue'")
+    expect(topology).toContain('<DeviceCableCanvas')
+    expect(topology).toContain(':scene="deviceCableScene"')
+    expect(topology).toContain(':animation-enabled="animationEnabled"')
+    expect(topology).toContain('@bundle-click="onCableBundleClick"')
+    expect(topology).toContain('@bundle-hover="onCableBundleHover"')
+    expect(topology).toContain('@bundle-leave="onCableBundleLeave"')
+    expect(topology).toContain('@background-click="onCableBackgroundClick"')
+    expect(topology).not.toContain('<CableLayer')
+    expect(rackView).toContain("import CableLayer from '../components/CableLayer.vue'")
+    expect(rackView).toContain('<CableLayer')
+    expect(floorplan).toContain("import CableLayer from './CableLayer.vue'")
+    expect(floorplan).toContain('<CableLayer')
+  })
+
+  it('Canvas integration restores the shared SVG scene loop without retained-node caching', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../components/CableLayer.vue'), 'utf8')
+
+    expect(source).toContain('v-for="bundle in scene.bundles"')
+    expect(source).not.toContain('renderedBundles')
+    expect(source).not.toContain('mergeRenderedBundles')
+    expect(source).not.toContain('v-memo')
+  })
 })
 
 vi.mock('../composables/useApi', () => ({

@@ -231,7 +231,7 @@
           class="cable-overlay"
           :style="cableOverlayStyle"
         >
-          <CableLayer
+          <DeviceCableCanvas
             :scene="deviceCableScene"
             :animation-enabled="animationEnabled"
             @bundle-click="onCableBundleClick"
@@ -493,7 +493,7 @@ import {
   type TopologyRoom,
   type TopologyRoomConnection,
 } from '../composables/useTopology'
-import CableLayer from '../components/CableLayer.vue'
+import DeviceCableCanvas from '../components/DeviceCableCanvas.vue'
 import {
   buildCableScene,
   buildUniquePortLabelPlacements,
