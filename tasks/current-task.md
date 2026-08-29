@@ -1,10 +1,10 @@
 ﻿# Current Task
 
-- Status：COMPLETED（2026-08-29；TASK-20260828-device-topology-performance）
-- Branch：fix/TASK-20260828-device-topology-performance
+- Status：READY（2026-08-29；TASK-20260829-device-topology-semantic-rendering）
+- Branch：fix/TASK-20260829-device-topology-semantic-rendering
 - Owner：Cursor Developer；Reviewer：Codex Reviewer
-- Requirement：设备级拓扑在大规模设备数据下保持可操作响应。
-- Spec：`tasks/TASK-20260828-device-topology-performance.md`
+- Requirement：设备级拓扑在 2,850 台设备数据下保持可操作响应。
+- Spec：`tasks/TASK-20260829-device-topology-semantic-rendering.md`
 
 ## 当前任务
 
@@ -24,13 +24,12 @@
 
 ## 当前状态
 
-- 当前任务：`TASK-20260828-device-topology-performance` — 设备级拓扑性能修复。
-- 状态：`COMPLETED`；Owner：Cursor Developer；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
-- 范围：设备级拓扑使用 rack Map、低语义缩放减少设备细节绘制、HTML hit targets 仅按筛选后的可见设备生成；保留点击/聚焦/二次详情行为。
+- 当前任务：`TASK-20260829-device-topology-semantic-rendering` — 设备级拓扑分级渲染性能修复。
+- 状态：`READY`；Owner：Cursor Developer；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
+- 范围：空闲视图只显示机柜概览；聚焦机柜后才绘制该机柜设备；缓存布局并消除一次操作的重复完整重绘。
 - 不做：不修改 API、数据库、数据模型、线缆业务规则、依赖或其他页面。
-- 当前任务规格：`tasks/TASK-20260828-device-topology-performance.md`。
-- 验收命令：前端 test、typecheck、build、`git diff --check`。
-- 最终证据：独立 Reviewer 在本地 Vite 服务可访问的环境中复验：vitest 224/224 PASS、typecheck PASS、build PASS、`git diff --check` PASS；未修改数据库/API/依赖。实现提交 `198708f` 已包含于合并提交 `3af4702`，后者已推送至 `origin/feature/TASK-20260810-000003-topology-map`。
+- 当前任务规格：`tasks/TASK-20260829-device-topology-semantic-rendering.md`。
+- 验收命令：前端 test、typecheck、build、`git diff --check`；以北京 2,850 设备数据记录 Playwright 进入与点击响应测量。
 
 ## 数据概览
 
