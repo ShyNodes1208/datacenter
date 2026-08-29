@@ -133,6 +133,23 @@ describe('TASK-20260829-device-topology-semantic-rendering', () => {
   })
 })
 
+describe('TASK-20260829-device-cable-canvas', () => {
+  it('uses a device-only Canvas with Canvas hit testing and redraw scheduling', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../components/DeviceCableCanvas.vue'), 'utf8')
+
+    expect(source).toContain('data-testid="device-cable-canvas"')
+    expect(source).toContain("'bundle-click': [bundleId: string]")
+    expect(source).toContain("'bundle-hover': [payload: { bundleId: string; clientX: number; clientY: number }]")
+    expect(source).toContain('function bundleAtPoint(')
+    expect(source).toContain('function logicalPointFromEvent(')
+    expect(source).toContain('new ResizeObserver(')
+    expect(source).toContain('requestAnimationFrame(')
+    expect(source).not.toContain('v-for="bundle in')
+  })
+})
+
 vi.mock('../composables/useApi', () => ({
   useApi: () => ({
     request: (...args: unknown[]) => requestMock(...args),
