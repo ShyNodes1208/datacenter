@@ -231,7 +231,7 @@
           class="cable-overlay"
           :style="cableOverlayStyle"
         >
-          <CableLayer
+          <DeviceCableCanvas
             :scene="deviceCableScene"
             :animation-enabled="animationEnabled"
             @bundle-click="onCableBundleClick"
@@ -493,7 +493,7 @@ import {
   type TopologyRoom,
   type TopologyRoomConnection,
 } from '../composables/useTopology'
-import CableLayer from '../components/CableLayer.vue'
+import DeviceCableCanvas from '../components/DeviceCableCanvas.vue'
 import {
   buildCableScene,
   buildUniquePortLabelPlacements,
@@ -590,6 +590,8 @@ const tooltip = ref<{
 
 let stage: Konva.Stage | null = null
 let layer: Konva.Layer | null = null
+let deviceDetailLayer: Konva.Layer | null = null
+let drawDeviceBase = true
 let roomGroups = new Map<string, Konva.Group>()
 let roomCableAnimation: Konva.Animation | null = null
 let resizeObserver: ResizeObserver | null = null
@@ -600,6 +602,7 @@ const userAdjustedViewport = ref(false)
 /** Locked column count so panel/resize does not silently reflow racks. */
 let lockedDeviceColCount: number | null = null
 let lockedLayoutSnapshotKey: string | null = null
+let laidSnapshotSource: CableSnapshot | null = null
 let semanticZoomLatch: SemanticZoomState | null = null
 let devicePan: { startX: number; startY: number; lastX: number; lastY: number; moved: boolean } | null = null
 let suppressViewportClick = false
@@ -794,12 +797,13 @@ const deviceHitTargets = computed(() => {
     rackId: string
     style: Record<string, string>
   }>
+  if (!focusedRackId.value) return []
   const rackById = new Map(snapshot.racks.map((r) => [r.rackId, r]))
   const visible = filterVisibleDevices(snapshot.devices, {
     deviceNameQuery: deviceNameQuery.value,
     deviceTypes: selectedDeviceTypes.value,
   })
-  return visible.flatMap((device) => {
+  return visible.filter((device) => device.rackId === focusedRackId.value).flatMap((device) => {
     const rack = rackById.get(device.rackId)
     if (!rack || !isPrimaryDeviceRack(rack)) return []
     const uHeight = Math.max(1, device.endU - device.startU + 1)
@@ -848,6 +852,7 @@ function resetDeviceViewport(): void {
   userAdjustedViewport.value = false
   lockedDeviceColCount = null
   lockedLayoutSnapshotKey = null
+  laidSnapshotSource = null
   semanticZoomLatch = null
 }
 
@@ -1151,7 +1156,6 @@ function onRackHitClick(rackId: string): void {
   } else {
     focusedRackId.value = rackId
   }
-  drawScene()
 }
 
 function onDeviceHitClick(deviceId: string, rackId: string): void {
@@ -1166,8 +1170,6 @@ function onDeviceHitClick(deviceId: string, rackId: string): void {
   selectedBundleId.value = null
   selectedCableId.value = null
   focusDeviceId.value = deviceId
-  focusedRackId.value = null
-  drawScene()
 }
 
 function onCableBundleHover(payload: {
@@ -1666,7 +1668,7 @@ function drawPortAnchors(
   selectedId: string | null,
   semantic: SemanticZoomState,
 ): void {
-  if (!layer) return
+  if (!deviceDetailLayer) return
   const selected = selectedId
     ? snapshot.cables.find((c) => c.cableId === selectedId) ?? null
     : null
@@ -1699,7 +1701,7 @@ function drawPortAnchors(
       }
       drawnPorts.add(key)
       const radius = selectedEndpoint ? PORT_RADIUS_SELECTED : PORT_RADIUS
-      layer.add(new Konva.Circle({
+      deviceDetailLayer.add(new Konva.Circle({
         x: endpoint.point.x,
         y: endpoint.point.y,
         radius,
@@ -1747,7 +1749,7 @@ function drawPortAnchors(
     placements = placements.filter((p) => p.deviceId === focusDeviceId.value)
   }
   for (const placement of placements) {
-    layer.add(new Konva.Text({
+    deviceDetailLayer.add(new Konva.Text({
       x: placement.rect.x,
       y: placement.rect.y,
       width: placement.rect.width,
@@ -1763,17 +1765,25 @@ function drawPortAnchors(
 
 function drawDeviceScene(): void {
   if (!stage || !layer || !topology.value?.cableSnapshot) return
+  const drawBase = drawDeviceBase
   const originalSnapshot = topology.value.cableSnapshot
-  const originalDevices = new Map(originalSnapshot.devices.map((d) => [d.deviceId, d]))
-  const snapshot = layoutDeviceSnapshot(originalSnapshot)
-  laidSnapshot.value = snapshot
+  const key = deviceSnapshotKey(originalSnapshot)
+  const snapshot = laidSnapshot.value && laidSnapshotSource === originalSnapshot
+    ? laidSnapshot.value
+    : layoutDeviceSnapshot(originalSnapshot)
+  if (laidSnapshotSource !== originalSnapshot) {
+    laidSnapshot.value = snapshot
+    laidSnapshotSource = originalSnapshot
+  }
   const scene = deviceCableScene.value
   const focused = focusedRoom.value
   const areaLabel = focused?.location || focused?.name || '设备区域'
 
-  drawIsoPlatform(snapshot.racks, areaLabel)
+  if (drawBase) {
+    drawIsoPlatform(snapshot.racks, areaLabel)
+  }
 
-  if (focused) {
+  if (drawBase && focused) {
     layer.add(new Konva.Text({
       x: 24,
       y: 20,
@@ -1855,17 +1865,22 @@ function drawDeviceScene(): void {
     deviceNameQuery: deviceNameQuery.value,
     deviceTypes: selectedDeviceTypes.value,
   })
+  const devicesToRender = focusedRackId.value
+    ? visibleDevices.filter((device) => device.rackId === focusedRackId.value)
+    : []
 
-  for (const rack of snapshot.racks) {
-    const rackDevices = devicesByRack.get(rack.rackId) ?? []
-    const rackFocused = focusedRackId.value === rack.rackId
-    const rackDimmed = focusedRackId.value !== null
-      && isPrimaryDeviceRack(rack)
-      && !relatedRackIds.has(rack.rackId)
-    drawIsoRack(rack, rackDevices.length === 0, { focused: rackFocused, dimmed: rackDimmed })
+  if (drawBase) {
+    for (const rack of snapshot.racks) {
+      const rackDevices = devicesByRack.get(rack.rackId) ?? []
+      const rackFocused = focusedRackId.value === rack.rackId
+      const rackDimmed = focusedRackId.value !== null
+        && isPrimaryDeviceRack(rack)
+        && !relatedRackIds.has(rack.rackId)
+      drawIsoRack(rack, rackDevices.length === 0, { focused: rackFocused, dimmed: rackDimmed })
+    }
   }
 
-  for (const device of visibleDevices) {
+  for (const device of devicesToRender) {
     const rack = rackById.get(device.rackId)
     if (!rack) continue
     const uHeight = Math.max(1, device.endU - device.startU + 1)
@@ -1912,7 +1927,7 @@ function drawDeviceScene(): void {
     })
     group.on('mouseenter', () => {
       const pointer = stage?.getPointerPosition()
-      const original = originalDevices.get(device.deviceId) ?? device
+      const original = device
       tooltip.value = {
         x: (pointer?.x ?? 0) + 12,
         y: (pointer?.y ?? 0) + 12,
@@ -1935,12 +1950,14 @@ function drawDeviceScene(): void {
       tooltip.value = null
       document.body.style.cursor = 'default'
     })
-    layer.add(group)
+    deviceDetailLayer?.add(group)
   }
 
   if (scene) {
     drawPortAnchors(scene, snapshot, selectedCableId.value, semantic)
   }
+
+  if (!drawBase) return
 
   const contentW = Math.max(
     stageSize.value.width,
@@ -1959,7 +1976,6 @@ function drawDeviceScene(): void {
   })
 
   applyDeviceViewportMode(true)
-  const key = deviceSnapshotKey(originalSnapshot)
   // Skip nested auto-fit while applyFitTransform is redrawing semantics.
   if (fitSemanticRedrawDepth > 0) {
     syncDeviceOverlay()
@@ -1972,6 +1988,17 @@ function drawDeviceScene(): void {
     userAdjustedViewport.value = false
   } else {
     syncDeviceOverlay()
+  }
+}
+
+function redrawDeviceDetails(): void {
+  if (!deviceDetailLayer || topology.value?.mode !== 'devices' || !laidSnapshot.value) return
+  deviceDetailLayer.destroyChildren()
+  drawDeviceBase = false
+  try {
+    drawDeviceScene()
+  } finally {
+    drawDeviceBase = true
   }
 }
 
@@ -2096,6 +2123,7 @@ function updateRoomSelection(prevId: string | null, nextId: string): void {
 function drawScene(): void {
   if (!stage || !layer || !topology.value) return
   layer.destroyChildren()
+  deviceDetailLayer?.destroyChildren()
   stage.off('click')
   tooltip.value = null
 
@@ -2103,6 +2131,7 @@ function drawScene(): void {
   if (current.mode === 'devices') {
     drawDeviceScene()
     layer.draw()
+    deviceDetailLayer?.draw()
     return
   }
 
@@ -2401,7 +2430,9 @@ function initStage(): void {
   stageSize.value = { width, height }
   stage = new Konva.Stage({ container: konvaContainer.value, width, height })
   layer = new Konva.Layer()
+  deviceDetailLayer = new Konva.Layer()
   stage.add(layer)
+  stage.add(deviceDetailLayer)
   if (typeof window !== 'undefined') {
     (window as unknown as { __topologyKonvaStage?: Konva.Stage }).__topologyKonvaStage = stage
   }
@@ -2506,7 +2537,7 @@ watch([
         }
       }
     }
-    drawScene()
+    redrawDeviceDetails()
   } else if (topology.value?.mode === 'rooms') {
     drawScene()
   }
@@ -2607,6 +2638,7 @@ onUnmounted(() => {
   stage?.destroy()
   stage = null
   layer = null
+  deviceDetailLayer = null
   document.body.style.cursor = 'default'
 })
 </script>
