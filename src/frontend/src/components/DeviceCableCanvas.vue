@@ -138,12 +138,12 @@ function scheduleDraw(): void {
   })
 }
 
-function resizeCanvas(): void {
+function resizeCanvas(entries?: ResizeObserverEntry[]): void {
   const element = canvas.value
   if (!element) return
-  const rect = element.getBoundingClientRect()
-  logicalWidth.value = rect.width
-  logicalHeight.value = rect.height
+  const contentRect = entries?.[0]?.contentRect
+  logicalWidth.value = contentRect?.width ?? element.clientWidth
+  logicalHeight.value = contentRect?.height ?? element.clientHeight
   const pixelRatio = window.devicePixelRatio || 1
   element.width = Math.max(1, Math.round(logicalWidth.value * pixelRatio))
   element.height = Math.max(1, Math.round(logicalHeight.value * pixelRatio))

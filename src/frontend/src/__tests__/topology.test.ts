@@ -1,6 +1,7 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { createSSRApp, nextTick, ref } from 'vue'
+import { createRenderer, createSSRApp, h, nextTick, ref, ssrContextKey } from 'vue'
 import { renderToString } from 'vue/server-renderer'
+import DeviceCableCanvas from '../components/DeviceCableCanvas.vue'
 import {
   cableTypeColor,
   parseTopologyPayload,
@@ -67,6 +68,8 @@ import {
   viewportTransformsEqual,
   visualStrokeWidthForBundle,
   zoomViewportAroundPoint,
+  type CableBundle,
+  type CableScene,
 } from '../composables/useCableScene'
 
 const requestMock = vi.fn()
@@ -147,6 +150,242 @@ describe('TASK-20260829-device-cable-canvas', () => {
     expect(source).toContain('new ResizeObserver(')
     expect(source).toContain('requestAnimationFrame(')
     expect(source).not.toContain('v-for="bundle in')
+  })
+
+  type CanvasHostNode = {
+    type: string
+    parent: CanvasHostNode | null
+    children: CanvasHostNode[]
+    props: Record<string, unknown>
+    text: string
+    width: number
+    height: number
+    clientWidth: number
+    clientHeight: number
+    getBoundingClientRect: () => DOMRect
+    getContext: () => CanvasRenderingContext2D
+  }
+
+  const bundle = (id: string, y: number, animated = false): CableBundle => ({
+    id,
+    purpose: '正常',
+    cableType: '光纤',
+    strokeColor: '#35e6ff',
+    count: 1,
+    sourceRackId: 'rack-a',
+    targetRackId: 'rack-b',
+    route: [{ x: 0, y }, { x: 1000, y }],
+    opacity: 1,
+    highlighted: false,
+    animated,
+    isAggregated: false,
+    memberIds: [id],
+    direction: 'forward',
+  })
+
+  function mountDeviceCableCanvas(options: {
+    bundles?: CableBundle[]
+    animationEnabled?: boolean
+    onBundleClick?: (bundleId: string) => void
+    onBundleHover?: (payload: { bundleId: string; clientX: number; clientY: number }) => void
+  } = {}) {
+    let nextFrameId = 1
+    vi.stubGlobal('window', {
+      devicePixelRatio: 2,
+      matchMedia: vi.fn().mockReturnValue({ matches: false }),
+    })
+    vi.stubGlobal('requestAnimationFrame', vi.fn(() => nextFrameId++))
+    vi.stubGlobal('cancelAnimationFrame', vi.fn())
+    if (typeof ResizeObserver === 'undefined') {
+      vi.stubGlobal('ResizeObserver', class {
+        observe = vi.fn()
+        unobserve = vi.fn()
+        disconnect = vi.fn()
+      })
+    }
+    const context = new Proxy({} as CanvasRenderingContext2D, {
+      get(target, key) {
+        if (!(key in target)) Reflect.set(target, key, vi.fn())
+        return Reflect.get(target, key)
+      },
+      set(target, key, value) {
+        Reflect.set(target, key, value)
+        return true
+      },
+    })
+    const bounds = { left: 10, top: 10, width: 500, height: 300 }
+    let canvasNode: CanvasHostNode | null = null
+    const makeNode = (type: string): CanvasHostNode => ({
+      type,
+      parent: null,
+      children: [],
+      props: {},
+      text: '',
+      width: 0,
+      height: 0,
+      clientWidth: type === 'canvas' ? 1000 : 0,
+      clientHeight: type === 'canvas' ? 600 : 0,
+      getBoundingClientRect: () => ({
+        ...bounds,
+        x: bounds.left,
+        y: bounds.top,
+        right: bounds.left + bounds.width,
+        bottom: bounds.top + bounds.height,
+        toJSON: () => ({}),
+      }),
+      getContext: () => context,
+    })
+    const renderer = createRenderer<CanvasHostNode, CanvasHostNode>({
+      patchProp(node, key, _previous, next) {
+        node.props[key] = next
+      },
+      insert(node, parent, anchor) {
+        node.parent = parent
+        const index = anchor ? parent.children.indexOf(anchor) : -1
+        if (index < 0) parent.children.push(node)
+        else parent.children.splice(index, 0, node)
+      },
+      remove(node) {
+        if (!node.parent) return
+        const index = node.parent.children.indexOf(node)
+        if (index >= 0) node.parent.children.splice(index, 1)
+        node.parent = null
+      },
+      createElement(type) {
+        const node = makeNode(type)
+        if (type === 'canvas') canvasNode = node
+        return node
+      },
+      createText(text) {
+        const node = makeNode('#text')
+        node.text = text
+        return node
+      },
+      createComment(text) {
+        const node = makeNode('#comment')
+        node.text = text
+        return node
+      },
+      setText(node, text) {
+        node.text = text
+      },
+      setElementText(node, text) {
+        node.text = text
+      },
+      parentNode: (node) => node.parent,
+      nextSibling(node) {
+        if (!node.parent) return null
+        const index = node.parent.children.indexOf(node)
+        return node.parent.children[index + 1] ?? null
+      },
+      querySelector: () => null,
+      setScopeId: () => undefined,
+      cloneNode: (node) => ({ ...node, children: [...node.children] }),
+      insertStaticContent: () => {
+        const node = makeNode('#static')
+        return [node, node]
+      },
+    })
+    const root = makeNode('#root')
+    const scene: CableScene = {
+      bundles: options.bundles ?? [bundle('bundle-a', 300)],
+      highlightedPath: null,
+      legend: [],
+      detailRows: [],
+      breadcrumbs: [],
+    }
+    type CanvasSetup = {
+      canvas: { value: HTMLCanvasElement | null }
+      onPointerMove: (event: PointerEvent) => void
+      onPointerLeave: () => void
+      onCanvasClick: (event: MouseEvent) => void
+    }
+    type SetupComponent = {
+      setup: (props: unknown, context: unknown) => CanvasSetup
+    }
+    const component = DeviceCableCanvas as unknown as SetupComponent
+    const clientComponent = {
+      ...DeviceCableCanvas,
+      ssrRender: undefined,
+      setup(props: unknown, context: unknown) {
+        const state = component.setup(props, context)
+        return () => h('canvas', {
+          ref: state.canvas,
+          onPointermove: state.onPointerMove,
+          onPointerleave: state.onPointerLeave,
+          onClick: state.onCanvasClick,
+        })
+      },
+    }
+    const app = renderer.createApp(clientComponent, {
+      scene,
+      animationEnabled: options.animationEnabled ?? false,
+      onBundleClick: options.onBundleClick,
+      onBundleHover: options.onBundleHover,
+    })
+    app.provide(ssrContextKey, { modules: new Set<string>() })
+    app.mount(root)
+    if (!canvasNode) throw new Error('DeviceCableCanvas did not render a canvas')
+    return { app, canvas: canvasNode as CanvasHostNode }
+  }
+
+  it('device-only Canvas keeps scaled bounds out of DPR backing-size calculations', () => {
+    const mounted = mountDeviceCableCanvas()
+
+    expect(mounted.canvas.width).toBe(2000)
+    expect(mounted.canvas.height).toBe(1200)
+
+    mounted.app.unmount()
+  })
+
+  it('device-only Canvas maps scaled coordinates and hits the last bundle at the 7px boundary', () => {
+    const onBundleClick = vi.fn()
+    const onBundleHover = vi.fn()
+    const mounted = mountDeviceCableCanvas({
+      bundles: [bundle('lower-scene-order', 286), bundle('top-scene-order', 300)],
+      onBundleClick,
+      onBundleHover,
+    })
+    const pointer = { clientX: 260, clientY: 156.5 }
+
+    ;(mounted.canvas.props.onPointermove as (event: PointerEvent) => void)(pointer as PointerEvent)
+    ;(mounted.canvas.props.onClick as (event: MouseEvent) => void)(pointer as MouseEvent)
+
+    expect(onBundleHover).toHaveBeenCalledWith({
+      bundleId: 'top-scene-order',
+      clientX: 260,
+      clientY: 156.5,
+    })
+    expect(onBundleClick).toHaveBeenCalledWith('top-scene-order')
+
+    mounted.app.unmount()
+  })
+
+  it('device-only Canvas uses ResizeObserver size and cleans up observer and animation frames', () => {
+    let observerCallback: ResizeObserverCallback | null = null
+    const disconnect = vi.fn()
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(callback: ResizeObserverCallback) {
+        observerCallback = callback
+      }
+      observe = vi.fn()
+      unobserve = vi.fn()
+      disconnect = disconnect
+    })
+    const mounted = mountDeviceCableCanvas({
+      bundles: [bundle('animated', 300, true)],
+      animationEnabled: true,
+    })
+
+    observerCallback?.([{
+      contentRect: { width: 800, height: 400 },
+    } as ResizeObserverEntry], {} as ResizeObserver)
+    expect(mounted.canvas.width).toBe(1600)
+    expect(mounted.canvas.height).toBe(800)
+
+    mounted.app.unmount()
+    expect(disconnect).toHaveBeenCalledOnce()
+    expect(cancelAnimationFrame).toHaveBeenCalledTimes(2)
   })
 })
 
