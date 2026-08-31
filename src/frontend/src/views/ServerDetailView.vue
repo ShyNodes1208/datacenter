@@ -377,7 +377,7 @@ function goToServer(id: string | null): void {
 }
 
 function goToTrace(portId: string): void {
-  router.push({ path: '/network-trace', query: { sourcePortId: portId } })
+  router.push({ path: '/network-trace', query: { sourcePortId: portId, sourceServerId: serverId.value } })
 }
 
 onMounted(() => {

@@ -126,7 +126,7 @@ describe('ServerDetailView port connections', () => {
 
       expect(pushMock).toHaveBeenCalledWith({
         path: '/network-trace',
-        query: { sourcePortId: 'connected-port' },
+        query: { sourcePortId: 'connected-port', sourceServerId: 'source-server' },
       })
     } finally {
       component.setup = originalSetup

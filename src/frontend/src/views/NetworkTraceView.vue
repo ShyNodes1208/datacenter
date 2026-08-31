@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '../composables/useApi'
 import {
@@ -13,6 +13,11 @@ type TargetServer = {
   name: string
 }
 
+type TraceSource = {
+  serverName: string
+  portName: string
+}
+
 const route = useRoute()
 const router = useRouter()
 const { request } = useApi()
@@ -20,6 +25,10 @@ const { findPath, findReachable: requestReachable } = useNetworkTrace()
 
 const sourcePortId = computed(() => {
   const value = route.query.sourcePortId
+  return typeof value === 'string' ? value : ''
+})
+const sourceServerId = computed(() => {
+  const value = route.query.sourceServerId
   return typeof value === 'string' ? value : ''
 })
 const mode = ref<'known' | 'reachable'>('known')
@@ -31,6 +40,8 @@ const reachablePath = ref<ReachableNetworkPath | null>(null)
 const maxHops = ref(4)
 const error = ref('')
 const loading = ref(false)
+const source = ref<TraceSource | null>(null)
+const sourceError = ref('')
 
 const activePath = computed(() => knownPath.value)
 
@@ -39,6 +50,60 @@ function parseTargetServer(value: unknown): TargetServer | null {
   const record = value as Record<string, unknown>
   if (typeof record.id !== 'string' || typeof record.name !== 'string') return null
   return { id: record.id, name: record.name }
+}
+
+function parseSourceServerName(value: unknown, expectedId: string): string | null {
+  if (value === null || typeof value !== 'object') return null
+  const record = value as Record<string, unknown>
+  if (record.id !== expectedId || typeof record.name !== 'string') return null
+  return record.name
+}
+
+function findSourcePortName(value: unknown, expectedId: string): string | null {
+  if (!Array.isArray(value)) return null
+  for (const item of value) {
+    if (item === null || typeof item !== 'object') continue
+    const record = item as Record<string, unknown>
+    if (record.id === expectedId && typeof record.portName === 'string') return record.portName
+  }
+  return null
+}
+
+async function loadSource(): Promise<void> {
+  source.value = null
+  sourceError.value = ''
+  if (!sourcePortId.value || !sourceServerId.value) {
+    sourceError.value = '缺少起点端口或来源设备'
+    return
+  }
+
+  const serverResult = await request<unknown>(
+    `/api/servers/${encodeURIComponent(sourceServerId.value)}`,
+    { method: 'GET' },
+  )
+  const serverName = serverResult.ok ? parseSourceServerName(serverResult.data, sourceServerId.value) : null
+  if (!serverName) {
+    sourceError.value = '无法验证来源设备'
+    return
+  }
+
+  const portsResult = await request<unknown>(
+    `/api/servers/${encodeURIComponent(sourceServerId.value)}/ports`,
+    { method: 'GET' },
+  )
+  const portName = portsResult.ok ? findSourcePortName(portsResult.data, sourcePortId.value) : null
+  if (!portName) {
+    sourceError.value = '起点端口不属于来源设备，无法追踪'
+    return
+  }
+
+  source.value = { serverName, portName }
+}
+
+function requireVerifiedSource(): boolean {
+  if (source.value) return true
+  error.value = sourceError.value || '正在验证起点端口'
+  return false
 }
 
 async function searchTargets(): Promise<void> {
@@ -63,8 +128,7 @@ function selectTarget(id: string): void {
 async function findKnownPath(): Promise<void> {
   error.value = ''
   knownPath.value = null
-  if (!sourcePortId.value) {
-    error.value = '缺少起点端口'
+  if (!requireVerifiedSource()) {
     return
   }
   if (!selectedTarget.value) {
@@ -85,8 +149,7 @@ async function findKnownPath(): Promise<void> {
 async function findReachable(): Promise<void> {
   error.value = ''
   reachablePath.value = null
-  if (!sourcePortId.value) {
-    error.value = '缺少起点端口'
+  if (!requireVerifiedSource()) {
     return
   }
 
@@ -111,6 +174,10 @@ async function selectEndpoint(deviceId: string): Promise<void> {
 function goToServer(id: string): void {
   router.push(`/servers/${encodeURIComponent(id)}`)
 }
+
+onMounted(() => {
+  void loadSource()
+})
 </script>
 
 <template>
@@ -118,7 +185,9 @@ function goToServer(id: string): void {
     <p class="breadcrumb"><a href="#" @click.prevent="router.back()">返回设备详情</a> &gt; 线路追踪</p>
     <h2>线路追踪</h2>
     <p class="notice">已登记物理连接，非实时数据。</p>
-    <p v-if="!sourcePortId" class="error" role="alert">缺少起点端口</p>
+    <p v-if="source" class="source-label">起点：{{ source.serverName }} / {{ source.portName }}</p>
+    <p v-else-if="sourceError" class="error" role="alert">{{ sourceError }}</p>
+    <p v-else class="muted">正在验证起点端口...</p>
 
     <div class="tabs" role="tablist" aria-label="追踪模式">
       <button type="button" :class="{ active: mode === 'known' }" @click="mode = 'known'">已知目标</button>
@@ -141,7 +210,7 @@ function goToServer(id: string): void {
         >{{ target.name }}</button>
       </div>
       <p v-if="selectedTarget">目标：{{ selectedTarget.name }}</p>
-      <button type="button" class="btn btn--primary" :disabled="loading" @click="findKnownPath">追踪路径</button>
+      <button type="button" class="btn btn--primary" :disabled="loading || !source" @click="findKnownPath">追踪路径</button>
     </section>
 
     <section v-else class="card">
@@ -149,7 +218,7 @@ function goToServer(id: string): void {
         最大跳数
         <input v-model.number="maxHops" type="number" min="1" max="10" />
       </label>
-      <button type="button" class="btn btn--primary" :disabled="loading" @click="findReachable">发现终点</button>
+      <button type="button" class="btn btn--primary" :disabled="loading || !source" @click="findReachable">发现终点</button>
       <p v-if="reachablePath" class="muted">
         已显示 {{ reachablePath.returnedEndpointCount }} / 共 {{ reachablePath.totalEndpointCount }} 个终点
       </p>
@@ -192,6 +261,7 @@ function goToServer(id: string): void {
 .breadcrumb a { color: var(--color-primary); text-decoration: none; }
 .notice, .warning, .error { margin: var(--space-sm) 0; }
 .notice { color: var(--color-text-secondary); }
+.source-label { margin: var(--space-sm) 0; font-weight: 600; }
 .warning { color: #b8731f; }
 .error { color: var(--color-danger); }
 .tabs, .target-list { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin: var(--space-md) 0; }

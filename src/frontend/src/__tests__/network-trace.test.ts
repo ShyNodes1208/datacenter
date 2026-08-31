@@ -5,6 +5,10 @@ import NetworkTraceView from '../views/NetworkTraceView.vue'
 import { useNetworkTrace } from '../composables/useNetworkTrace'
 
 const requestMock = vi.fn()
+const routeQuery: Record<string, string> = {
+  sourcePortId: 'source-port',
+  sourceServerId: 'source-server',
+}
 
 vi.mock('../composables/useApi', () => ({
   useApi: () => ({
@@ -16,7 +20,7 @@ vi.mock('vue-router', async () => {
   const actual = await vi.importActual<typeof import('vue-router')>('vue-router')
   return {
     ...actual,
-    useRoute: () => ({ query: { sourcePortId: 'source-port' } }),
+    useRoute: () => ({ query: routeQuery }),
     useRouter: () => ({ push: vi.fn() }),
   }
 })
@@ -27,12 +31,26 @@ type NetworkTraceViewState = {
   searchTargets: () => Promise<void>
   selectTarget: (id: string) => void
   selectEndpoint: (deviceId: string) => Promise<void>
+  loadSource: () => Promise<void>
   findKnownPath: () => Promise<void>
   findReachable: () => Promise<void>
 }
 
 function success(data: unknown) {
   return { ok: true as const, data, headers: new Headers(), status: 200 }
+}
+
+function sourceResponse(path: string, portId = 'source-port') {
+  if (path === '/api/servers/source-server') {
+    return success({
+      id: 'source-server', name: 'Source Server', managementIP: '10.0.0.1',
+      deviceType: '服务器', deviceHeight: 1, operationalStatus: '正常', positionStatus: '在架',
+    })
+  }
+  if (path === '/api/servers/source-server/ports') {
+    return success([{ id: portId, serverId: 'source-server', portName: 'eth0', portType: 'RJ45' }])
+  }
+  return null
 }
 
 async function mountTraceView(): Promise<{
@@ -69,6 +87,8 @@ async function mountTraceView(): Promise<{
 
 afterEach(() => {
   requestMock.mockReset()
+  routeQuery.sourcePortId = 'source-port'
+  routeQuery.sourceServerId = 'source-server'
 })
 
 describe('useNetworkTrace', () => {
@@ -93,8 +113,43 @@ describe('useNetworkTrace', () => {
 })
 
 describe('NetworkTraceView', () => {
+  it('fixedly shows the verified source device and port before any search', async () => {
+    requestMock.mockImplementation((path: string) => sourceResponse(path) ?? success([]))
+
+    const view = await mountTraceView()
+    try {
+      await view.state.loadSource()
+
+      expect(await view.html()).toContain('起点：Source Server / eth0')
+      expect(requestMock).toHaveBeenCalledWith('/api/servers/source-server', { method: 'GET' })
+      expect(requestMock).toHaveBeenCalledWith('/api/servers/source-server/ports', { method: 'GET' })
+    } finally {
+      view.unmount()
+    }
+  })
+
+  it('blocks trace requests when the route source port is not owned by the source device', async () => {
+    requestMock.mockImplementation((path: string) => sourceResponse(path, 'different-port') ?? success([]))
+
+    const view = await mountTraceView()
+    try {
+      await view.state.loadSource()
+      await view.state.findReachable()
+
+      expect(await view.html()).toContain('起点端口不属于来源设备，无法追踪')
+      expect(requestMock).not.toHaveBeenCalledWith(
+        '/api/network-path/reachable?sourcePortId=source-port&maxHops=4&limit=100',
+        { method: 'GET' },
+      )
+    } finally {
+      view.unmount()
+    }
+  })
+
   it('searches target devices by name and renders the selected physical path', async () => {
     requestMock.mockImplementation((path: string) => {
+      const source = sourceResponse(path)
+      if (source) return source
       if (path === '/api/servers?name=Target') {
         return success([{
           id: 'target-server', name: 'Target Server', managementIP: '10.0.0.3',
@@ -122,6 +177,7 @@ describe('NetworkTraceView', () => {
 
     const view = await mountTraceView()
     try {
+      await view.state.loadSource()
       view.state.searchName.value = 'Target'
       await view.state.searchTargets()
       view.state.selectTarget('target-server')
@@ -141,17 +197,14 @@ describe('NetworkTraceView', () => {
   })
 
   it('shows the fixed discovery limit when the API truncates endpoints', async () => {
-    requestMock.mockReturnValue(success({
-      warning: '已登记物理连接，非实时数据',
-      maxHops: 4,
-      totalEndpointCount: 135,
-      returnedEndpointCount: 100,
-      isTruncated: true,
-      endpoints: [],
+    requestMock.mockImplementation((path: string) => sourceResponse(path) ?? success({
+      warning: '已登记物理连接，非实时数据', maxHops: 4,
+      totalEndpointCount: 135, returnedEndpointCount: 100, isTruncated: true, endpoints: [],
     }))
 
     const view = await mountTraceView()
     try {
+      await view.state.loadSource()
       view.state.mode.value = 'reachable'
       await view.state.findReachable()
       expect(await view.html()).toContain('已显示 100 / 共 135 个终点')
@@ -162,6 +215,8 @@ describe('NetworkTraceView', () => {
 
   it('traces the selected discovered endpoint as a known target path', async () => {
     requestMock.mockImplementation((path: string) => {
+      const source = sourceResponse(path)
+      if (source) return source
       if (path.includes('/reachable?')) {
         return success({
           warning: '已登记物理连接，非实时数据', maxHops: 4,
@@ -185,6 +240,7 @@ describe('NetworkTraceView', () => {
 
     const view = await mountTraceView()
     try {
+      await view.state.loadSource()
       view.state.mode.value = 'reachable'
       await view.state.findReachable()
       await view.state.selectEndpoint('target-server')
