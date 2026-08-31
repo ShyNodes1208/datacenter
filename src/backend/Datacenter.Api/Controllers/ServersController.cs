@@ -652,6 +652,62 @@ public sealed class ServersController(AppDbContext dbContext, IAntiforgery antif
         return Ok(records);
     }
 
+    [HttpGet("audit-records")]
+    public async Task<IActionResult> GetGlobalAuditRecords(
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] string? operatorUsername,
+        [FromQuery] string? operationType,
+        [FromQuery] string? serverName,
+        CancellationToken cancellationToken)
+    {
+        IQueryable<AuditRecord> query = dbContext.AuditRecords.AsNoTracking();
+
+        if (from.HasValue)
+        {
+            query = query.Where(record => record.OperatedAt >= from.Value.Date);
+        }
+
+        if (to.HasValue)
+        {
+            var nextDay = to.Value.Date.AddDays(1);
+            query = query.Where(record => record.OperatedAt < nextDay);
+        }
+
+        if (!string.IsNullOrWhiteSpace(operatorUsername))
+        {
+            query = query.Where(record => record.OperatorUsername == operatorUsername.Trim());
+        }
+
+        if (!string.IsNullOrWhiteSpace(operationType))
+        {
+            query = query.Where(record => record.OperationType == operationType.Trim());
+        }
+
+        if (!string.IsNullOrWhiteSpace(serverName))
+        {
+            query = query.Where(record => EF.Functions.Like(record.Server.Name, $"%{serverName.Trim()}%"));
+        }
+
+        var records = await query
+            .OrderByDescending(record => record.OperatedAt)
+            .Select(record => new
+            {
+                record.Id,
+                record.ServerId,
+                ServerName = record.Server.Name,
+                record.OperationType,
+                record.FromPosition,
+                record.ToPosition,
+                record.OperatorUsername,
+                record.OperatedAt,
+                record.Notes
+            })
+            .ToListAsync(cancellationToken);
+
+        return Ok(records);
+    }
+
     [HttpPost("import-batch")]
     [RequestSizeLimit(10_000_000)]
     public async Task<IActionResult> ImportBatch(IFormFile file, CancellationToken cancellationToken)

@@ -1514,6 +1514,65 @@ public sealed class ServerPositionIntegrationTests(AuthTestFixture fixture)
     }
 
     [Fact]
+    public async Task GetGlobalAuditRecords_FiltersOrdersAndReturnsExactFields()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        var matchingServer = new Server
+        {
+            Name = "api-01",
+            ManagementIP = "10.0.0.1",
+            DeviceType = "机架式服务器",
+            DeviceHeight = 1
+        };
+        var otherServer = new Server
+        {
+            Name = "web-01",
+            ManagementIP = "10.0.0.2",
+            DeviceType = "机架式服务器",
+            DeviceHeight = 1
+        };
+        await ReplaceDataAsync([room], [], [matchingServer, otherServer], []);
+        await AddAuditRecordsAsync(
+        [
+            new AuditRecord { ServerId = matchingServer.Id, OperationType = "移动", FromPosition = "R001 U1-U1", ToPosition = "R002 U2-U2", OperatorUsername = "operator-a", OperatedAt = new DateTime(2026, 8, 31, 23, 59, 59, DateTimeKind.Utc), Notes = "latest" },
+            new AuditRecord { ServerId = matchingServer.Id, OperationType = "移动", FromPosition = "R002 U2-U2", ToPosition = "R003 U3-U3", OperatorUsername = "operator-a", OperatedAt = new DateTime(2026, 8, 30, 12, 0, 0, DateTimeKind.Utc), Notes = "older" },
+            new AuditRecord { ServerId = matchingServer.Id, OperationType = "移动", OperatorUsername = "operator-a", OperatedAt = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new AuditRecord { ServerId = matchingServer.Id, OperationType = "上架", OperatorUsername = "operator-a", OperatedAt = new DateTime(2026, 8, 31, 12, 0, 0, DateTimeKind.Utc) },
+            new AuditRecord { ServerId = otherServer.Id, OperationType = "移动", OperatorUsername = "operator-a", OperatedAt = new DateTime(2026, 8, 31, 12, 0, 0, DateTimeKind.Utc) }
+        ]);
+
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.ReadOnlyViewer);
+
+        using var response = await client.GetAsync("/api/servers/audit-records?from=2026-08-30&to=2026-08-31&operatorUsername=operator-a&operationType=%E7%A7%BB%E5%8A%A8&serverName=api-01");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        var records = document.RootElement.EnumerateArray().ToArray();
+        Assert.Equal(2, records.Length);
+        Assert.Equal("latest", records[0].GetProperty("notes").GetString());
+        Assert.Equal("older", records[1].GetProperty("notes").GetString());
+        Assert.Equal(matchingServer.Id, records[0].GetProperty("serverId").GetGuid());
+        Assert.Equal("api-01", records[0].GetProperty("serverName").GetString());
+        Assert.Equal("移动", records[0].GetProperty("operationType").GetString());
+        Assert.Equal("R001 U1-U1", records[0].GetProperty("fromPosition").GetString());
+        Assert.Equal("R002 U2-U2", records[0].GetProperty("toPosition").GetString());
+        Assert.Equal("operator-a", records[0].GetProperty("operatorUsername").GetString());
+        Assert.Equal(new DateTime(2026, 8, 31, 23, 59, 59, DateTimeKind.Utc), records[0].GetProperty("operatedAt").GetDateTime());
+        Assert.True(records[0].TryGetProperty("id", out _));
+    }
+
+    [Fact]
+    public async Task GetGlobalAuditRecords_AnonymousReturns401()
+    {
+        using var client = fixture.CreateClient();
+
+        using var response = await client.GetAsync("/api/servers/audit-records");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
     public async Task FullLifecycleProducesThreeAuditRecords()
     {
         var room = new Room { Name = "主机房", Status = "启用" };
@@ -1573,6 +1632,14 @@ public sealed class ServerPositionIntegrationTests(AuthTestFixture fixture)
         return await dbContext.ServerPositions
             .AsNoTracking()
             .FirstOrDefaultAsync(position => position.ServerId == serverId && position.Status == "在架");
+    }
+
+    private async Task AddAuditRecordsAsync(IReadOnlyCollection<AuditRecord> records)
+    {
+        await using var scope = fixture.Factory.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        dbContext.AuditRecords.AddRange(records);
+        await dbContext.SaveChangesAsync();
     }
 
     private async Task<Server?> FindServerAsync(Guid serverId)
