@@ -4,7 +4,7 @@
 
 ## 基本信息
 
-- Status：IN_PROGRESS
+- Status：READY_FOR_REVIEW
 - Owner：Cursor Developer
 - Reviewer：Codex Reviewer
 - Branch：`feature/TASK-20260831-rack-capacity-audit`
@@ -103,6 +103,14 @@ git diff --check
 |---|---|---|---|---|
 | 2026-08-31 | Codex + Terra | DRAFT | READY | 用户确认最小方案；范围、验收、Owner、Reviewer 与验证命令完整。 |
 | 2026-08-31 | Cursor Developer | READY | IN_PROGRESS | 无活跃模块锁与 Task 1 四个允许路径冲突；已登记 CLAIMED 锁。 |
+| 2026-09-01 | Cursor Developer | IN_PROGRESS | READY_FOR_REVIEW | 实现提交 `f1949f2`、`33c39e3`、`179b55b`、`67861c6`；九项实施锁已 `CLAIMED → HANDED_OFF`；`dotnet test tests/backend/Datacenter.Api.Tests/ --no-restore` 224/224 PASS，`git diff --check` PASS。 |
+
+## 实现交接
+
+- 交接给：Codex Reviewer（只读独立审核；不得成为实现 Owner）。
+- 已修改路径：允许修改清单中的九个实现/测试路径；状态和锁交接文件为本次本地提交内容。
+- 已知限制：完整前端浏览器测试仍依赖既有 Vite 前置条件；`ServersController.cs:740` 保留既有 CS7095 编译警告。
+- 当前限制：Reviewer 结论前 Owner 不得继续修改上述九项实施路径；锁保持 `HANDED_OFF`，不得释放或标记 `COMPLETED`。
 
 ## 防过度开发检查
 

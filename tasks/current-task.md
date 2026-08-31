@@ -1,6 +1,6 @@
 ﻿# Current Task
 
-- Status：READY（2026-08-31；TASK-20260831-rack-capacity-audit）
+- Status：READY_FOR_REVIEW（2026-09-01；TASK-20260831-rack-capacity-audit）
 - Branch：feature/TASK-20260831-rack-capacity-audit
 - Owner：Cursor Developer；Reviewer：Codex Reviewer
 - Requirement：找可用机柜与最小全局变更记录。
@@ -25,11 +25,14 @@
 ## 当前状态
 
 - 当前任务：`TASK-20260831-rack-capacity-audit` — 找可用机柜与全局变更记录。
-- 状态：`READY`；Owner：Cursor Developer；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
+- 状态：`READY_FOR_REVIEW`；Owner：Cursor Developer；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
 - 范围：复用机房机柜摘要计算连续空位；新增只读全局审计查询与页面。
 - 不做：数据库/迁移/依赖、精确历史机房或机柜筛选、导出、分页、自动上架、Windows 安装包。
 - 当前任务规格：`tasks/TASK-20260831-rack-capacity-audit.md`。
 - 基线证据：前端 224/224、后端 222/222 通过；仅有既有 CS7095 编译警告。
+- 实现提交：`f1949f2`、`33c39e3`、`179b55b`、`67861c6`；九项实施锁已交接为 `HANDED_OFF`，等待 Codex Reviewer 独立审核。
+- 验证：`dotnet test tests/backend/Datacenter.Api.Tests/ --no-restore` 224/224 PASS；`git diff --check` PASS。
+- 已知限制：完整前端浏览器测试仍需要既有 Vite 前置条件；`ServersController.cs:740` 保留既有 CS7095 编译警告。
 
 ## 数据概览
 
