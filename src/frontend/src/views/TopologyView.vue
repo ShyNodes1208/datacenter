@@ -1985,7 +1985,9 @@ function drawDeviceScene(): void {
   })
 
   applyDeviceViewportMode(true)
-  const key = deviceSnapshotKey(originalSnapshot)
+  // Fit against the rendered snapshot so entering a device focus produces a
+  // fresh centered viewport for the reduced reachable topology.
+  const key = deviceSnapshotKey(scopedSnapshot)
   // Skip nested auto-fit while applyFitTransform is redrawing semantics.
   if (fitSemanticRedrawDepth > 0) {
     syncDeviceOverlay()

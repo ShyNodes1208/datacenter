@@ -3685,4 +3685,16 @@ describe('TASK-20260814-140520 corridor routing + rack focus', () => {
     expect(body).toContain('if (semanticZoomChanged(beforeSemantic, afterSemantic)) drawScene()')
     expect(body).not.toMatch(/stage\.batchDraw\(\)\s*\n\s*drawScene\(\)/)
   })
+
+  it('TASK-20260831-FOCUS-CENTER: filtered device snapshots trigger a fresh viewport fit', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const start = source.indexOf('function drawDeviceScene()')
+    const body = source.slice(start, source.indexOf('function drawRoomPlatform(', start))
+
+    expect(body).toContain('const scopedSnapshot = focusDeviceId.value')
+    expect(body).toMatch(/const key = deviceSnapshotKey\(scopedSnapshot\)/)
+    expect(body).toContain('if (deviceFitAppliedForSnapshot !== key)')
+  })
 })
