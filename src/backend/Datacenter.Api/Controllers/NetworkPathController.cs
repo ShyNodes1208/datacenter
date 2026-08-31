@@ -185,6 +185,7 @@ public sealed class NetworkPathController(AppDbContext dbContext) : ControllerBa
 
         var queue = new Queue<(Guid DeviceId, List<PathHop> Hops)>();
         var visitedDevices = new HashSet<Guid> { sourceServerId };
+        var traversalStoppedByHopLimit = false;
 
         foreach (var candidate in GetOrderedCandidates(topology, [topology.Ports.First(port => port.Id == sourcePortId)]))
         {
@@ -217,10 +218,19 @@ public sealed class NetworkPathController(AppDbContext dbContext) : ControllerBa
         while (queue.Count > 0)
         {
             var (currentDeviceId, currentHops) = queue.Dequeue();
-            if (currentHops.Count >= 10 || !topology.ServerToPorts.TryGetValue(currentDeviceId, out var currentPorts))
+            if (!topology.ServerToPorts.TryGetValue(currentDeviceId, out var currentPorts))
                 continue;
 
-            foreach (var candidate in GetOrderedCandidates(topology, currentPorts))
+            var candidates = GetOrderedCandidates(topology, currentPorts);
+            if (currentHops.Count >= 10)
+            {
+                traversalStoppedByHopLimit |= candidates.Any(candidate =>
+                    candidate.NeighborDeviceId != currentDeviceId
+                    && !visitedDevices.Contains(candidate.NeighborDeviceId));
+                continue;
+            }
+
+            foreach (var candidate in candidates)
             {
                 if (candidate.NeighborDeviceId == currentDeviceId
                     || (candidate.NeighborDeviceId != targetServerId
@@ -252,7 +262,7 @@ public sealed class NetworkPathController(AppDbContext dbContext) : ControllerBa
         return Ok(new NetworkPathResponse(
             false,
             "已登记连接拓扑示意，不代表实时数据包路由",
-            "未找到已登记的连接路径",
+            traversalStoppedByHopLimit ? "已达到十跳搜索上限，未找到目标设备" : "未找到已登记的连接路径",
             null,
             null));
     }

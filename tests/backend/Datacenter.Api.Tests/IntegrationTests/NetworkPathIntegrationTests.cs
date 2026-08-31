@@ -69,6 +69,23 @@ public sealed class NetworkPathIntegrationTests(AuthTestFixture fixture)
     }
 
     [Fact]
+    public async Task FindPathByPortExplainsWhenTheTargetRequiresMoreThanTenHops()
+    {
+        var topology = await SeedHopLimitTopologyAsync();
+        using var client = fixture.CreateClient();
+        await LoginAsReadOnlyViewerAsync(client);
+
+        using var response = await client.GetAsync(
+            $"/api/network-path/by-port?sourcePortId={topology.SourcePortId}&targetServerId={topology.TargetServerId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
+        Assert.False(document.RootElement.GetProperty("pathFound").GetBoolean());
+        Assert.Equal("已达到十跳搜索上限，未找到目标设备", document.RootElement.GetProperty("reason").GetString());
+        await ClearTopologyAsync();
+    }
+
+    [Fact]
     public async Task FindReachableUsesDefaultFourHopsAndReportsReachableEndpoints()
     {
         var topology = await SeedPathTopologyAsync();
@@ -208,6 +225,37 @@ public sealed class NetworkPathIntegrationTests(AuthTestFixture fixture)
 
         await ReplaceTopologyAsync([room], [rack], servers, positions, ports, cables);
         return new PathTopology(sourcePort.Id, Guid.Empty, Guid.Empty);
+    }
+
+    private async Task<PathTopology> SeedHopLimitTopologyAsync()
+    {
+        var room = new Room { Name = "hop-limit-room", Status = "启用" };
+        var rack = new Rack { RoomId = room.Id, Code = "H-01", HeightU = 42, X = 0, Y = 0, Z = 0 };
+        var source = NewServer("hop-limit-source", "服务器", "10.10.0.1");
+        var target = NewServer("hop-limit-target", "服务器", "10.10.0.2");
+        var sourcePort = NewPort(source, "eth0");
+        var ports = new List<Port> { sourcePort };
+        var servers = new List<Server> { source, target };
+        var cables = new List<Cable>();
+        var previousPort = sourcePort;
+
+        for (var index = 1; index <= 10; index++)
+        {
+            var networkDevice = NewServer($"hop-limit-switch-{index:D2}", "交换机", $"10.10.1.{index}");
+            var ingressPort = NewPort(networkDevice, "ingress");
+            var egressPort = NewPort(networkDevice, "egress");
+            servers.Add(networkDevice);
+            ports.AddRange([ingressPort, egressPort]);
+            cables.Add(NewCable(previousPort, ingressPort));
+            previousPort = egressPort;
+        }
+
+        var targetPort = NewPort(target, "eth0");
+        ports.Add(targetPort);
+        cables.Add(NewCable(previousPort, targetPort));
+
+        await ReplaceTopologyAsync([room], [rack], servers, [], ports, cables);
+        return new PathTopology(sourcePort.Id, target.Id, Guid.Empty);
     }
 
     private async Task ReplaceTopologyAsync(
