@@ -1569,6 +1569,73 @@ describe('auth redirect route guards (U14-D)', () => {
   })
 })
 
+describe('AuditRecordsView (TASK-20260831-rack-capacity-audit)', () => {
+  it('provides the protected global audit route and renders filtered audit records', async () => {
+    requestMock.mockResolvedValue({
+      ok: true,
+      data: [{
+        id: 'audit-1', serverId: 'server/a', serverName: '服务器 A', operationType: '移动',
+        fromPosition: null, toPosition: 'A01-12U', operatorUsername: 'operator',
+        operatedAt: '2026-08-31T12:00:00Z', notes: '调整位置',
+      }],
+      headers: new Headers(),
+      status: 200,
+    })
+
+    vi.resetModules()
+    const { router } = await import('../router')
+    const route = router.getRoutes().find((item) => item.path === '/audit-records')
+
+    expect(route?.meta.requiresAuth).toBe(true)
+
+    const { default: AuditRecordsView } = await import('../views/AuditRecordsView.vue')
+    type SetupFn = (...args: unknown[]) => Record<string, unknown>
+    const component = AuditRecordsView as { setup: SetupFn }
+    const originalSetup = component.setup
+    let bindings: Record<string, unknown> | null = null
+    component.setup = (props, ctx) => {
+      if (bindings) return bindings
+      bindings = originalSetup(props, ctx)
+      return bindings
+    }
+
+    try {
+      const render = async () => renderToString(createSSRApp(AuditRecordsView))
+      await render()
+      if (bindings === null) throw new Error('AuditRecordsView setup bindings were not captured')
+      const state = bindings as unknown as {
+        loadRecords: () => Promise<void>
+      }
+      const write = (name: string, value: string): void => {
+        ;(bindings![name] as { value: string }).value = value
+      }
+      write('from', '2026-08-01')
+      write('operatorUsername', 'operator')
+      write('operationType', '移动')
+      write('serverName', '服务器 A')
+
+      await state.loadRecords()
+
+      expect(requestMock).toHaveBeenCalledWith(
+        '/api/servers/audit-records?from=2026-08-01&operatorUsername=operator&operationType=%E7%A7%BB%E5%8A%A8&serverName=%E6%9C%8D%E5%8A%A1%E5%99%A8+A',
+        { method: 'GET' },
+      )
+      const html = await render()
+      expect(html).toContain('name="from"')
+      expect(html).toContain('name="to"')
+      expect(html).toContain('name="operatorUsername"')
+      expect(html).toContain('name="operationType"')
+      expect(html).toContain('name="serverName"')
+      expect(html).toContain('服务器 A')
+      expect(html).toContain('A01-12U')
+      expect(html).toContain('调整位置')
+      expect(html).toContain('>-</td>')
+    } finally {
+      component.setup = originalSetup
+    }
+  })
+})
+
 describe('route guard init wait (U14-E)', () => {
   async function loadAppRouter() {
     vi.resetModules()
