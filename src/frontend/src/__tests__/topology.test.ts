@@ -9,6 +9,7 @@ import {
 } from '../composables/useTopology'
 import {
   buildCableScene,
+  filterSnapshotToReachableDevices,
   buildPortSlotMap,
   buildSamePortExitOffsets,
   buildUniquePortLabelPlacements,
@@ -952,6 +953,47 @@ describe('CR-002 visual fidelity (T-01 to T-20)', () => {
     expect(snapshot.devices.every((d) => snapshot.racks.some((r) => r.rackId === d.rackId))).toBe(true)
     expect(snapshot.devices.find((d) => d.deviceId === 'd1')?.rackId).toBe('k1')
     expect(snapshot.devices.find((d) => d.deviceId === 'd2')?.rackId).toBe('k2')
+  })
+
+  it('T-05: device focus keeps the full multi-hop reachable component and its racks', () => {
+    const snapshot = parseCableSnapshot({
+      racks: [
+        { rackId: 'k1', code: 'R1', x: 0, y: 0, width: 60, height: 100 },
+        { rackId: 'k2', code: 'R2', x: 100, y: 0, width: 60, height: 100 },
+        { rackId: 'k3', code: 'R3', x: 200, y: 0, width: 60, height: 100 },
+        { rackId: 'k4', code: 'R4', x: 300, y: 0, width: 60, height: 100 },
+      ],
+      devices: [
+        { deviceId: 'd1', deviceName: '起点', rackId: 'k1', deviceType: '服务器', operationalStatus: '正常', startU: 1, endU: 1 },
+        { deviceId: 'd2', deviceName: '交换机1', rackId: 'k2', deviceType: '交换机', operationalStatus: '正常', startU: 1, endU: 1 },
+        { deviceId: 'd3', deviceName: '交换机2', rackId: 'k3', deviceType: '交换机', operationalStatus: '正常', startU: 1, endU: 1 },
+        { deviceId: 'd4', deviceName: '无关', rackId: 'k4', deviceType: '服务器', operationalStatus: '正常', startU: 1, endU: 1 },
+      ],
+      cables: [
+        { cableId: 'c1', cableType: '光纤', purpose: '网络', status: '正常', source: { deviceId: 'd1', deviceName: '起点', portName: 'p1', speed: null, rackId: 'k1', rackCode: 'R1' }, target: { deviceId: 'd2', deviceName: '交换机1', portName: 'p1', speed: null, rackId: 'k2', rackCode: 'R2' } },
+        { cableId: 'c2', cableType: '光纤', purpose: '网络', status: '正常', source: { deviceId: 'd2', deviceName: '交换机1', portName: 'p2', speed: null, rackId: 'k2', rackCode: 'R2' }, target: { deviceId: 'd3', deviceName: '交换机2', portName: 'p1', speed: null, rackId: 'k3', rackCode: 'R3' } },
+        { cableId: 'c3', cableType: '光纤', purpose: '网络', status: '正常', source: { deviceId: 'd3', deviceName: '交换机2', portName: 'p2', speed: null, rackId: 'k3', rackCode: 'R3' }, target: { deviceId: 'd1', deviceName: '起点', portName: 'p2', speed: null, rackId: 'k1', rackCode: 'R1' } },
+      ],
+    })!
+    const filtered = filterSnapshotToReachableDevices(snapshot, 'd1')
+    expect(filtered.devices.map(d => d.deviceId)).toEqual(['d1', 'd2', 'd3'])
+    expect(filtered.racks.map(r => r.rackId)).toEqual(['k1', 'k2', 'k3'])
+    expect(filtered.cables.map(c => c.cableId)).toEqual(['c1', 'c2', 'c3'])
+  })
+
+  it('T-06: device focus with no cable keeps only its device and rack', () => {
+    const snapshot = parseCableSnapshot({
+      racks: [{ rackId: 'k1', code: 'R1', x: 0, y: 0, width: 60, height: 100 }, { rackId: 'k2', code: 'R2', x: 100, y: 0, width: 60, height: 100 }],
+      devices: [
+        { deviceId: 'd1', deviceName: '孤立', rackId: 'k1', deviceType: '服务器', operationalStatus: '正常', startU: 1, endU: 1 },
+        { deviceId: 'd2', deviceName: '其他', rackId: 'k2', deviceType: '服务器', operationalStatus: '正常', startU: 1, endU: 1 },
+      ],
+      cables: [],
+    })!
+    const filtered = filterSnapshotToReachableDevices(snapshot, 'd1')
+    expect(filtered.devices.map(d => d.deviceId)).toEqual(['d1'])
+    expect(filtered.racks.map(r => r.rackId)).toEqual(['k1'])
+    expect(filtered.cables).toEqual([])
   })
 
   it('T-05: cable endpoints land on port edge anchors', () => {

@@ -513,6 +513,7 @@ import {
   computeFitToScreenTransform,
   DEVICE_U_PX,
   filterVisibleDevices,
+  filterSnapshotToReachableDevices,
   focusedPeerBundleKey,
   formatPortLabel,
   FOCUSED_DIM_RACK_OPACITY,
@@ -1786,8 +1787,11 @@ function drawPortAnchors(
 function drawDeviceScene(): void {
   if (!stage || !layer || !topology.value?.cableSnapshot) return
   const originalSnapshot = topology.value.cableSnapshot
-  const originalDevices = new Map(originalSnapshot.devices.map((d) => [d.deviceId, d]))
-  const snapshot = layoutDeviceSnapshot(originalSnapshot)
+  const scopedSnapshot = focusDeviceId.value
+    ? filterSnapshotToReachableDevices(originalSnapshot, focusDeviceId.value, 10)
+    : originalSnapshot
+  const originalDevices = new Map(scopedSnapshot.devices.map((d) => [d.deviceId, d]))
+  const snapshot = layoutDeviceSnapshot(scopedSnapshot)
   laidSnapshot.value = snapshot
   const scene = deviceCableScene.value
   const focused = focusedRoom.value
