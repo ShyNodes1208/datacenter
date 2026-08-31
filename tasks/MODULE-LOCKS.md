@@ -6,6 +6,10 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 
 | Task ID | Module or Path | Owner | Claimed At | Status | Release Condition | Released At |
 |---|---|---|---|---|---|---|
+| TASK-20260831-rack-capacity-audit | src/frontend/src/composables/useRackDetail.ts | Cursor Developer | 2026-08-31 +08:00 | CLAIMED | Task remains IN_PROGRESS pending Tasks 2 and 3, independent review, push, and final completion | |
+| TASK-20260831-rack-capacity-audit | src/frontend/src/views/HomeView.vue | Cursor Developer | 2026-08-31 +08:00 | CLAIMED | Task remains IN_PROGRESS pending Tasks 2 and 3, independent review, push, and final completion | |
+| TASK-20260831-rack-capacity-audit | src/frontend/src/__tests__/rackDetail.test.ts | Cursor Developer | 2026-08-31 +08:00 | CLAIMED | Task remains IN_PROGRESS pending Tasks 2 and 3, independent review, push, and final completion | |
+| TASK-20260831-rack-capacity-audit | src/frontend/src/__tests__/router-and-views.test.ts | Cursor Developer | 2026-08-31 +08:00 | CLAIMED | Task remains IN_PROGRESS pending Tasks 2 and 3, independent review, push, and final completion | |
 | TASK-20260828-device-topology-performance | src/frontend/src/views/TopologyView.vue | Cursor Developer | 2026-08-28 15:40 +08:00 | RELEASED | Codex Reviewer final PASS; vitest 224/224, typecheck/build/diff check PASS; implementation `198708f` merged as `3af4702` and pushed | 2026-08-29 +08:00（Codex Reviewer） |
 | TASK-20260828-device-topology-performance | src/frontend/src/__tests__/topology.test.ts | Cursor Developer | 2026-08-28 15:40 +08:00 | RELEASED | Codex Reviewer final PASS; vitest 224/224, typecheck/build/diff check PASS; implementation `198708f` merged as `3af4702` and pushed | 2026-08-29 +08:00（Codex Reviewer） |
 | TASK-20260828-150000 | scripts/seed-acceptance-data.py | Cursor Developer | 2026-08-28 15:05 +08:00 | RELEASED | Codex Reviewer final PASS; task COMPLETED; unittest 2/2 and diff check PASS; no seed execution/API/database change | 2026-08-28 15:16 +08:00 |

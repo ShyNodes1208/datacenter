@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import { useApi } from '../composables/useApi'
 import { useAuth } from '../composables/useAuth'
 import { useDashboard, type RoomItem } from '../composables/useDashboard'
-import { buildUSlotsFromSummaryPositions } from '../composables/useRackDetail'
+import { buildUSlotsFromSummaryPositions, findAvailableURanges } from '../composables/useRackDetail'
 import DashboardSummaryCards, {
   type DashboardSummary,
 } from '../components/DashboardSummaryCards.vue'
@@ -67,6 +67,17 @@ interface RackSummaryItem {
 
 const roomRackSummaries = ref<Map<string, { racks: RackSummaryItem[] }>>(new Map())
 const rackSummaryLoading = ref<Set<string>>(new Set())
+const requiredU = ref('')
+const capacitySearchLoading = ref(false)
+const capacitySearchError = ref('')
+const capacitySearchResults = ref<Array<{
+  roomName: string
+  rackCode: string
+  startU: number
+  endU: number
+  length: number
+  rackId: string
+}>>([])
 
 const createFormVisible = ref(false)
 const roomName = ref('')
@@ -332,17 +343,12 @@ async function onCreateRoom(): Promise<void> {
   createSubmitting.value = false
 }
 
-async function toggleRoom(roomId: string): Promise<void> {
-  if (expandedRoomIds.value.has(roomId)) {
-    expandedRoomIds.value.delete(roomId)
-    return
-  }
-  expandedRoomIds.value.add(roomId)
+async function loadRoomRackSummary(roomId: string): Promise<RackSummaryItem[] | null> {
+  const cached = roomRackSummaries.value.get(roomId)
+  if (cached) return cached.racks
 
-  if (!roomRackSummaries.value.has(roomId)) {
-    rackSummaryLoading.value.add(roomId)
-
-    const [result, racksResult] = await Promise.all([
+  rackSummaryLoading.value.add(roomId)
+  const [result, racksResult] = await Promise.all([
       request<{
         racks: Array<{
           id: string
@@ -357,34 +363,70 @@ async function toggleRoom(roomId: string): Promise<void> {
         `/api/racks?roomId=${encodeURIComponent(roomId)}`,
         { method: 'GET' },
       ),
-    ])
+  ])
+  rackSummaryLoading.value.delete(roomId)
+  if (!result.ok || !result.data) return null
 
-    if (result.ok && result.data) {
-      const statusById = new Map<string, string>()
-      if (racksResult.ok && Array.isArray(racksResult.data)) {
-        for (const item of racksResult.data) {
-          if (typeof item.status === 'string') {
-            statusById.set(item.id, item.status)
-          }
-        }
+  const statusById = new Map<string, string>()
+  if (racksResult.ok && Array.isArray(racksResult.data)) {
+    for (const item of racksResult.data) {
+      if (typeof item.status === 'string') {
+        statusById.set(item.id, item.status)
       }
-      const map = new Map(roomRackSummaries.value)
-      map.set(roomId, {
-        racks: result.data.racks.map((rack) => ({
-          id: rack.id,
-          code: rack.code,
-          heightU: rack.heightU,
-          brand: rack.brand,
-          occupiedU: rack.occupiedU,
-          positions: buildUSlotsFromSummaryPositions(rack.positions, rack.heightU),
-          status: statusById.get(rack.id) ?? '未知',
-        })),
-      })
-      roomRackSummaries.value = map
     }
-
-    rackSummaryLoading.value.delete(roomId)
   }
+  const racks = result.data.racks.map((rack) => ({
+    id: rack.id,
+    code: rack.code,
+    heightU: rack.heightU,
+    brand: rack.brand,
+    occupiedU: rack.occupiedU,
+    positions: buildUSlotsFromSummaryPositions(rack.positions, rack.heightU),
+    status: statusById.get(rack.id) ?? '未知',
+  }))
+  roomRackSummaries.value = new Map(roomRackSummaries.value).set(roomId, { racks })
+  return racks
+}
+
+async function toggleRoom(roomId: string): Promise<void> {
+  if (expandedRoomIds.value.has(roomId)) {
+    expandedRoomIds.value.delete(roomId)
+    return
+  }
+  expandedRoomIds.value.add(roomId)
+  await loadRoomRackSummary(roomId)
+}
+
+async function searchAvailableRacks(): Promise<void> {
+  const required = Number(requiredU.value)
+  capacitySearchError.value = ''
+  capacitySearchResults.value = []
+  if (!Number.isInteger(required) || required <= 0) {
+    capacitySearchError.value = '请输入正整数 U 位'
+    return
+  }
+  if (rooms.value === null) await loadRooms()
+  if (rooms.value === null) {
+    capacitySearchError.value = roomsError.value || '加载机房失败'
+    return
+  }
+
+  capacitySearchLoading.value = true
+  for (const room of rooms.value) {
+    const racks = await loadRoomRackSummary(room.id)
+    if (racks === null) {
+      capacitySearchError.value = '加载机柜摘要失败'
+      capacitySearchResults.value = []
+      break
+    }
+    for (const rack of racks) {
+      if (rack.status !== '启用') continue
+      for (const range of findAvailableURanges(rack.positions, required)) {
+        capacitySearchResults.value.push({ roomName: room.name, rackCode: rack.code, rackId: rack.id, ...range })
+      }
+    }
+  }
+  capacitySearchLoading.value = false
 }
 
 function goToRack(rackId: string): void {
@@ -704,6 +746,30 @@ async function handleServerFileChange(event: Event): Promise<void> {
         新增机房
       </button>
     </div>
+
+    <section class="panel" aria-label="查找可用机柜">
+      <form @submit.prevent="searchAvailableRacks">
+        <label>
+          需要 U 位
+          <input v-model="requiredU" name="requiredU" type="number" min="1" step="1" />
+        </label>
+        <button type="submit" class="btn btn--primary" :disabled="capacitySearchLoading">
+          {{ capacitySearchLoading ? '查询中...' : '查找可用机柜' }}
+        </button>
+      </form>
+      <div v-if="capacitySearchError" class="error" role="alert" aria-live="polite">{{ capacitySearchError }}</div>
+      <p v-else-if="!capacitySearchLoading && capacitySearchResults.length && requiredU">找到 {{ capacitySearchResults.length }} 个可用区段</p>
+      <p v-else-if="!capacitySearchLoading && !capacitySearchError && capacitySearchResults.length === 0 && requiredU">没有满足条件的可用机柜</p>
+      <button
+        v-for="result in capacitySearchResults"
+        :key="`${result.rackId}-${result.startU}-${result.endU}`"
+        type="button"
+        class="btn"
+        @click="goToRack(result.rackId)"
+      >
+        {{ result.roomName }} · {{ result.rackCode }} · U{{ result.startU }}-{{ result.endU }}（{{ result.length }}U）
+      </button>
+    </section>
 
     <RackOperationDrawer :visible="batchImportVisible" title="批量导入设备" @close="cancelBatchImport">
       <div v-if="!batchImportResult">

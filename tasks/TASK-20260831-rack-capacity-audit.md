@@ -4,7 +4,7 @@
 
 ## 基本信息
 
-- Status：READY
+- Status：IN_PROGRESS
 - Owner：Cursor Developer
 - Reviewer：Codex Reviewer
 - Branch：`feature/TASK-20260831-rack-capacity-audit`
@@ -102,6 +102,7 @@ git diff --check
 | 时间 | 发起者 | 原状态 | 新状态 | 证据 |
 |---|---|---|---|---|
 | 2026-08-31 | Codex + Terra | DRAFT | READY | 用户确认最小方案；范围、验收、Owner、Reviewer 与验证命令完整。 |
+| 2026-08-31 | Cursor Developer | READY | IN_PROGRESS | 无活跃模块锁与 Task 1 四个允许路径冲突；已登记 CLAIMED 锁。 |
 
 ## 防过度开发检查
 

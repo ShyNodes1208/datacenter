@@ -117,6 +117,17 @@ type HomeViewSetupState = {
   uploadPreview: (file: File) => Promise<void>
   submitImport: () => Promise<void>
   closeResult: () => void
+  requiredU: string
+  capacitySearchError: string
+  capacitySearchResults: Array<{
+    roomName: string
+    rackCode: string
+    startU: number
+    endU: number
+    length: number
+    rackId: string
+  }>
+  searchAvailableRacks: () => Promise<void>
 }
 
 async function renderLoginViewHtml(): Promise<string> {
@@ -258,7 +269,7 @@ async function mountInteractiveHomeView(): Promise<MountedHomeView> {
   const hasButton = (markup: string, text: string): boolean =>
     new RegExp(`<button[^>]*>\\s*${text}\\s*<\\/button>`).test(markup)
 
-  const hasForm = (markup: string): boolean => /<form[\s>]/.test(markup)
+  const hasForm = (markup: string): boolean => /<form[^>]*class="create-form"/.test(markup)
 
   const inputValue = (markup: string, name: string): string | null => {
     const match = markup.match(new RegExp(`<input[^>]*name="${name}"[^>]*>`))
@@ -281,7 +292,7 @@ async function mountInteractiveHomeView(): Promise<MountedHomeView> {
   }
 
   const createErrorText = (markup: string): string => {
-    const formMatch = markup.match(/<form[\s\S]*?<\/form>/)
+    const formMatch = markup.match(/<form[^>]*class="create-form"[\s\S]*?<\/form>/)
     if (!formMatch) {
       return ''
     }
@@ -292,12 +303,14 @@ async function mountInteractiveHomeView(): Promise<MountedHomeView> {
   }
 
   const saveButtonDisabled = (markup: string): boolean => {
-    const match = markup.match(/<button[^>]*type="submit"[^>]*>/)
+    const formMatch = markup.match(/<form[^>]*class="create-form"[\s\S]*?<\/form>/)
+    const match = formMatch?.[0].match(/<button[^>]*type="submit"[^>]*>/)
     return Boolean(match && /\bdisabled\b/.test(match[0]))
   }
 
   const saveButtonLabel = (markup: string): string | null => {
-    const match = markup.match(/<button[^>]*type="submit"[^>]*>([\s\S]*?)<\/button>/)
+    const formMatch = markup.match(/<form[^>]*class="create-form"[\s\S]*?<\/form>/)
+    const match = formMatch?.[0].match(/<button[^>]*type="submit"[^>]*>([\s\S]*?)<\/button>/)
     return match ? match[1].trim() : null
   }
 
@@ -489,6 +502,54 @@ describe('HomeView protected shell (U14-C)', () => {
     const html = await renderHomeViewHtml()
 
     expect(html).toContain('aria-label="机房列表"')
+  })
+})
+
+describe('HomeView available rack search (TASK-20260831-rack-capacity-audit)', () => {
+  it('shows a clear error for an invalid required U value', async () => {
+    const state = await mountHomeViewState()
+    state.requiredU = '0'
+
+    await state.searchAvailableRacks()
+
+    expect(state.capacitySearchError).toBe('请输入正整数 U 位')
+  })
+
+  it('finds enabled racks with a matching contiguous free U range', async () => {
+    requestMock.mockImplementation(async (path: string) => {
+      if (path === '/api/rooms') {
+        return mockRoomsGet([{ id: 'room-1', name: '机房A', status: '启用' }])
+      }
+      if (path === '/api/rooms/room-1/racks-summary') {
+        return {
+          ok: true,
+          data: {
+            racks: [{
+              id: 'rack-1', code: 'A01', heightU: 4, brand: null, occupiedU: 0,
+              positions: [
+                { uNumber: 12, occupied: false }, { uNumber: 11, occupied: false },
+                { uNumber: 10, occupied: false }, { uNumber: 9, occupied: false },
+              ],
+            }],
+          },
+          headers: new Headers(), status: 200,
+        }
+      }
+      if (path === '/api/racks?roomId=room-1') {
+        return { ok: true, data: [{ id: 'rack-1', status: '启用' }], headers: new Headers(), status: 200 }
+      }
+      return { ok: false, error: 'unexpected', status: 500 }
+    })
+    const state = await mountHomeViewState()
+    await state.loadRooms()
+    state.requiredU = '4'
+
+    await state.searchAvailableRacks()
+
+    expect(state.capacitySearchError).toBe('')
+    expect(state.capacitySearchResults).toEqual([{
+      roomName: '机房A', rackCode: 'A01', startU: 4, endU: 1, length: 4, rackId: 'rack-1',
+    }])
   })
 })
 

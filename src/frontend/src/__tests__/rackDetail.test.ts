@@ -16,7 +16,8 @@ vi.mock('../composables/useAuth', () => ({
   }),
 }))
 
-vi.mock('../composables/useRackDetail', () => ({
+vi.mock('../composables/useRackDetail', async () => ({
+  ...(await vi.importActual('../composables/useRackDetail')),
   useRackDetail: () => ({
     rack: ref({ id: 'r1', code: 'A01', roomId: 'rm1', roomName: 'Room A', heightU: 42, status: '启用' }),
     uSlots: ref([]),
@@ -29,6 +30,26 @@ vi.mock('../composables/useRackDetail', () => ({
 }))
 
 import RackDeviceView from '../views/RackDeviceView.vue'
+import { findAvailableURanges } from '../composables/useRackDetail'
+
+describe('findAvailableURanges', () => {
+  it('returns adjacent free ranges that meet the requested U count', () => {
+    expect(findAvailableURanges([
+      { startU: 12, endU: 9, uCount: 4, occupied: false },
+      { startU: 8, endU: 7, uCount: 2, occupied: false },
+    ], 4)).toEqual([
+      { startU: 12, endU: 9, length: 4 },
+    ])
+  })
+
+  it('excludes free ranges interrupted by occupied slots or shorter than required', () => {
+    expect(findAvailableURanges([
+      { startU: 12, endU: 10, uCount: 3, occupied: false },
+      { startU: 9, endU: 9, uCount: 1, occupied: true },
+      { startU: 8, endU: 6, uCount: 3, occupied: false },
+    ], 4)).toEqual([])
+  })
+})
 
 describe('RackDeviceView', () => {
   beforeEach(() => {

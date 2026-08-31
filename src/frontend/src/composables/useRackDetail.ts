@@ -129,6 +129,21 @@ export function buildUSlotsFromSummaryPositions(
   return buildUSlotsFromOccupancy(map, heightU)
 }
 
+export function findAvailableURanges(
+  slots: USlot[],
+  requiredU: number,
+): Array<{ startU: number; endU: number; length: number }> {
+  if (!Number.isInteger(requiredU) || requiredU <= 0) return []
+
+  return slots
+    .filter((slot) => !slot.occupied && slot.uCount >= requiredU)
+    .map((slot) => ({
+      startU: slot.startU,
+      endU: slot.endU,
+      length: slot.uCount,
+    }))
+}
+
 export function useRackDetail(rackId: string) {
   const { request } = useApi()
 
