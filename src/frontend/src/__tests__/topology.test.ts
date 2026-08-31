@@ -902,20 +902,39 @@ describe('CR-002 visual fidelity (T-01 to T-20)', () => {
     expect(data.value?.mode).toBe('racks')
   })
 
-  it('T-02: visible device-level button exists in template', async () => {
+  it('T-02: visible panorama button remains in template', async () => {
     const { readFileSync } = await import('node:fs')
     const { resolve } = await import('node:path')
     const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
     expect(source).toContain('data-testid="enter-device-level"')
-    expect(source).toContain('设备级')
+    expect(source).toContain('全景线路图')
     expect(source).toContain('level-switcher')
   })
 
-  it('T-03: rack double-click enters device level (loadDevices wired)', async () => {
+  it('T-03: selected rack opens its workspace while panorama remains explicit', async () => {
     const { readFileSync } = await import('node:fs')
     const { resolve } = await import('node:path')
     const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
-    expect(source).toMatch(/group\.on\('dblclick'[\s\S]*loadDevices/)
+    const rackDblClickStart = source.lastIndexOf("group.on('dblclick'")
+    const rackClickStart = source.lastIndexOf("group.on('click'", rackDblClickStart)
+    const rackDblClickEnd = source.indexOf('\n      layer.add(group)', rackDblClickStart)
+    const rackClick = source.slice(rackClickStart, rackDblClickStart)
+    const rackDblClick = source.slice(rackDblClickStart, rackDblClickEnd)
+    const workspaceEntryStart = source.indexOf('async function enterRackWorkspace(')
+    const workspaceEntryEnd = source.indexOf('\nfunction clearCableSelection', workspaceEntryStart)
+    const workspaceEntry = source.slice(workspaceEntryStart, workspaceEntryEnd)
+
+    // Break caught: changing either rack route back to the full-device loader makes daily rack work enter the panorama.
+    expect(source).toContain('data-testid="enter-rack-workspace"')
+    expect(source).toContain('进入机柜工作区')
+    expect(source).toContain('请先选择机柜')
+    expect(source).toMatch(/:disabled="!focusedRackId"/)
+    expect(source).toContain('全景线路图')
+    expect(rackClick).toContain('focusedRackId.value = rack.id')
+    expect(rackDblClick).toContain('router.push(`/racks/${encodeURIComponent(rack.id)}`)')
+    expect(rackDblClick).not.toContain('loadDevices')
+    expect(workspaceEntry).toContain('if (!focusedRackId.value) return')
+    expect(workspaceEntry).toContain('router.push(`/racks/${encodeURIComponent(focusedRackId.value)}`)')
   })
 
   it('T-04: devices only render under their rack in laid snapshot coords', () => {
@@ -1958,7 +1977,8 @@ describe('TASK-20260813-133241 device UI', () => {
     expect(toolsBlock).toContain('topology-actions')
     expect(toolsBlock).toContain('机房级')
     expect(toolsBlock).toContain('机柜级')
-    expect(toolsBlock).toContain('设备级')
+    expect(toolsBlock).toContain('全景线路图')
+    expect(toolsBlock).toContain('进入机柜工作区')
     expect(toolsBlock).toContain('流动动画')
     expect(toolsBlock).toContain('适应屏幕')
     expect(toolsBlock).toContain('刷新')

@@ -58,10 +58,20 @@
             data-testid="enter-device-level"
             @click="enterDeviceLevel"
           >
-            设备级
+            全景线路图
           </button>
         </div>
         <div class="topology-actions">
+          <button
+            type="button"
+            class="btn btn--primary"
+            data-testid="enter-rack-workspace"
+            :disabled="!focusedRackId"
+            :title="focusedRackId ? '进入所选机柜工作区' : '请先选择机柜'"
+            @click="enterRackWorkspace"
+          >
+            进入机柜工作区
+          </button>
           <label
             v-if="topology?.mode === 'devices'"
             class="anim-toggle"
@@ -1090,6 +1100,11 @@ async function enterDeviceLevel(): Promise<void> {
   expandedBundleKey.value = null
   clearDeviceFilters()
   await navigateToView(focusedRoomId.value, 'devices')
+}
+
+async function enterRackWorkspace(): Promise<void> {
+  if (!focusedRackId.value) return
+  await router.push(`/racks/${encodeURIComponent(focusedRackId.value)}`)
 }
 
 function clearCableSelection(): void {
@@ -2330,11 +2345,11 @@ function drawScene(): void {
         // Restore focusedRoomId from topology data so level switcher stays enabled.
         // Do not call drawScene() here: destroying nodes on click kills Konva dblclick.
         focusedRoomId.value = current.focusedRoomId ?? focusedRoomId.value
+        focusedRackId.value = rack.id
       })
-      group.on('dblclick', async () => {
-        if (!current.focusedRoomId) return
-        focusedRoomId.value = current.focusedRoomId
-        await loadDevices(current.focusedRoomId)
+      group.on('dblclick', () => {
+        focusedRackId.value = rack.id
+        router.push(`/racks/${encodeURIComponent(rack.id)}`)
       })
       layer.add(group)
     }
