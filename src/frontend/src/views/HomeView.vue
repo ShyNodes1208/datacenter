@@ -69,6 +69,7 @@ const roomRackSummaries = ref<Map<string, { racks: RackSummaryItem[] }>>(new Map
 const rackSummaryLoading = ref<Set<string>>(new Set())
 const requiredU = ref('')
 const capacitySearchLoading = ref(false)
+const capacitySearchCompleted = ref(false)
 const capacitySearchError = ref('')
 const capacitySearchResults = ref<Array<{
   roomName: string
@@ -365,14 +366,12 @@ async function loadRoomRackSummary(roomId: string): Promise<RackSummaryItem[] | 
       ),
   ])
   rackSummaryLoading.value.delete(roomId)
-  if (!result.ok || !result.data) return null
+  if (!result.ok || !result.data || !racksResult.ok || !Array.isArray(racksResult.data)) return null
 
   const statusById = new Map<string, string>()
-  if (racksResult.ok && Array.isArray(racksResult.data)) {
-    for (const item of racksResult.data) {
-      if (typeof item.status === 'string') {
-        statusById.set(item.id, item.status)
-      }
+  for (const item of racksResult.data) {
+    if (typeof item.status === 'string') {
+      statusById.set(item.id, item.status)
     }
   }
   const racks = result.data.racks.map((rack) => ({
@@ -401,6 +400,7 @@ async function searchAvailableRacks(): Promise<void> {
   const required = Number(requiredU.value)
   capacitySearchError.value = ''
   capacitySearchResults.value = []
+  capacitySearchCompleted.value = false
   if (!Number.isInteger(required) || required <= 0) {
     capacitySearchError.value = '请输入正整数 U 位'
     return
@@ -427,6 +427,7 @@ async function searchAvailableRacks(): Promise<void> {
     }
   }
   capacitySearchLoading.value = false
+  capacitySearchCompleted.value = capacitySearchError.value === ''
 }
 
 function goToRack(rackId: string): void {
@@ -759,7 +760,7 @@ async function handleServerFileChange(event: Event): Promise<void> {
       </form>
       <div v-if="capacitySearchError" class="error" role="alert" aria-live="polite">{{ capacitySearchError }}</div>
       <p v-else-if="!capacitySearchLoading && capacitySearchResults.length && requiredU">找到 {{ capacitySearchResults.length }} 个可用区段</p>
-      <p v-else-if="!capacitySearchLoading && !capacitySearchError && capacitySearchResults.length === 0 && requiredU">没有满足条件的可用机柜</p>
+      <p v-else-if="capacitySearchCompleted && capacitySearchResults.length === 0">没有满足条件的可用机柜</p>
       <button
         v-for="result in capacitySearchResults"
         :key="`${result.rackId}-${result.startU}-${result.endU}`"

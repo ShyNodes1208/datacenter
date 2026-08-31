@@ -128,6 +128,7 @@ type HomeViewSetupState = {
     rackId: string
   }>
   searchAvailableRacks: () => Promise<void>
+  goToRack: (rackId: string) => void
 }
 
 async function renderLoginViewHtml(): Promise<string> {
@@ -525,10 +526,14 @@ describe('HomeView available rack search (TASK-20260831-rack-capacity-audit)', (
           ok: true,
           data: {
             racks: [{
-              id: 'rack-1', code: 'A01', heightU: 4, brand: null, occupiedU: 0,
+              id: 'rack-1', code: 'A01', heightU: 12, brand: null, occupiedU: 8,
               positions: [
                 { uNumber: 12, occupied: false }, { uNumber: 11, occupied: false },
                 { uNumber: 10, occupied: false }, { uNumber: 9, occupied: false },
+                { uNumber: 8, occupied: true, serverName: 'server-1' }, { uNumber: 7, occupied: true, serverName: 'server-1' },
+                { uNumber: 6, occupied: true, serverName: 'server-1' }, { uNumber: 5, occupied: true, serverName: 'server-1' },
+                { uNumber: 4, occupied: true, serverName: 'server-1' }, { uNumber: 3, occupied: true, serverName: 'server-1' },
+                { uNumber: 2, occupied: true, serverName: 'server-1' }, { uNumber: 1, occupied: true, serverName: 'server-1' },
               ],
             }],
           },
@@ -548,8 +553,94 @@ describe('HomeView available rack search (TASK-20260831-rack-capacity-audit)', (
 
     expect(state.capacitySearchError).toBe('')
     expect(state.capacitySearchResults).toEqual([{
-      roomName: '机房A', rackCode: 'A01', startU: 4, endU: 1, length: 4, rackId: 'rack-1',
+      roomName: '机房A', rackCode: 'A01', startU: 12, endU: 9, length: 4, rackId: 'rack-1',
     }])
+  })
+
+  it('excludes disabled racks even when they have enough adjacent free U positions', async () => {
+    requestMock.mockImplementation(async (path: string) => {
+      if (path === '/api/rooms') return mockRoomsGet([{ id: 'room-1', name: '机房A', status: '启用' }])
+      if (path === '/api/rooms/room-1/racks-summary') return {
+        ok: true, data: { racks: [{
+          id: 'rack-1', code: 'A01', heightU: 12, brand: null, occupiedU: 8,
+          positions: [
+            { uNumber: 12, occupied: false }, { uNumber: 11, occupied: false },
+            { uNumber: 10, occupied: false }, { uNumber: 9, occupied: false },
+            { uNumber: 8, occupied: true, serverName: 'server-1' }, { uNumber: 7, occupied: true, serverName: 'server-1' },
+            { uNumber: 6, occupied: true, serverName: 'server-1' }, { uNumber: 5, occupied: true, serverName: 'server-1' },
+            { uNumber: 4, occupied: true, serverName: 'server-1' }, { uNumber: 3, occupied: true, serverName: 'server-1' },
+            { uNumber: 2, occupied: true, serverName: 'server-1' }, { uNumber: 1, occupied: true, serverName: 'server-1' },
+          ],
+        }] }, headers: new Headers(), status: 200,
+      }
+      if (path === '/api/racks?roomId=room-1') return {
+        ok: true, data: [{ id: 'rack-1', status: '停用' }], headers: new Headers(), status: 200,
+      }
+      return { ok: false, error: 'unexpected', status: 500 }
+    })
+    const state = await mountHomeViewState()
+    await state.loadRooms()
+    state.requiredU = '4'
+
+    await state.searchAvailableRacks()
+
+    expect(state.capacitySearchResults).toEqual([])
+  })
+
+  it.each(['summary', 'status'])('shows a load error when the %s request fails', async (failedRequest) => {
+    requestMock.mockImplementation(async (path: string) => {
+      if (path === '/api/rooms') return mockRoomsGet([{ id: 'room-1', name: '机房A', status: '启用' }])
+      if (path === '/api/rooms/room-1/racks-summary') {
+        return failedRequest === 'summary'
+          ? { ok: false, error: 'summary failed', status: 500 }
+          : { ok: true, data: { racks: [] }, headers: new Headers(), status: 200 }
+      }
+      if (path === '/api/racks?roomId=room-1') {
+        return failedRequest === 'status'
+          ? { ok: false, error: 'status failed', status: 500 }
+          : { ok: true, data: [], headers: new Headers(), status: 200 }
+      }
+      return { ok: false, error: 'unexpected', status: 500 }
+    })
+    const state = await mountHomeViewState()
+    await state.loadRooms()
+    state.requiredU = '4'
+
+    await state.searchAvailableRacks()
+
+    expect(state.capacitySearchError).toBe('加载机柜摘要失败')
+  })
+
+  it('renders no-result text only after a completed search', async () => {
+    requestMock.mockImplementation(async (path: string) => {
+      if (path === '/api/rooms') return mockRoomsGet([{ id: 'room-1', name: '机房A', status: '启用' }])
+      if (path === '/api/rooms/room-1/racks-summary') return {
+        ok: true, data: { racks: [] }, headers: new Headers(), status: 200,
+      }
+      if (path === '/api/racks?roomId=room-1') return {
+        ok: true, data: [], headers: new Headers(), status: 200,
+      }
+      return { ok: false, error: 'unexpected', status: 500 }
+    })
+    const view = await mountSharedHomeView()
+    try {
+      view.writeField('requiredU', '4')
+      expect(await view.html()).not.toContain('没有满足条件的可用机柜')
+
+      await view.state.searchAvailableRacks()
+
+      expect(await view.html()).toContain('没有满足条件的可用机柜')
+    } finally {
+      view.unmount()
+    }
+  })
+
+  it('routes a capacity result click through goToRack', async () => {
+    const state = await mountHomeViewState()
+
+    state.goToRack('rack-1')
+
+    expect(pushMock).toHaveBeenCalledWith('/racks/rack-1')
   })
 })
 
