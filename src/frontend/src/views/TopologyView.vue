@@ -228,7 +228,10 @@
       <div
         ref="containerRef"
         class="topology-canvas"
-        :class="{ 'topology-canvas--devices': topology?.mode === 'devices' }"
+        :class="{
+          'topology-canvas--devices': topology?.mode === 'devices',
+          'topology-canvas--panning': isDevicePanning,
+        }"
         @wheel.prevent="onDeviceViewportWheel"
         @mousedown="onDeviceViewportMouseDown"
         @mousemove="onDeviceViewportMouseMove"
@@ -612,6 +615,7 @@ let lockedDeviceColCount: number | null = null
 let lockedLayoutSnapshotKey: string | null = null
 let semanticZoomLatch: SemanticZoomState | null = null
 let devicePan: { startX: number; startY: number; lastX: number; lastY: number; moved: boolean } | null = null
+const isDevicePanning = ref(false)
 let suppressViewportClick = false
 
 const deviceZoomPercent = computed(() => Math.round(stageScale.value * 100))
@@ -961,6 +965,7 @@ function onDeviceViewportWheel(event: WheelEvent): void {
 
 function onDeviceViewportMouseDown(event: MouseEvent): void {
   if (topology.value?.mode !== 'devices' || event.button !== 0 || isViewportControlTarget(event.target)) return
+  isDevicePanning.value = false
   devicePan = {
     startX: event.clientX,
     startY: event.clientY,
@@ -976,6 +981,7 @@ function onDeviceViewportMouseMove(event: MouseEvent): void {
     const movedDistance = Math.hypot(event.clientX - devicePan.startX, event.clientY - devicePan.startY)
     if (movedDistance < DEVICE_DRAG_THRESHOLD_PX) return
     devicePan.moved = true
+    isDevicePanning.value = true
   }
   const pos = stage.position()
   stage.position({
@@ -997,6 +1003,7 @@ function endDeviceViewportMouse(event: MouseEvent): void {
     event.preventDefault()
   }
   devicePan = null
+  isDevicePanning.value = false
 }
 
 function onDeviceViewportMouseUp(event: MouseEvent): void {
@@ -2949,6 +2956,17 @@ onUnmounted(() => {
 
 .topology-canvas--devices:active {
   cursor: grabbing;
+}
+
+/* Keep expensive selected-path animation and SVG glow filters out of the drag
+   repaint loop. They resume automatically when the pointer is released. */
+.topology-canvas--panning :deep(.animated-path) {
+  animation: none !important;
+}
+
+.topology-canvas--panning :deep(.bundle-group path) {
+  filter: none !important;
+  transition: none !important;
 }
 
 .konva-stage {
