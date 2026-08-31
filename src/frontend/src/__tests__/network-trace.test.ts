@@ -191,6 +191,68 @@ describe('NetworkTraceView', () => {
       expect(html).toContain('Target Server')
       expect(html).toContain('eth0')
       expect(html).toContain('已登记物理连接，非实时数据')
+      expect(html).toContain('起点：Source Server / eth0')
+    } finally {
+      view.unmount()
+    }
+  })
+
+  it('keeps the fixed source label after a no-path known-target result', async () => {
+    requestMock.mockImplementation((path: string) => {
+      const source = sourceResponse(path)
+      if (source) return source
+      if (path === '/api/servers?name=Target') {
+        return success([{
+          id: 'target-server', name: 'Target Server', managementIP: '10.0.0.3',
+          deviceType: '服务器', deviceHeight: 1, operationalStatus: '正常', positionStatus: '在架',
+        }])
+      }
+      return success({
+        pathFound: false, warning: '已登记物理连接，非实时数据',
+        reason: '未找到已登记的连接路径', devices: null, hops: null,
+      })
+    })
+
+    const view = await mountTraceView()
+    try {
+      await view.state.loadSource()
+      view.state.searchName.value = 'Target'
+      await view.state.searchTargets()
+      view.state.selectTarget('target-server')
+      await view.state.findKnownPath()
+
+      const html = await view.html()
+      expect(html).toContain('未找到已登记的连接路径')
+      expect(html).toContain('起点：Source Server / eth0')
+    } finally {
+      view.unmount()
+    }
+  })
+
+  it('keeps the fixed source label after a trace request failure', async () => {
+    requestMock.mockImplementation((path: string) => {
+      const source = sourceResponse(path)
+      if (source) return source
+      if (path === '/api/servers?name=Target') {
+        return success([{
+          id: 'target-server', name: 'Target Server', managementIP: '10.0.0.3',
+          deviceType: '服务器', deviceHeight: 1, operationalStatus: '正常', positionStatus: '在架',
+        }])
+      }
+      return { ok: false as const, error: '线路追踪请求失败', status: 500 }
+    })
+
+    const view = await mountTraceView()
+    try {
+      await view.state.loadSource()
+      view.state.searchName.value = 'Target'
+      await view.state.searchTargets()
+      view.state.selectTarget('target-server')
+      await view.state.findKnownPath()
+
+      const html = await view.html()
+      expect(html).toContain('线路追踪请求失败')
+      expect(html).toContain('起点：Source Server / eth0')
     } finally {
       view.unmount()
     }
