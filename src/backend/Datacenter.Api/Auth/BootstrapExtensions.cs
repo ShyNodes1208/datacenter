@@ -9,7 +9,8 @@ public static class BootstrapExtensions
 {
     public static async Task BootstrapAdminAsync(this WebApplication app)
     {
-        if (!app.Environment.IsDevelopment())
+        if (!app.Environment.IsDevelopment()
+            && !string.Equals(Environment.GetEnvironmentVariable("DATACENTER_PACKAGE_MODE"), "1", StringComparison.Ordinal))
         {
             return;
         }

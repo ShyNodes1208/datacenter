@@ -13,9 +13,11 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var dataDirectory = ResolveDataDirectory(builder.Environment);
 var connectionString = NormalizeSqliteConnectionString(
     builder.Configuration.GetConnectionString("DefaultConnection"),
-    Directory.GetCurrentDirectory());
+    dataDirectory);
+var cookieSecurePolicy = ResolveCookieSecurePolicy(builder.Configuration, builder.Environment);
 
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
 builder.Services.AddScoped<AuthService>();
@@ -31,9 +33,7 @@ builder.Services.AddAntiforgery(options =>
     options.HeaderName = "X-XSRF-TOKEN";
     options.Cookie.HttpOnly = true;
     options.Cookie.SameSite = SameSiteMode.Lax;
-    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
-        ? CookieSecurePolicy.SameAsRequest
-        : CookieSecurePolicy.Always;
+    options.Cookie.SecurePolicy = cookieSecurePolicy;
 });
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -41,9 +41,7 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.Cookie.Name = "Datacenter.Auth";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
-        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
-            ? CookieSecurePolicy.SameAsRequest
-            : CookieSecurePolicy.Always;
+        options.Cookie.SecurePolicy = cookieSecurePolicy;
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
         options.SlidingExpiration = false;
         options.Events.OnRedirectToLogin = context => WriteAuthenticationErrorAsync(context.Response);
@@ -96,11 +94,51 @@ app.Use(async (context, next) =>
 });
 app.UseAuthentication();
 app.UseAuthorization();
+
+var wwwrootPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+var serveFrontend = Directory.Exists(wwwrootPath);
+if (serveFrontend)
+{
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+}
+
 app.MapControllers();
+if (serveFrontend)
+{
+    app.MapFallbackToFile("index.html");
+}
 
 await InitializeDatabaseAsync(app);
 await app.BootstrapAdminAsync();
 await app.RunAsync();
+
+static string ResolveDataDirectory(IHostEnvironment environment)
+{
+    if (environment.IsProduction()
+        || string.Equals(Environment.GetEnvironmentVariable("DATACENTER_PACKAGE_MODE"), "1", StringComparison.Ordinal))
+    {
+        var directory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Datacenter");
+        Directory.CreateDirectory(directory);
+        return directory;
+    }
+
+    return Directory.GetCurrentDirectory();
+}
+
+static CookieSecurePolicy ResolveCookieSecurePolicy(IConfiguration configuration, IHostEnvironment environment)
+{
+    if (environment.IsDevelopment())
+    {
+        return CookieSecurePolicy.SameAsRequest;
+    }
+
+    return configuration.GetValue("UseSecureCookies", false)
+        ? CookieSecurePolicy.Always
+        : CookieSecurePolicy.SameAsRequest;
+}
 
 static string NormalizeSqliteConnectionString(string? configuredConnectionString, string workingDirectory)
 {
