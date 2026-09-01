@@ -6,15 +6,15 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 
 | Task ID | Module or Path | Owner | Claimed At | Status | Release Condition | Released At |
 |---|---|---|---|---|---|---|
-| TASK-20260831-rack-capacity-audit | src/frontend/src/composables/useRackDetail.ts | Cursor Developer | 2026-08-31 +08:00 | HANDED_OFF | Independent review; then completion requires push and Reviewer PASS | |
-| TASK-20260831-rack-capacity-audit | src/frontend/src/views/HomeView.vue | Cursor Developer | 2026-08-31 +08:00 | HANDED_OFF | Independent review; then completion requires push and Reviewer PASS | |
-| TASK-20260831-rack-capacity-audit | src/frontend/src/__tests__/rackDetail.test.ts | Cursor Developer | 2026-08-31 +08:00 | HANDED_OFF | Independent review; then completion requires push and Reviewer PASS | |
-| TASK-20260831-rack-capacity-audit | src/frontend/src/__tests__/router-and-views.test.ts | Cursor Developer | 2026-08-31 +08:00 | HANDED_OFF | Independent review; then completion requires push and Reviewer PASS | |
-| TASK-20260831-rack-capacity-audit | src/frontend/src/views/AuditRecordsView.vue | Cursor Developer | 2026-09-01 +08:00 | HANDED_OFF | Independent review; then completion requires push and Reviewer PASS | |
-| TASK-20260831-rack-capacity-audit | src/frontend/src/router.ts | Cursor Developer | 2026-09-01 +08:00 | HANDED_OFF | Independent review; then completion requires push and Reviewer PASS | |
-| TASK-20260831-rack-capacity-audit | src/frontend/src/App.vue | Cursor Developer | 2026-09-01 +08:00 | HANDED_OFF | Independent review; then completion requires push and Reviewer PASS | |
-| TASK-20260831-rack-capacity-audit | src/backend/Datacenter.Api/Controllers/ServersController.cs | Cursor Developer | 2026-08-31 +08:00 | HANDED_OFF | Independent review; then completion requires push and Reviewer PASS | |
-| TASK-20260831-rack-capacity-audit | tests/backend/Datacenter.Api.Tests/IntegrationTests/ServerPositionIntegrationTests.cs | Cursor Developer | 2026-08-31 +08:00 | HANDED_OFF | Independent review; then completion requires push and Reviewer PASS | |
+| TASK-20260831-rack-capacity-audit | src/frontend/src/composables/useRackDetail.ts | Cursor Developer | 2026-08-31 +08:00 | RELEASED | Final Codex Reviewer PASS; frontend 234/234, backend 224/224, typecheck/build/diff check PASS; prior head `860d39cb10c0cbaa345854cfea937b4665da9c7c` verified pushed | 2026-09-01 09:01:11 +08:00 (Codex Reviewer) |
+| TASK-20260831-rack-capacity-audit | src/frontend/src/views/HomeView.vue | Cursor Developer | 2026-08-31 +08:00 | RELEASED | Final Codex Reviewer PASS; frontend 234/234, backend 224/224, typecheck/build/diff check PASS; prior head `860d39cb10c0cbaa345854cfea937b4665da9c7c` verified pushed | 2026-09-01 09:01:11 +08:00 (Codex Reviewer) |
+| TASK-20260831-rack-capacity-audit | src/frontend/src/__tests__/rackDetail.test.ts | Cursor Developer | 2026-08-31 +08:00 | RELEASED | Final Codex Reviewer PASS; frontend 234/234, backend 224/224, typecheck/build/diff check PASS; prior head `860d39cb10c0cbaa345854cfea937b4665da9c7c` verified pushed | 2026-09-01 09:01:11 +08:00 (Codex Reviewer) |
+| TASK-20260831-rack-capacity-audit | src/frontend/src/__tests__/router-and-views.test.ts | Cursor Developer | 2026-08-31 +08:00 | RELEASED | Final Codex Reviewer PASS; frontend 234/234, backend 224/224, typecheck/build/diff check PASS; prior head `860d39cb10c0cbaa345854cfea937b4665da9c7c` verified pushed | 2026-09-01 09:01:11 +08:00 (Codex Reviewer) |
+| TASK-20260831-rack-capacity-audit | src/frontend/src/views/AuditRecordsView.vue | Cursor Developer | 2026-09-01 +08:00 | RELEASED | Final Codex Reviewer PASS; frontend 234/234, backend 224/224, typecheck/build/diff check PASS; prior head `860d39cb10c0cbaa345854cfea937b4665da9c7c` verified pushed | 2026-09-01 09:01:11 +08:00 (Codex Reviewer) |
+| TASK-20260831-rack-capacity-audit | src/frontend/src/router.ts | Cursor Developer | 2026-09-01 +08:00 | RELEASED | Final Codex Reviewer PASS; frontend 234/234, backend 224/224, typecheck/build/diff check PASS; prior head `860d39cb10c0cbaa345854cfea937b4665da9c7c` verified pushed | 2026-09-01 09:01:11 +08:00 (Codex Reviewer) |
+| TASK-20260831-rack-capacity-audit | src/frontend/src/App.vue | Cursor Developer | 2026-09-01 +08:00 | RELEASED | Final Codex Reviewer PASS; frontend 234/234, backend 224/224, typecheck/build/diff check PASS; prior head `860d39cb10c0cbaa345854cfea937b4665da9c7c` verified pushed | 2026-09-01 09:01:11 +08:00 (Codex Reviewer) |
+| TASK-20260831-rack-capacity-audit | src/backend/Datacenter.Api/Controllers/ServersController.cs | Cursor Developer | 2026-08-31 +08:00 | RELEASED | Final Codex Reviewer PASS; frontend 234/234, backend 224/224, typecheck/build/diff check PASS; prior head `860d39cb10c0cbaa345854cfea937b4665da9c7c` verified pushed | 2026-09-01 09:01:11 +08:00 (Codex Reviewer) |
+| TASK-20260831-rack-capacity-audit | tests/backend/Datacenter.Api.Tests/IntegrationTests/ServerPositionIntegrationTests.cs | Cursor Developer | 2026-08-31 +08:00 | RELEASED | Final Codex Reviewer PASS; frontend 234/234, backend 224/224, typecheck/build/diff check PASS; prior head `860d39cb10c0cbaa345854cfea937b4665da9c7c` verified pushed | 2026-09-01 09:01:11 +08:00 (Codex Reviewer) |
 
 ## TASK-20260831-rack-capacity-audit implementation handoff
 
@@ -23,6 +23,14 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 - Implementation commits: `f1949f2`, `33c39e3`, `179b55b`, `67861c6`.
 - Evidence: `dotnet test tests/backend/Datacenter.Api.Tests/ --no-restore` passed 224/224; `git diff --check` passed.
 - Known limitations: the full frontend browser test still requires the existing Vite prerequisite; the existing CS7095 warning remains at `ServersController.cs:740`.
+
+## TASK-20260831-rack-capacity-audit final completion
+
+- Time: 2026-09-01 09:01:11 +08:00; final reviewer: Codex Reviewer.
+- Legal transition: `READY_FOR_REVIEW → COMPLETED`; all nine implementation locks changed `HANDED_OFF → RELEASED`, with paths and historical Owner unchanged.
+- Final review: PASS; no open defects. Fresh verification: frontend 234/234, backend 224/224, typecheck/build and `git diff --check` PASS.
+- Push/hash evidence before the completion commit: local and `origin/feature/TASK-20260831-rack-capacity-audit` both `860d39cb10c0cbaa345854cfea937b4665da9c7c`.
+- Known non-blocking limitation: the rack-capacity task's router test does not directly assert blank-filter omission or server-link encoding; the prior independent review classified this as coverage-only.
 | TASK-20260828-device-topology-performance | src/frontend/src/views/TopologyView.vue | Cursor Developer | 2026-08-28 15:40 +08:00 | RELEASED | Codex Reviewer final PASS; vitest 224/224, typecheck/build/diff check PASS; implementation `198708f` merged as `3af4702` and pushed | 2026-08-29 +08:00（Codex Reviewer） |
 | TASK-20260828-device-topology-performance | src/frontend/src/__tests__/topology.test.ts | Cursor Developer | 2026-08-28 15:40 +08:00 | RELEASED | Codex Reviewer final PASS; vitest 224/224, typecheck/build/diff check PASS; implementation `198708f` merged as `3af4702` and pushed | 2026-08-29 +08:00（Codex Reviewer） |
 | TASK-20260828-150000 | scripts/seed-acceptance-data.py | Cursor Developer | 2026-08-28 15:05 +08:00 | RELEASED | Codex Reviewer final PASS; task COMPLETED; unittest 2/2 and diff check PASS; no seed execution/API/database change | 2026-08-28 15:16 +08:00 |
