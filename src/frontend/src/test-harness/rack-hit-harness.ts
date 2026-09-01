@@ -96,7 +96,10 @@ const router = createRouter({
 const HarnessRoot = defineComponent({
   name: 'RackHitHarnessRoot',
   setup() {
-    return () => h(RouterView)
+    return () => h('div', [
+      h(RouterView),
+      h('output', { 'data-testid': 'rack-hit-harness-route' }, router.currentRoute.value.fullPath),
+    ])
   },
 })
 

@@ -1,10 +1,10 @@
 ﻿# Current Task
 
-- Status：COMPLETED（2026-09-01；TASK-20260831-rack-capacity-audit）
-- Branch：feature/TASK-20260831-rack-capacity-audit
+- Status：COMPLETED（2026-09-01；TASK-20260901-device-single-click；PR #3；580dd3eae3556cb968436f0fa40802d5543e0321）
+- Branch：fix/TASK-20260901-device-single-click
 - Owner：Cursor Developer；Reviewer：Codex Reviewer
-- Requirement：找可用机柜与最小全局变更记录。
-- Spec：`tasks/TASK-20260831-rack-capacity-audit.md`
+- Requirement：单击设备直接居中显示全部物理相连设备。
+- Spec：`tasks/TASK-20260901-device-single-click.md`
 
 ## 当前任务
 
@@ -24,15 +24,11 @@
 
 ## 当前状态
 
-- 当前任务：`TASK-20260831-rack-capacity-audit` — 找可用机柜与全局变更记录。
+- 当前任务：`TASK-20260901-device-single-click` — 设备首次单击直达相连设备视图。
 - 状态：`COMPLETED`；Owner：Cursor Developer；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
-- 范围：复用机房机柜摘要计算连续空位；新增只读全局审计查询与页面。
-- 不做：数据库/迁移/依赖、精确历史机房或机柜筛选、导出、分页、自动上架、Windows 安装包。
-- 当前任务规格：`tasks/TASK-20260831-rack-capacity-audit.md`。
-- 基线证据：前端 224/224、后端 222/222 通过；仅有既有 CS7095 编译警告。
-- 实现提交：`f1949f2`、`33c39e3`、`179b55b`、`67861c6`；完成前 head `860d39cb10c0cbaa345854cfea937b4665da9c7c` 已推送。
-- 最终验证：前端 234/234、后端 224/224、typecheck/build/`git diff --check` PASS；九项锁已 `RELEASED`。
-- 审核结论：Codex Reviewer 最终 PASS，无开放缺陷。非阻塞限制：空筛选省略和服务器链接编码未有直接测试断言（仅覆盖限制）。
+- 范围：仅 `TopologyView.vue` 的设备点击入口与 `topology.test.ts` 回归测试。
+- 不做：后端、数据、布局、依赖与其他点击行为改动。
+- 当前任务规格：`tasks/TASK-20260901-device-single-click.md`。
 
 ## 数据概览
 
