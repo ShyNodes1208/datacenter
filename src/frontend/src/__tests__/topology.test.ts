@@ -814,8 +814,8 @@ describe('TopologyView', () => {
 
 })
 
-describe('TASK-20260828-073500 device detail navigation', () => {
-  it('executes first-focus, same-device navigation, different-device focus, and drag suppression', async () => {
+describe('TASK-20260901-device-single-click device detail navigation', () => {
+  it('executes direct first-focus, same-device navigation, different-device focus, and drag suppression', async () => {
     const { readFileSync } = await import('node:fs')
     const { resolve } = await import('node:path')
     const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
@@ -825,7 +825,7 @@ describe('TASK-20260828-073500 device detail navigation', () => {
     const handlerSource = typedHandler
       .replace('function onDeviceHitClick(deviceId: string, rackId: string): void {', 'function onDeviceHitClick(deviceId, rackId) {')
     const focusDeviceId = { value: null as string | null }
-    const focusedRackId = { value: 'rack-a' as string | null }
+    const focusedRackId = { value: null as string | null }
     const router = { push: vi.fn() }
     let suppressed = false
     const handler = new Function(
@@ -851,6 +851,7 @@ describe('TASK-20260828-073500 device detail navigation', () => {
 
     handler('device/a', 'rack-a')
     expect(focusDeviceId.value).toBe('device/a')
+    expect(focusedRackId.value).toBeNull()
     expect(router.push).not.toHaveBeenCalled()
     handler('device/a', 'rack-a')
     expect(router.push).toHaveBeenCalledTimes(1)
@@ -863,8 +864,7 @@ describe('TASK-20260828-073500 device detail navigation', () => {
     suppressed = true
     handler('device-b', 'rack-b')
     expect(router.push).toHaveBeenCalledTimes(1)
-    expect(source).toContain("focusedRackId === hit.rackId || !!focusDeviceId")
-    expect(source).toMatch(/if \(focusedRackId\.value !== rack\.rackId && focusDeviceId\.value === null\)/)
+    expect(source).not.toMatch(/if \(focusedRackId\.value !== rackId && focusDeviceId\.value === null\) return/)
   })
 
   it('focuses first, navigates only on the same device second click, switches devices without navigating, and suppresses drag clicks', async () => {
@@ -3024,7 +3024,9 @@ describe('TASK-20260814-120641 device cable bundle aggregation', () => {
   })
 })
 
-const RACK_HIT_HARNESS_DEV_SERVER = process.env.VITE_DEV_SERVER_URL ?? 'http://localhost:5173'
+const RACK_HIT_HARNESS_DEV_SERVER = process.env.RACK_HIT_HARNESS_DEV_SERVER
+  ?? process.env.VITE_DEV_SERVER_URL
+  ?? 'http://localhost:5173'
 const RACK_HIT_HARNESS_URL = `${RACK_HIT_HARNESS_DEV_SERVER}/rack-hit-harness.html`
 
 async function assertRackHitHarnessDevServerReachable(): Promise<void> {
@@ -3202,21 +3204,17 @@ describe('TASK-20260814-140520 corridor routing + rack focus', () => {
     expect(source).toContain("@click.stop=\"onDeviceHitClick")
   })
 
-  it('idle state: rack overlay above devices; device hits only when rack focused', async () => {
+  it('idle state: device overlay receives clicks before rack overlay', async () => {
     const { readFileSync } = await import('node:fs')
     const { resolve } = await import('node:path')
     const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
-    // Idle: rack > device — devices default to pointer-events:none, active for focused rack/device state.
-    expect(source).toContain("'rack-hit-overlay__device--active': focusedRackId === hit.rackId || !!focusDeviceId")
-    expect(source).toMatch(/\.rack-hit-overlay__device\s*\{[\s\S]*pointer-events:\s*none/)
-    expect(source).toMatch(/\.rack-hit-overlay__device--active\s*\{[\s\S]*pointer-events:\s*auto/)
+    expect(source).toContain("'rack-hit-overlay__device--active': true")
+    expect(source).toMatch(/\.rack-hit-overlay__device\s*\{[\s\S]*pointer-events:\s*auto/)
     expect(source).toMatch(/\.rack-hit-overlay__device--active\s*\{[\s\S]*z-index:\s*1/)
-    // Rack click clears device focus; first device click still requires matching focusedRackId.
+    // Rack click still clears device focus, while device clicks focus directly.
     expect(source).toMatch(/function onRackHitClick[\s\S]*focusDeviceId\.value = null/)
-    expect(source).toMatch(/function onDeviceHitClick[\s\S]*if \(focusedRackId\.value !== rackId && focusDeviceId\.value === null\) return/)
     expect(source).toMatch(/function onDeviceHitClick[\s\S]*focusDeviceId\.value = deviceId/)
-    // Konva fallback: unfocused rack device panel delegates to rack click.
-    expect(source).toMatch(/if \(focusedRackId\.value !== rack\.rackId && focusDeviceId\.value === null\)[\s\S]*onRackHitClick\(rack\.rackId\)/)
+    expect(source).not.toMatch(/if \(focusedRackId\.value !== rack\.rackId && focusDeviceId\.value === null\)[\s\S]*onRackHitClick\(rack\.rackId\)/)
   })
 
   it('rack rectangle blocks cable selection (overlay z-index above cable layer)', async () => {
@@ -3526,6 +3524,56 @@ describe('TASK-20260814-140520 corridor routing + rack focus', () => {
       // Right 2.5D edge (x + width - 2px)
       await rack.click({ position: { x: box.width - 2, y: hitHeight * 0.55 } })
       await assertRackFocused()
+    } finally {
+      await browser.close()
+    }
+  }, 60_000)
+
+  it('TASK-20260901: real DOM device hit clicks focus directly, then navigate on second click', async () => {
+    await assertRackHitHarnessDevServerReachable()
+
+    const { chromium } = await import('playwright')
+    const browser = await chromium.launch({ headless: true })
+    try {
+      const page = await browser.newPage({ viewport: { width: 1400, height: 900 } })
+      await page.goto(RACK_HIT_HARNESS_URL, { waitUntil: 'networkidle' })
+      const rack = page.locator('[data-testid="rack-hit-target"][data-rack-id="k1"]')
+      const device = page.locator('[data-testid="device-hit-target"][data-device-id="d1"]')
+      const routeState = page.locator('[data-testid="rack-hit-harness-route"]')
+      await device.waitFor({ state: 'visible', timeout: 20_000 })
+
+      await device.click()
+      expect(await rack.evaluate((el) => el.classList.contains('rack-hit-overlay__rack--focused'))).toBe(false)
+      await device.click()
+      expect(await routeState.textContent()).toBe('/servers/d1')
+    } finally {
+      await browser.close()
+    }
+  }, 60_000)
+
+  it('TASK-20260901: real Konva device panel clicks focus directly, then navigate on second click', async () => {
+    await assertRackHitHarnessDevServerReachable()
+
+    const { chromium } = await import('playwright')
+    const browser = await chromium.launch({ headless: true })
+    try {
+      const page = await browser.newPage({ viewport: { width: 1400, height: 900 } })
+      await page.goto(RACK_HIT_HARNESS_URL, { waitUntil: 'networkidle' })
+      const rack = page.locator('[data-testid="rack-hit-target"][data-rack-id="k1"]')
+      const device = page.locator('[data-testid="device-hit-target"][data-device-id="d1"]')
+      const routeState = page.locator('[data-testid="rack-hit-harness-route"]')
+      await device.waitFor({ state: 'visible', timeout: 20_000 })
+      const box = await device.boundingBox()
+      expect(box).not.toBeNull()
+      if (!box) return
+
+      await page.locator('[data-testid="rack-hit-overlay"]').evaluate((el) => {
+        (el as HTMLElement).style.pointerEvents = 'none'
+      })
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+      expect(await rack.evaluate((el) => el.classList.contains('rack-hit-overlay__rack--focused'))).toBe(false)
+      await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+      expect(await routeState.textContent()).toBe('/servers/d1')
     } finally {
       await browser.close()
     }
