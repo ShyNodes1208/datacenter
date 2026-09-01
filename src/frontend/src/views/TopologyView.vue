@@ -58,10 +58,20 @@
             data-testid="enter-device-level"
             @click="enterDeviceLevel"
           >
-            设备级
+            全景线路图
           </button>
         </div>
         <div class="topology-actions">
+          <button
+            type="button"
+            class="btn btn--primary"
+            data-testid="enter-rack-workspace"
+            :disabled="!focusedRackId"
+            :title="focusedRackId ? '进入所选机柜工作区' : '请先选择机柜'"
+            @click="enterRackWorkspace"
+          >
+            进入机柜工作区
+          </button>
           <label
             v-if="topology?.mode === 'devices'"
             class="anim-toggle"
@@ -218,7 +228,10 @@
       <div
         ref="containerRef"
         class="topology-canvas"
-        :class="{ 'topology-canvas--devices': topology?.mode === 'devices' }"
+        :class="{
+          'topology-canvas--devices': topology?.mode === 'devices',
+          'topology-canvas--panning': isDevicePanning,
+        }"
         @wheel.prevent="onDeviceViewportWheel"
         @mousedown="onDeviceViewportMouseDown"
         @mousemove="onDeviceViewportMouseMove"
@@ -500,6 +513,7 @@ import {
   computeFitToScreenTransform,
   DEVICE_U_PX,
   filterVisibleDevices,
+  filterSnapshotToReachableDevices,
   focusedPeerBundleKey,
   formatPortLabel,
   FOCUSED_DIM_RACK_OPACITY,
@@ -602,6 +616,7 @@ let lockedDeviceColCount: number | null = null
 let lockedLayoutSnapshotKey: string | null = null
 let semanticZoomLatch: SemanticZoomState | null = null
 let devicePan: { startX: number; startY: number; lastX: number; lastY: number; moved: boolean } | null = null
+const isDevicePanning = ref(false)
 let suppressViewportClick = false
 
 const deviceZoomPercent = computed(() => Math.round(stageScale.value * 100))
@@ -951,6 +966,7 @@ function onDeviceViewportWheel(event: WheelEvent): void {
 
 function onDeviceViewportMouseDown(event: MouseEvent): void {
   if (topology.value?.mode !== 'devices' || event.button !== 0 || isViewportControlTarget(event.target)) return
+  isDevicePanning.value = false
   devicePan = {
     startX: event.clientX,
     startY: event.clientY,
@@ -966,6 +982,7 @@ function onDeviceViewportMouseMove(event: MouseEvent): void {
     const movedDistance = Math.hypot(event.clientX - devicePan.startX, event.clientY - devicePan.startY)
     if (movedDistance < DEVICE_DRAG_THRESHOLD_PX) return
     devicePan.moved = true
+    isDevicePanning.value = true
   }
   const pos = stage.position()
   stage.position({
@@ -987,6 +1004,7 @@ function endDeviceViewportMouse(event: MouseEvent): void {
     event.preventDefault()
   }
   devicePan = null
+  isDevicePanning.value = false
 }
 
 function onDeviceViewportMouseUp(event: MouseEvent): void {
@@ -1090,6 +1108,11 @@ async function enterDeviceLevel(): Promise<void> {
   expandedBundleKey.value = null
   clearDeviceFilters()
   await navigateToView(focusedRoomId.value, 'devices')
+}
+
+async function enterRackWorkspace(): Promise<void> {
+  if (!focusedRackId.value) return
+  await router.push(`/racks/${encodeURIComponent(focusedRackId.value)}`)
 }
 
 function clearCableSelection(): void {
@@ -1764,8 +1787,11 @@ function drawPortAnchors(
 function drawDeviceScene(): void {
   if (!stage || !layer || !topology.value?.cableSnapshot) return
   const originalSnapshot = topology.value.cableSnapshot
-  const originalDevices = new Map(originalSnapshot.devices.map((d) => [d.deviceId, d]))
-  const snapshot = layoutDeviceSnapshot(originalSnapshot)
+  const scopedSnapshot = focusDeviceId.value
+    ? filterSnapshotToReachableDevices(originalSnapshot, focusDeviceId.value, 10)
+    : originalSnapshot
+  const originalDevices = new Map(scopedSnapshot.devices.map((d) => [d.deviceId, d]))
+  const snapshot = layoutDeviceSnapshot(scopedSnapshot)
   laidSnapshot.value = snapshot
   const scene = deviceCableScene.value
   const focused = focusedRoom.value
@@ -1959,7 +1985,9 @@ function drawDeviceScene(): void {
   })
 
   applyDeviceViewportMode(true)
-  const key = deviceSnapshotKey(originalSnapshot)
+  // Fit against the rendered snapshot so entering a device focus produces a
+  // fresh centered viewport for the reduced reachable topology.
+  const key = deviceSnapshotKey(scopedSnapshot)
   // Skip nested auto-fit while applyFitTransform is redrawing semantics.
   if (fitSemanticRedrawDepth > 0) {
     syncDeviceOverlay()
@@ -2330,11 +2358,11 @@ function drawScene(): void {
         // Restore focusedRoomId from topology data so level switcher stays enabled.
         // Do not call drawScene() here: destroying nodes on click kills Konva dblclick.
         focusedRoomId.value = current.focusedRoomId ?? focusedRoomId.value
+        focusedRackId.value = rack.id
       })
-      group.on('dblclick', async () => {
-        if (!current.focusedRoomId) return
-        focusedRoomId.value = current.focusedRoomId
-        await loadDevices(current.focusedRoomId)
+      group.on('dblclick', () => {
+        focusedRackId.value = rack.id
+        router.push(`/racks/${encodeURIComponent(rack.id)}`)
       })
       layer.add(group)
     }
@@ -2934,6 +2962,17 @@ onUnmounted(() => {
 
 .topology-canvas--devices:active {
   cursor: grabbing;
+}
+
+/* Keep expensive selected-path animation and SVG glow filters out of the drag
+   repaint loop. They resume automatically when the pointer is released. */
+.topology-canvas--panning :deep(.animated-path) {
+  animation: none !important;
+}
+
+.topology-canvas--panning :deep(.bundle-group path) {
+  filter: none !important;
+  transition: none !important;
 }
 
 .konva-stage {

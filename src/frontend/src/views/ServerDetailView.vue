@@ -376,6 +376,10 @@ function goToServer(id: string | null): void {
   router.push(`/servers/${encodeURIComponent(id)}`)
 }
 
+function goToTrace(portId: string): void {
+  router.push({ path: '/network-trace', query: { sourcePortId: portId, sourceServerId: serverId.value } })
+}
+
 onMounted(() => {
   void loadServer()
   void loadAuditRecords()
@@ -464,7 +468,7 @@ onMounted(() => {
         <table v-else class="data-table">
           <thead>
             <tr>
-              <th>端口名</th><th>类型</th><th>速率</th><th>连接状态</th><th v-if="canEdit">操作</th>
+              <th>端口名</th><th>类型</th><th>速率</th><th>连接状态</th><th>操作</th>
             </tr>
           </thead>
           <tbody>
@@ -483,9 +487,16 @@ onMounted(() => {
                 </span>
                 <span v-else class="muted">未连接</span>
               </td>
-              <td v-if="canEdit">
-                <button v-if="!port.connectedCableId" type="button" class="btn btn--small" @click="openConnect(port.id)">连接</button>
-                <button v-if="!port.connectedCableId" type="button" class="btn btn--small btn--danger" @click="deletePort(port.id)">删除</button>
+              <td>
+                <button
+                  v-if="port.connectedCableId"
+                  type="button"
+                  class="btn btn--small"
+                  @click="goToTrace(port.id)"
+                >线路追踪</button>
+                <span v-else class="muted">未连接，无法追踪</span>
+                <button v-if="canEdit && !port.connectedCableId" type="button" class="btn btn--small" @click="openConnect(port.id)">连接</button>
+                <button v-if="canEdit && !port.connectedCableId" type="button" class="btn btn--small btn--danger" @click="deletePort(port.id)">删除</button>
               </td>
             </tr>
           </tbody>

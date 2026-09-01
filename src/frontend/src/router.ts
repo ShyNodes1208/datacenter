@@ -6,6 +6,7 @@ import RackDeviceView from './views/RackDeviceView.vue'
 import ServerListView from './views/ServerListView.vue'
 import ServerDetailView from './views/ServerDetailView.vue'
 import ServerFormView from './views/ServerFormView.vue'
+import NetworkTraceView from './views/NetworkTraceView.vue'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -23,6 +24,7 @@ export const router = createRouter({
     { path: '/servers/new', component: ServerFormView, meta: { requiresAuth: true } },
     { path: '/servers/:id/edit', component: ServerFormView, meta: { requiresAuth: true } },
     { path: '/servers/:id', component: ServerDetailView, meta: { requiresAuth: true } },
+    { path: '/network-trace', component: NetworkTraceView, meta: { requiresAuth: true } },
     { path: '/cables', component: () => import('./views/CableListView.vue'), meta: { requiresAuth: true } },
     { path: '/topology', component: () => import('./views/TopologyView.vue'), meta: { requiresAuth: true } },
     { path: '/rooms/:id/floorplan', component: () => import('./views/FloorplanView.vue'), meta: { requiresAuth: true } },

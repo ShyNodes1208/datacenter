@@ -28,6 +28,7 @@ vi.mock('vue-router', async () => {
 type ServerDetailViewState = {
   loadServer: () => Promise<void>
   loadPorts: () => Promise<void>
+  goToTrace: (portId: string) => void
 }
 
 async function renderWithPorts(ports: unknown[]): Promise<string> {
@@ -80,6 +81,58 @@ afterEach(() => {
 })
 
 describe('ServerDetailView port connections', () => {
+  it('offers network tracing only for a connected port', async () => {
+    const html = await renderWithPorts([
+      {
+        id: 'connected-port',
+        serverId: 'source-server',
+        portName: 'eth0',
+        portType: 'RJ45',
+        connectedCableId: 'cable-1',
+        connectedToServerName: 'Core Switch',
+        connectedToServerId: 'peer-server',
+        connectedToPortName: 'Gi0/1',
+      },
+      {
+        id: 'unconnected-port',
+        serverId: 'source-server',
+        portName: 'eth1',
+        portType: 'RJ45',
+        connectedCableId: null,
+        connectedToServerName: null,
+        connectedToServerId: null,
+        connectedToPortName: null,
+      },
+    ])
+
+    expect(visibleText(html)).toContain('线路追踪')
+    expect(visibleText(html)).toContain('未连接，无法追踪')
+  })
+
+  it('navigates to tracing with the connected port as the source', async () => {
+    type SetupFn = (...args: unknown[]) => Record<string, unknown>
+    const component = ServerDetailView as { setup: SetupFn }
+    const originalSetup = component.setup
+    let bindings: Record<string, unknown> | null = null
+    component.setup = (props, ctx) => {
+      if (bindings) return bindings
+      bindings = originalSetup(props, ctx)
+      return bindings
+    }
+
+    try {
+      await renderToString(createSSRApp(ServerDetailView))
+      ;(bindings as unknown as ServerDetailViewState).goToTrace('connected-port')
+
+      expect(pushMock).toHaveBeenCalledWith({
+        path: '/network-trace',
+        query: { sourcePortId: 'connected-port', sourceServerId: 'source-server' },
+      })
+    } finally {
+      component.setup = originalSetup
+    }
+  })
+
   it('shows the connected device, port, rack, and U range for a mounted peer', async () => {
     const html = await renderWithPorts([
       {

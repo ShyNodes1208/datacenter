@@ -9,6 +9,7 @@ import {
 } from '../composables/useTopology'
 import {
   buildCableScene,
+  filterSnapshotToReachableDevices,
   buildPortSlotMap,
   buildSamePortExitOffsets,
   buildUniquePortLabelPlacements,
@@ -902,20 +903,39 @@ describe('CR-002 visual fidelity (T-01 to T-20)', () => {
     expect(data.value?.mode).toBe('racks')
   })
 
-  it('T-02: visible device-level button exists in template', async () => {
+  it('T-02: visible panorama button remains in template', async () => {
     const { readFileSync } = await import('node:fs')
     const { resolve } = await import('node:path')
     const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
     expect(source).toContain('data-testid="enter-device-level"')
-    expect(source).toContain('设备级')
+    expect(source).toContain('全景线路图')
     expect(source).toContain('level-switcher')
   })
 
-  it('T-03: rack double-click enters device level (loadDevices wired)', async () => {
+  it('T-03: selected rack opens its workspace while panorama remains explicit', async () => {
     const { readFileSync } = await import('node:fs')
     const { resolve } = await import('node:path')
     const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
-    expect(source).toMatch(/group\.on\('dblclick'[\s\S]*loadDevices/)
+    const rackDblClickStart = source.lastIndexOf("group.on('dblclick'")
+    const rackClickStart = source.lastIndexOf("group.on('click'", rackDblClickStart)
+    const rackDblClickEnd = source.indexOf('\n      layer.add(group)', rackDblClickStart)
+    const rackClick = source.slice(rackClickStart, rackDblClickStart)
+    const rackDblClick = source.slice(rackDblClickStart, rackDblClickEnd)
+    const workspaceEntryStart = source.indexOf('async function enterRackWorkspace(')
+    const workspaceEntryEnd = source.indexOf('\nfunction clearCableSelection', workspaceEntryStart)
+    const workspaceEntry = source.slice(workspaceEntryStart, workspaceEntryEnd)
+
+    // Break caught: changing either rack route back to the full-device loader makes daily rack work enter the panorama.
+    expect(source).toContain('data-testid="enter-rack-workspace"')
+    expect(source).toContain('进入机柜工作区')
+    expect(source).toContain('请先选择机柜')
+    expect(source).toMatch(/:disabled="!focusedRackId"/)
+    expect(source).toContain('全景线路图')
+    expect(rackClick).toContain('focusedRackId.value = rack.id')
+    expect(rackDblClick).toContain('router.push(`/racks/${encodeURIComponent(rack.id)}`)')
+    expect(rackDblClick).not.toContain('loadDevices')
+    expect(workspaceEntry).toContain('if (!focusedRackId.value) return')
+    expect(workspaceEntry).toContain('router.push(`/racks/${encodeURIComponent(focusedRackId.value)}`)')
   })
 
   it('T-04: devices only render under their rack in laid snapshot coords', () => {
@@ -933,6 +953,47 @@ describe('CR-002 visual fidelity (T-01 to T-20)', () => {
     expect(snapshot.devices.every((d) => snapshot.racks.some((r) => r.rackId === d.rackId))).toBe(true)
     expect(snapshot.devices.find((d) => d.deviceId === 'd1')?.rackId).toBe('k1')
     expect(snapshot.devices.find((d) => d.deviceId === 'd2')?.rackId).toBe('k2')
+  })
+
+  it('T-05: device focus keeps the full multi-hop reachable component and its racks', () => {
+    const snapshot = parseCableSnapshot({
+      racks: [
+        { rackId: 'k1', code: 'R1', x: 0, y: 0, width: 60, height: 100 },
+        { rackId: 'k2', code: 'R2', x: 100, y: 0, width: 60, height: 100 },
+        { rackId: 'k3', code: 'R3', x: 200, y: 0, width: 60, height: 100 },
+        { rackId: 'k4', code: 'R4', x: 300, y: 0, width: 60, height: 100 },
+      ],
+      devices: [
+        { deviceId: 'd1', deviceName: '起点', rackId: 'k1', deviceType: '服务器', operationalStatus: '正常', startU: 1, endU: 1 },
+        { deviceId: 'd2', deviceName: '交换机1', rackId: 'k2', deviceType: '交换机', operationalStatus: '正常', startU: 1, endU: 1 },
+        { deviceId: 'd3', deviceName: '交换机2', rackId: 'k3', deviceType: '交换机', operationalStatus: '正常', startU: 1, endU: 1 },
+        { deviceId: 'd4', deviceName: '无关', rackId: 'k4', deviceType: '服务器', operationalStatus: '正常', startU: 1, endU: 1 },
+      ],
+      cables: [
+        { cableId: 'c1', cableType: '光纤', purpose: '网络', status: '正常', source: { deviceId: 'd1', deviceName: '起点', portName: 'p1', speed: null, rackId: 'k1', rackCode: 'R1' }, target: { deviceId: 'd2', deviceName: '交换机1', portName: 'p1', speed: null, rackId: 'k2', rackCode: 'R2' } },
+        { cableId: 'c2', cableType: '光纤', purpose: '网络', status: '正常', source: { deviceId: 'd2', deviceName: '交换机1', portName: 'p2', speed: null, rackId: 'k2', rackCode: 'R2' }, target: { deviceId: 'd3', deviceName: '交换机2', portName: 'p1', speed: null, rackId: 'k3', rackCode: 'R3' } },
+        { cableId: 'c3', cableType: '光纤', purpose: '网络', status: '正常', source: { deviceId: 'd3', deviceName: '交换机2', portName: 'p2', speed: null, rackId: 'k3', rackCode: 'R3' }, target: { deviceId: 'd1', deviceName: '起点', portName: 'p2', speed: null, rackId: 'k1', rackCode: 'R1' } },
+      ],
+    })!
+    const filtered = filterSnapshotToReachableDevices(snapshot, 'd1')
+    expect(filtered.devices.map(d => d.deviceId)).toEqual(['d1', 'd2', 'd3'])
+    expect(filtered.racks.map(r => r.rackId)).toEqual(['k1', 'k2', 'k3'])
+    expect(filtered.cables.map(c => c.cableId)).toEqual(['c1', 'c2', 'c3'])
+  })
+
+  it('T-06: device focus with no cable keeps only its device and rack', () => {
+    const snapshot = parseCableSnapshot({
+      racks: [{ rackId: 'k1', code: 'R1', x: 0, y: 0, width: 60, height: 100 }, { rackId: 'k2', code: 'R2', x: 100, y: 0, width: 60, height: 100 }],
+      devices: [
+        { deviceId: 'd1', deviceName: '孤立', rackId: 'k1', deviceType: '服务器', operationalStatus: '正常', startU: 1, endU: 1 },
+        { deviceId: 'd2', deviceName: '其他', rackId: 'k2', deviceType: '服务器', operationalStatus: '正常', startU: 1, endU: 1 },
+      ],
+      cables: [],
+    })!
+    const filtered = filterSnapshotToReachableDevices(snapshot, 'd1')
+    expect(filtered.devices.map(d => d.deviceId)).toEqual(['d1'])
+    expect(filtered.racks.map(r => r.rackId)).toEqual(['k1'])
+    expect(filtered.cables).toEqual([])
   })
 
   it('T-05: cable endpoints land on port edge anchors', () => {
@@ -1958,7 +2019,8 @@ describe('TASK-20260813-133241 device UI', () => {
     expect(toolsBlock).toContain('topology-actions')
     expect(toolsBlock).toContain('机房级')
     expect(toolsBlock).toContain('机柜级')
-    expect(toolsBlock).toContain('设备级')
+    expect(toolsBlock).toContain('全景线路图')
+    expect(toolsBlock).toContain('进入机柜工作区')
     expect(toolsBlock).toContain('流动动画')
     expect(toolsBlock).toContain('适应屏幕')
     expect(toolsBlock).toContain('刷新')
@@ -3599,6 +3661,12 @@ describe('TASK-20260814-140520 corridor routing + rack focus', () => {
     expect(source).toMatch(/function onDeviceViewportMouseDown[\s\S]*devicePan/)
     expect(source).toMatch(/function onDeviceViewportMouseMove[\s\S]*DEVICE_DRAG_THRESHOLD_PX/)
     expect(source).toMatch(/function onDeviceViewportMouseMove[\s\S]*stage\.position/)
+    expect(source).toContain('topology-canvas--panning')
+    expect(source).toMatch(/const isDevicePanning = ref\(false\)/)
+    expect(source).toMatch(/devicePan\.moved = true[\s\S]*isDevicePanning\.value = true/)
+    expect(source).toMatch(/devicePan = null[\s\S]*isDevicePanning\.value = false/)
+    expect(source).toMatch(/topology-canvas--panning[\s\S]*animated-path/)
+    expect(source).toMatch(/topology-canvas--panning[\s\S]*filter: none/)
     expect(source).toMatch(/function onRackHitClick[\s\S]*consumeSuppressedViewportClick/)
     expect(source).toMatch(/function onDeviceHitClick[\s\S]*consumeSuppressedViewportClick/)
     expect(source).toMatch(/function onCableBundleClick[\s\S]*consumeSuppressedViewportClick/)
@@ -3616,5 +3684,17 @@ describe('TASK-20260814-140520 corridor routing + rack focus', () => {
     expect(body).toContain('semanticZoomChanged(beforeSemantic, afterSemantic)')
     expect(body).toContain('if (semanticZoomChanged(beforeSemantic, afterSemantic)) drawScene()')
     expect(body).not.toMatch(/stage\.batchDraw\(\)\s*\n\s*drawScene\(\)/)
+  })
+
+  it('TASK-20260831-FOCUS-CENTER: filtered device snapshots trigger a fresh viewport fit', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { resolve } = await import('node:path')
+    const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
+    const start = source.indexOf('function drawDeviceScene()')
+    const body = source.slice(start, source.indexOf('function drawRoomPlatform(', start))
+
+    expect(body).toContain('const scopedSnapshot = focusDeviceId.value')
+    expect(body).toMatch(/const key = deviceSnapshotKey\(scopedSnapshot\)/)
+    expect(body).toContain('if (deviceFitAppliedForSnapshot !== key)')
   })
 })

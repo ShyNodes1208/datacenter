@@ -63,6 +63,37 @@ export interface CableSnapshot {
   cables: CableInfo[]
 }
 
+/** Return the physical cable component reachable from a focused device. */
+export function filterSnapshotToReachableDevices(
+  snapshot: CableSnapshot,
+  deviceId: string,
+  maxHops = 10,
+): CableSnapshot {
+  const reachable = new Set<string>([deviceId])
+  let frontier = [deviceId]
+  for (let hop = 0; hop < maxHops && frontier.length > 0; hop++) {
+    const next: string[] = []
+    for (const cable of snapshot.cables) {
+      const sourceId = cable.source.deviceId
+      const targetId = cable.target.deviceId
+      const peer = frontier.includes(sourceId) ? targetId : frontier.includes(targetId) ? sourceId : null
+      if (peer && !reachable.has(peer)) {
+        reachable.add(peer)
+        next.push(peer)
+      }
+    }
+    frontier = next
+  }
+  const cables = snapshot.cables.filter(c => reachable.has(c.source.deviceId) && reachable.has(c.target.deviceId))
+  const devices = snapshot.devices.filter(d => reachable.has(d.deviceId))
+  const rackIds = new Set(devices.map(d => d.rackId))
+  return {
+    racks: snapshot.racks.filter(r => rackIds.has(r.rackId)),
+    devices,
+    cables,
+  }
+}
+
 export interface CableBundle {
   id: string
   purpose: string
