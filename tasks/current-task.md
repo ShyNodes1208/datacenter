@@ -1,6 +1,6 @@
 ﻿# Current Task
 
-- Status：READY_FOR_RETEST（2026-09-01；TASK-20260901-device-single-click；RV-006 fixed）
+- Status：COMPLETED（2026-09-01；TASK-20260901-device-single-click；PR #3；580dd3eae3556cb968436f0fa40802d5543e0321）
 - Branch：fix/TASK-20260901-device-single-click
 - Owner：Cursor Developer；Reviewer：Codex Reviewer
 - Requirement：单击设备直接居中显示全部物理相连设备。
@@ -25,7 +25,7 @@
 ## 当前状态
 
 - 当前任务：`TASK-20260901-device-single-click` — 设备首次单击直达相连设备视图。
-- 状态：`READY_FOR_RETEST`；Owner：Cursor Developer；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
+- 状态：`COMPLETED`；Owner：Cursor Developer；独立 Reviewer：Codex Reviewer；产品/技术统筹：Codex + Terra。
 - 范围：仅 `TopologyView.vue` 的设备点击入口与 `topology.test.ts` 回归测试。
 - 不做：后端、数据、布局、依赖与其他点击行为改动。
 - 当前任务规格：`tasks/TASK-20260901-device-single-click.md`。

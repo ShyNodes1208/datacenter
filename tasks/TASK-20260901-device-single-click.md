@@ -4,7 +4,7 @@
 
 | 字段 | 内容 |
 |---|---|
-| 状态 | `READY_FOR_RETEST` |
+| 状态 | `COMPLETED` |
 | 需求来源 | 用户 2026-09-01 确认：单击设备直接居中显示全部物理相连设备。 |
 | 产品/技术统筹 | Codex + Terra |
 | Owner | Cursor Developer |
@@ -54,3 +54,9 @@
 - 验证：`npm test -- topology.test.ts` 119/120 通过；唯一失败为既有 F2 浏览器 harness 无法连接 `http://localhost:5173`。`npm run typecheck`、`npm run build`、`git diff --check` 通过。
 - 提交交接：本地提交说明 `fix: focus connected devices on first click`；不 push，待独立 Codex Reviewer 审核。
 - 已知限制：F2 需要本地 Vite dev server（沙箱禁止监听 5173），未改变机柜、线缆束和背景点击行为。
+
+## 最终完成
+
+- 2026-09-01：Codex Reviewer 最终复审 PASS，合法迁移 `READY_FOR_RETEST → COMPLETED`；RV-003/RV-004/RV-005/RV-006 无开放缺陷。
+- PR：[#3](https://github.com/ShyNodes1208/datacenter/pull/3)；实现提交：`580dd3eae3556cb968436f0fa40802d5543e0321`，已推送至 `origin/fix/TASK-20260901-device-single-click`。
+- 最终验证证据：topology 测试 122/122 PASS（含真实 DOM 与 Konva 二次点击回归）、`npm run typecheck` PASS、`npm run build` PASS、`git diff --check` PASS。
