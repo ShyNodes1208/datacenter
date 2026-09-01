@@ -117,6 +117,18 @@ type HomeViewSetupState = {
   uploadPreview: (file: File) => Promise<void>
   submitImport: () => Promise<void>
   closeResult: () => void
+  requiredU: string
+  capacitySearchError: string
+  capacitySearchResults: Array<{
+    roomName: string
+    rackCode: string
+    startU: number
+    endU: number
+    length: number
+    rackId: string
+  }>
+  searchAvailableRacks: () => Promise<void>
+  goToRack: (rackId: string) => void
 }
 
 async function renderLoginViewHtml(): Promise<string> {
@@ -258,7 +270,7 @@ async function mountInteractiveHomeView(): Promise<MountedHomeView> {
   const hasButton = (markup: string, text: string): boolean =>
     new RegExp(`<button[^>]*>\\s*${text}\\s*<\\/button>`).test(markup)
 
-  const hasForm = (markup: string): boolean => /<form[\s>]/.test(markup)
+  const hasForm = (markup: string): boolean => /<form[^>]*class="create-form"/.test(markup)
 
   const inputValue = (markup: string, name: string): string | null => {
     const match = markup.match(new RegExp(`<input[^>]*name="${name}"[^>]*>`))
@@ -281,7 +293,7 @@ async function mountInteractiveHomeView(): Promise<MountedHomeView> {
   }
 
   const createErrorText = (markup: string): string => {
-    const formMatch = markup.match(/<form[\s\S]*?<\/form>/)
+    const formMatch = markup.match(/<form[^>]*class="create-form"[\s\S]*?<\/form>/)
     if (!formMatch) {
       return ''
     }
@@ -292,12 +304,14 @@ async function mountInteractiveHomeView(): Promise<MountedHomeView> {
   }
 
   const saveButtonDisabled = (markup: string): boolean => {
-    const match = markup.match(/<button[^>]*type="submit"[^>]*>/)
+    const formMatch = markup.match(/<form[^>]*class="create-form"[\s\S]*?<\/form>/)
+    const match = formMatch?.[0].match(/<button[^>]*type="submit"[^>]*>/)
     return Boolean(match && /\bdisabled\b/.test(match[0]))
   }
 
   const saveButtonLabel = (markup: string): string | null => {
-    const match = markup.match(/<button[^>]*type="submit"[^>]*>([\s\S]*?)<\/button>/)
+    const formMatch = markup.match(/<form[^>]*class="create-form"[\s\S]*?<\/form>/)
+    const match = formMatch?.[0].match(/<button[^>]*type="submit"[^>]*>([\s\S]*?)<\/button>/)
     return match ? match[1].trim() : null
   }
 
@@ -489,6 +503,144 @@ describe('HomeView protected shell (U14-C)', () => {
     const html = await renderHomeViewHtml()
 
     expect(html).toContain('aria-label="机房列表"')
+  })
+})
+
+describe('HomeView available rack search (TASK-20260831-rack-capacity-audit)', () => {
+  it('shows a clear error for an invalid required U value', async () => {
+    const state = await mountHomeViewState()
+    state.requiredU = '0'
+
+    await state.searchAvailableRacks()
+
+    expect(state.capacitySearchError).toBe('请输入正整数 U 位')
+  })
+
+  it('finds enabled racks with a matching contiguous free U range', async () => {
+    requestMock.mockImplementation(async (path: string) => {
+      if (path === '/api/rooms') {
+        return mockRoomsGet([{ id: 'room-1', name: '机房A', status: '启用' }])
+      }
+      if (path === '/api/rooms/room-1/racks-summary') {
+        return {
+          ok: true,
+          data: {
+            racks: [{
+              id: 'rack-1', code: 'A01', heightU: 12, brand: null, occupiedU: 8,
+              positions: [
+                { uNumber: 12, occupied: false }, { uNumber: 11, occupied: false },
+                { uNumber: 10, occupied: false }, { uNumber: 9, occupied: false },
+                { uNumber: 8, occupied: true, serverName: 'server-1' }, { uNumber: 7, occupied: true, serverName: 'server-1' },
+                { uNumber: 6, occupied: true, serverName: 'server-1' }, { uNumber: 5, occupied: true, serverName: 'server-1' },
+                { uNumber: 4, occupied: true, serverName: 'server-1' }, { uNumber: 3, occupied: true, serverName: 'server-1' },
+                { uNumber: 2, occupied: true, serverName: 'server-1' }, { uNumber: 1, occupied: true, serverName: 'server-1' },
+              ],
+            }],
+          },
+          headers: new Headers(), status: 200,
+        }
+      }
+      if (path === '/api/racks?roomId=room-1') {
+        return { ok: true, data: [{ id: 'rack-1', status: '启用' }], headers: new Headers(), status: 200 }
+      }
+      return { ok: false, error: 'unexpected', status: 500 }
+    })
+    const state = await mountHomeViewState()
+    await state.loadRooms()
+    state.requiredU = '4'
+
+    await state.searchAvailableRacks()
+
+    expect(state.capacitySearchError).toBe('')
+    expect(state.capacitySearchResults).toEqual([{
+      roomName: '机房A', rackCode: 'A01', startU: 12, endU: 9, length: 4, rackId: 'rack-1',
+    }])
+  })
+
+  it('excludes disabled racks even when they have enough adjacent free U positions', async () => {
+    requestMock.mockImplementation(async (path: string) => {
+      if (path === '/api/rooms') return mockRoomsGet([{ id: 'room-1', name: '机房A', status: '启用' }])
+      if (path === '/api/rooms/room-1/racks-summary') return {
+        ok: true, data: { racks: [{
+          id: 'rack-1', code: 'A01', heightU: 12, brand: null, occupiedU: 8,
+          positions: [
+            { uNumber: 12, occupied: false }, { uNumber: 11, occupied: false },
+            { uNumber: 10, occupied: false }, { uNumber: 9, occupied: false },
+            { uNumber: 8, occupied: true, serverName: 'server-1' }, { uNumber: 7, occupied: true, serverName: 'server-1' },
+            { uNumber: 6, occupied: true, serverName: 'server-1' }, { uNumber: 5, occupied: true, serverName: 'server-1' },
+            { uNumber: 4, occupied: true, serverName: 'server-1' }, { uNumber: 3, occupied: true, serverName: 'server-1' },
+            { uNumber: 2, occupied: true, serverName: 'server-1' }, { uNumber: 1, occupied: true, serverName: 'server-1' },
+          ],
+        }] }, headers: new Headers(), status: 200,
+      }
+      if (path === '/api/racks?roomId=room-1') return {
+        ok: true, data: [{ id: 'rack-1', status: '停用' }], headers: new Headers(), status: 200,
+      }
+      return { ok: false, error: 'unexpected', status: 500 }
+    })
+    const state = await mountHomeViewState()
+    await state.loadRooms()
+    state.requiredU = '4'
+
+    await state.searchAvailableRacks()
+
+    expect(state.capacitySearchResults).toEqual([])
+  })
+
+  it.each(['summary', 'status'])('shows a load error when the %s request fails', async (failedRequest) => {
+    requestMock.mockImplementation(async (path: string) => {
+      if (path === '/api/rooms') return mockRoomsGet([{ id: 'room-1', name: '机房A', status: '启用' }])
+      if (path === '/api/rooms/room-1/racks-summary') {
+        return failedRequest === 'summary'
+          ? { ok: false, error: 'summary failed', status: 500 }
+          : { ok: true, data: { racks: [] }, headers: new Headers(), status: 200 }
+      }
+      if (path === '/api/racks?roomId=room-1') {
+        return failedRequest === 'status'
+          ? { ok: false, error: 'status failed', status: 500 }
+          : { ok: true, data: [], headers: new Headers(), status: 200 }
+      }
+      return { ok: false, error: 'unexpected', status: 500 }
+    })
+    const state = await mountHomeViewState()
+    await state.loadRooms()
+    state.requiredU = '4'
+
+    await state.searchAvailableRacks()
+
+    expect(state.capacitySearchError).toBe('加载机柜摘要失败')
+  })
+
+  it('renders no-result text only after a completed search', async () => {
+    requestMock.mockImplementation(async (path: string) => {
+      if (path === '/api/rooms') return mockRoomsGet([{ id: 'room-1', name: '机房A', status: '启用' }])
+      if (path === '/api/rooms/room-1/racks-summary') return {
+        ok: true, data: { racks: [] }, headers: new Headers(), status: 200,
+      }
+      if (path === '/api/racks?roomId=room-1') return {
+        ok: true, data: [], headers: new Headers(), status: 200,
+      }
+      return { ok: false, error: 'unexpected', status: 500 }
+    })
+    const view = await mountSharedHomeView()
+    try {
+      view.writeField('requiredU', '4')
+      expect(await view.html()).not.toContain('没有满足条件的可用机柜')
+
+      await view.state.searchAvailableRacks()
+
+      expect(await view.html()).toContain('没有满足条件的可用机柜')
+    } finally {
+      view.unmount()
+    }
+  })
+
+  it('routes a capacity result click through goToRack', async () => {
+    const state = await mountHomeViewState()
+
+    state.goToRack('rack-1')
+
+    expect(pushMock).toHaveBeenCalledWith('/racks/rack-1')
   })
 })
 
@@ -1414,6 +1566,73 @@ describe('auth redirect route guards (U14-D)', () => {
 
     expect(restoreMock).toHaveBeenCalled()
     expect(router.currentRoute.value.fullPath).toBe('/')
+  })
+})
+
+describe('AuditRecordsView (TASK-20260831-rack-capacity-audit)', () => {
+  it('provides the protected global audit route and renders filtered audit records', async () => {
+    requestMock.mockResolvedValue({
+      ok: true,
+      data: [{
+        id: 'audit-1', serverId: 'server/a', serverName: '服务器 A', operationType: '移动',
+        fromPosition: null, toPosition: 'A01-12U', operatorUsername: 'operator',
+        operatedAt: '2026-08-31T12:00:00Z', notes: '调整位置',
+      }],
+      headers: new Headers(),
+      status: 200,
+    })
+
+    vi.resetModules()
+    const { router } = await import('../router')
+    const route = router.getRoutes().find((item) => item.path === '/audit-records')
+
+    expect(route?.meta.requiresAuth).toBe(true)
+
+    const { default: AuditRecordsView } = await import('../views/AuditRecordsView.vue')
+    type SetupFn = (...args: unknown[]) => Record<string, unknown>
+    const component = AuditRecordsView as { setup: SetupFn }
+    const originalSetup = component.setup
+    let bindings: Record<string, unknown> | null = null
+    component.setup = (props, ctx) => {
+      if (bindings) return bindings
+      bindings = originalSetup(props, ctx)
+      return bindings
+    }
+
+    try {
+      const render = async () => renderToString(createSSRApp(AuditRecordsView))
+      await render()
+      if (bindings === null) throw new Error('AuditRecordsView setup bindings were not captured')
+      const state = bindings as unknown as {
+        loadRecords: () => Promise<void>
+      }
+      const write = (name: string, value: string): void => {
+        ;(bindings![name] as { value: string }).value = value
+      }
+      write('from', '2026-08-01')
+      write('operatorUsername', 'operator')
+      write('operationType', '移动')
+      write('serverName', '服务器 A')
+
+      await state.loadRecords()
+
+      expect(requestMock).toHaveBeenCalledWith(
+        '/api/servers/audit-records?from=2026-08-01&operatorUsername=operator&operationType=%E7%A7%BB%E5%8A%A8&serverName=%E6%9C%8D%E5%8A%A1%E5%99%A8+A',
+        { method: 'GET' },
+      )
+      const html = await render()
+      expect(html).toContain('name="from"')
+      expect(html).toContain('name="to"')
+      expect(html).toContain('name="operatorUsername"')
+      expect(html).toContain('name="operationType"')
+      expect(html).toContain('name="serverName"')
+      expect(html).toContain('服务器 A')
+      expect(html).toContain('A01-12U')
+      expect(html).toContain('调整位置')
+      expect(html).toContain('>-</td>')
+    } finally {
+      component.setup = originalSetup
+    }
   })
 })
 

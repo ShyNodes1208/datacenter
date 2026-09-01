@@ -37,6 +37,9 @@ appsettings.*.local.json
 # Agent handoff (local only)
 .ai/
 
+# Isolated agent workspaces
+.worktrees/
+
 # Playwright browser snapshots
 .playwright-cli/
 

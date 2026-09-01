@@ -9,4 +9,8 @@ public sealed class Room
     public string Status { get; set; } = string.Empty;
 
     public string? Location { get; set; }
+
+    public double TopologyX { get; set; }
+
+    public double TopologyY { get; set; }
 }

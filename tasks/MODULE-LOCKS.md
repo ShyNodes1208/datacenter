@@ -6,6 +6,102 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 
 | Task ID | Module or Path | Owner | Claimed At | Status | Release Condition | Released At |
 |---|---|---|---|---|---|---|
+| TASK-20260831-rack-capacity-audit | src/frontend/src/composables/useRackDetail.ts | Cursor Developer | 2026-08-31 +08:00 | RELEASED | Final Codex Reviewer PASS; frontend 234/234, backend 224/224, typecheck/build/diff check PASS; prior head `860d39cb10c0cbaa345854cfea937b4665da9c7c` verified pushed | 2026-09-01 09:01:11 +08:00 (Codex Reviewer) |
+| TASK-20260831-rack-capacity-audit | src/frontend/src/views/HomeView.vue | Cursor Developer | 2026-08-31 +08:00 | RELEASED | Final Codex Reviewer PASS; frontend 234/234, backend 224/224, typecheck/build/diff check PASS; prior head `860d39cb10c0cbaa345854cfea937b4665da9c7c` verified pushed | 2026-09-01 09:01:11 +08:00 (Codex Reviewer) |
+| TASK-20260831-rack-capacity-audit | src/frontend/src/__tests__/rackDetail.test.ts | Cursor Developer | 2026-08-31 +08:00 | RELEASED | Final Codex Reviewer PASS; frontend 234/234, backend 224/224, typecheck/build/diff check PASS; prior head `860d39cb10c0cbaa345854cfea937b4665da9c7c` verified pushed | 2026-09-01 09:01:11 +08:00 (Codex Reviewer) |
+| TASK-20260831-rack-capacity-audit | src/frontend/src/__tests__/router-and-views.test.ts | Cursor Developer | 2026-08-31 +08:00 | RELEASED | Final Codex Reviewer PASS; frontend 234/234, backend 224/224, typecheck/build/diff check PASS; prior head `860d39cb10c0cbaa345854cfea937b4665da9c7c` verified pushed | 2026-09-01 09:01:11 +08:00 (Codex Reviewer) |
+| TASK-20260831-rack-capacity-audit | src/frontend/src/views/AuditRecordsView.vue | Cursor Developer | 2026-09-01 +08:00 | RELEASED | Final Codex Reviewer PASS; frontend 234/234, backend 224/224, typecheck/build/diff check PASS; prior head `860d39cb10c0cbaa345854cfea937b4665da9c7c` verified pushed | 2026-09-01 09:01:11 +08:00 (Codex Reviewer) |
+| TASK-20260831-rack-capacity-audit | src/frontend/src/router.ts | Cursor Developer | 2026-09-01 +08:00 | RELEASED | Final Codex Reviewer PASS; frontend 234/234, backend 224/224, typecheck/build/diff check PASS; prior head `860d39cb10c0cbaa345854cfea937b4665da9c7c` verified pushed | 2026-09-01 09:01:11 +08:00 (Codex Reviewer) |
+| TASK-20260831-rack-capacity-audit | src/frontend/src/App.vue | Cursor Developer | 2026-09-01 +08:00 | RELEASED | Final Codex Reviewer PASS; frontend 234/234, backend 224/224, typecheck/build/diff check PASS; prior head `860d39cb10c0cbaa345854cfea937b4665da9c7c` verified pushed | 2026-09-01 09:01:11 +08:00 (Codex Reviewer) |
+| TASK-20260831-rack-capacity-audit | src/backend/Datacenter.Api/Controllers/ServersController.cs | Cursor Developer | 2026-08-31 +08:00 | RELEASED | Final Codex Reviewer PASS; frontend 234/234, backend 224/224, typecheck/build/diff check PASS; prior head `860d39cb10c0cbaa345854cfea937b4665da9c7c` verified pushed | 2026-09-01 09:01:11 +08:00 (Codex Reviewer) |
+| TASK-20260831-rack-capacity-audit | tests/backend/Datacenter.Api.Tests/IntegrationTests/ServerPositionIntegrationTests.cs | Cursor Developer | 2026-08-31 +08:00 | RELEASED | Final Codex Reviewer PASS; frontend 234/234, backend 224/224, typecheck/build/diff check PASS; prior head `860d39cb10c0cbaa345854cfea937b4665da9c7c` verified pushed | 2026-09-01 09:01:11 +08:00 (Codex Reviewer) |
+
+## TASK-20260831-rack-capacity-audit implementation handoff
+
+- Time: 2026-09-01 +08:00; owner: Cursor Developer; receiver: Codex Reviewer.
+- Legal transition: `IN_PROGRESS → READY_FOR_REVIEW`; all nine implementation locks changed `CLAIMED → HANDED_OFF`, with paths and owner unchanged. They remain active and must not be released before Reviewer PASS and final completion.
+- Implementation commits: `f1949f2`, `33c39e3`, `179b55b`, `67861c6`.
+- Evidence: `dotnet test tests/backend/Datacenter.Api.Tests/ --no-restore` passed 224/224; `git diff --check` passed.
+- Known limitations: the full frontend browser test still requires the existing Vite prerequisite; the existing CS7095 warning remains at `ServersController.cs:740`.
+
+## TASK-20260831-rack-capacity-audit final completion
+
+- Time: 2026-09-01 09:01:11 +08:00; final reviewer: Codex Reviewer.
+- Legal transition: `READY_FOR_REVIEW → COMPLETED`; all nine implementation locks changed `HANDED_OFF → RELEASED`, with paths and historical Owner unchanged.
+- Final review: PASS; no open defects. Fresh verification: frontend 234/234, backend 224/224, typecheck/build and `git diff --check` PASS.
+- Push/hash evidence before the completion commit: local and `origin/feature/TASK-20260831-rack-capacity-audit` both `860d39cb10c0cbaa345854cfea937b4665da9c7c`.
+- Known non-blocking limitation: the rack-capacity task's router test does not directly assert blank-filter omission or server-link encoding; the prior independent review classified this as coverage-only.
+| TASK-20260828-device-topology-performance | src/frontend/src/views/TopologyView.vue | Cursor Developer | 2026-08-28 15:40 +08:00 | RELEASED | Codex Reviewer final PASS; vitest 224/224, typecheck/build/diff check PASS; implementation `198708f` merged as `3af4702` and pushed | 2026-08-29 +08:00（Codex Reviewer） |
+| TASK-20260828-device-topology-performance | src/frontend/src/__tests__/topology.test.ts | Cursor Developer | 2026-08-28 15:40 +08:00 | RELEASED | Codex Reviewer final PASS; vitest 224/224, typecheck/build/diff check PASS; implementation `198708f` merged as `3af4702` and pushed | 2026-08-29 +08:00（Codex Reviewer） |
+| TASK-20260828-150000 | scripts/seed-acceptance-data.py | Cursor Developer | 2026-08-28 15:05 +08:00 | RELEASED | Codex Reviewer final PASS; task COMPLETED; unittest 2/2 and diff check PASS; no seed execution/API/database change | 2026-08-28 15:16 +08:00 |
+| TASK-20260828-150000 | scripts/test_seed_acceptance_data.py | Cursor Developer | 2026-08-28 15:05 +08:00 | RELEASED | Codex Reviewer final PASS; task COMPLETED; unittest 2/2 and diff check PASS; no seed execution/API/database change | 2026-08-28 15:16 +08:00 |
+| TASK-20260828-143000 | scripts/seed-acceptance-data.py | Cursor Developer | 2026-08-28 14:35 +08:00 | RELEASED | Codex Reviewer final PASS; task COMPLETED; unittest 2/2 and diff check PASS; py_compile handoff evidence PASS; no seed execution/API/database change | 2026-08-28 14:46 +08:00 |
+| TASK-20260828-143000 | scripts/test_seed_acceptance_data.py | Cursor Developer | 2026-08-28 14:35 +08:00 | RELEASED | Codex Reviewer final PASS; task COMPLETED; unittest 2/2 and diff check PASS; py_compile handoff evidence PASS; no seed execution/API/database change | 2026-08-28 14:46 +08:00 |
+| TASK-20260828-134500 | scripts/seed-acceptance-data.py | Cursor Developer | 2026-08-28 13:55 +08:00 | RELEASED | Codex Reviewer final PASS; task COMPLETED; unittest 1/1, py_compile, diff check PASS; no seed execution/API/database change | 2026-08-28 14:16 +08:00 |
+| TASK-20260828-134500 | scripts/test_seed_acceptance_data.py | Cursor Developer | 2026-08-28 13:55 +08:00 | RELEASED | Codex Reviewer final PASS; task COMPLETED; unittest 1/1, py_compile, diff check PASS; no seed execution/API/database change | 2026-08-28 14:16 +08:00 |
+| TASK-20260828-073500 | src/frontend/src/views/TopologyView.vue | Cursor Developer | 2026-08-28 08:00 +08:00 | RELEASED | Codex Reviewer final PASS; task COMPLETED; evidence: npm test 223/223, typecheck/build/diff check PASS; pre-transition HEAD/upstream `b1790c681ae68b121613d2866557701466044dfd` | 2026-08-28 10:08 +08:00 |
+| TASK-20260828-073500 | src/frontend/src/__tests__/topology.test.ts | Cursor Developer | 2026-08-28 08:00 +08:00 | RELEASED | Codex Reviewer final PASS; task COMPLETED; evidence: npm test 223/223, typecheck/build/diff check PASS; pre-transition HEAD/upstream `b1790c681ae68b121613d2866557701466044dfd` | 2026-08-28 10:08 +08:00 |
+| TASK-20260827-172017 | src/frontend/src/views/ServerDetailView.vue | Cursor Frontend | 2026-08-27 17:28 +08:00 | RELEASED | Codex Reviewer final PASS; TASK-20260827-172017 COMPLETED | 2026-08-27 20:57 +08:00 |
+| TASK-20260827-172017 | src/frontend/src/__tests__/server-detail-view.test.ts | Cursor Frontend | 2026-08-27 17:28 +08:00 | RELEASED | Codex Reviewer final PASS; TASK-20260827-172017 COMPLETED | 2026-08-27 20:57 +08:00 |
+| TASK-20260827-172017 | src/backend/Datacenter.Api/Controllers/PortsController.cs | Codex Backend | 2026-08-27 17:25 +08:00 | RELEASED | Codex Reviewer final PASS; TASK-20260827-172017 COMPLETED | 2026-08-27 20:57 +08:00 |
+| TASK-20260827-172017 | tests/backend/Datacenter.Api.Tests/IntegrationTests/ServerIntegrationTests.cs | Codex Backend | 2026-08-27 17:25 +08:00 | RELEASED | Codex Reviewer final PASS; TASK-20260827-172017 COMPLETED | 2026-08-27 20:57 +08:00 |
+| TASK-20260810-000003 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-11 18:30:00 +08:00 | RELEASED | CR-002 审核完成 → 新 Task ID TASK-20260812-070929 | 2026-08-12 (Claude) |
+| TASK-20260810-000003 | src/frontend/src/components/CableLayer.vue | Cursor | 2026-08-11 18:30:00 +08:00 | RELEASED | CR-002 审核完成 → 新 Task ID TASK-20260812-070929 | 2026-08-12 (Claude) |
+| TASK-20260810-000003 | src/frontend/src/composables/useCableScene.ts | Cursor | 2026-08-11 18:30:00 +08:00 | RELEASED | CR-002 审核完成 → 新 Task ID TASK-20260812-070929 | 2026-08-12 (Claude) |
+| TASK-20260810-000003 | src/frontend/src/composables/useTopology.ts | Cursor | 2026-08-11 18:30:00 +08:00 | RELEASED | CR-002 审核完成 → 新 Task ID TASK-20260812-070929 | 2026-08-12 (Claude) |
+| TASK-20260810-000003 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-11 18:30:00 +08:00 | RELEASED | CR-002 审核完成 → 新 Task ID TASK-20260812-070929 | 2026-08-12 (Claude) |
+| TASK-20260812-070929 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-12 +08:00 | RELEASED | TASK-20260812-070929 COMPLETED，2.5D 全链路由 TASK-20260812-120000 接管 | 2026-08-12 (Claude) |
+| TASK-20260812-070929 | src/frontend/src/components/CableLayer.vue | Cursor | 2026-08-12 +08:00 | RELEASED | TASK-20260812-070929 COMPLETED | 2026-08-12 (Claude) |
+| TASK-20260812-070929 | src/frontend/src/composables/useCableScene.ts | Cursor | 2026-08-12 +08:00 | RELEASED | TASK-20260812-070929 COMPLETED | 2026-08-12 (Claude) |
+| TASK-20260812-070929 | src/frontend/src/composables/useTopology.ts | Cursor | 2026-08-12 +08:00 | RELEASED | TASK-20260812-070929 COMPLETED | 2026-08-12 (Claude) |
+| TASK-20260812-070929 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-12 +08:00 | RELEASED | TASK-20260812-070929 COMPLETED | 2026-08-12 (Claude) |
+| TASK-20260812-120000 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-12 +08:00 | RELEASED | Codex 复审 PASS（2026-08-12 会话，f554bff 实现审核通过，2.5D 全链路已推送） | 2026-08-13 (Claude，释放过期锁：复审已于 2026-08-12 PASS) |
+| TASK-20260812-120000 | src/frontend/src/views/HomeView.vue | Cursor | 2026-08-12 +08:00 | RELEASED | Codex 复审 PASS（2026-08-12 会话，f554bff 实现审核通过，2.5D 全链路已推送） | 2026-08-13 (Claude，释放过期锁：复审已于 2026-08-12 PASS) |
+| TASK-20260812-120000 | src/frontend/src/components/CableLayer.vue | Cursor | 2026-08-12 +08:00 | RELEASED | Codex 复审 PASS（2026-08-12 会话，f554bff 实现审核通过，2.5D 全链路已推送） | 2026-08-13 (Claude，释放过期锁：复审已于 2026-08-12 PASS) |
+| TASK-20260812-120000 | src/frontend/src/components/RoomThumbnail.vue | Cursor | 2026-08-12 +08:00 | RELEASED | Codex 复审 PASS（2026-08-12 会话，f554bff 实现审核通过，2.5D 全链路已推送） | 2026-08-13 (Claude，释放过期锁：复审已于 2026-08-12 PASS) |
+| TASK-20260812-120000 | src/frontend/src/composables/useCableScene.ts | Cursor | 2026-08-12 +08:00 | RELEASED | Codex 复审 PASS（2026-08-12 会话，f554bff 实现审核通过，2.5D 全链路已推送） | 2026-08-13 (Claude，释放过期锁：复审已于 2026-08-12 PASS) |
+| TASK-20260812-120000 | src/frontend/src/composables/useTopology.ts | Cursor | 2026-08-12 +08:00 | RELEASED | Codex 复审 PASS（2026-08-12 会话，f554bff 实现审核通过，2.5D 全链路已推送） | 2026-08-13 (Claude，释放过期锁：复审已于 2026-08-12 PASS) |
+| TASK-20260812-120000 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-12 +08:00 | RELEASED | Codex 复审 PASS（2026-08-12 会话，f554bff 实现审核通过，2.5D 全链路已推送） | 2026-08-13 (Claude，释放过期锁：复审已于 2026-08-12 PASS) |
+| TASK-20260812-120000 | src/backend/Datacenter.Api/Models/Cable.cs | Cursor | 2026-08-12 +08:00 | RELEASED | Codex 复审 PASS（2026-08-12 会话，f554bff 实现审核通过，2.5D 全链路已推送） | 2026-08-13 (Claude，释放过期锁：复审已于 2026-08-12 PASS) |
+| TASK-20260812-120000 | src/backend/Datacenter.Api/Controllers/RoomsController.cs | Cursor | 2026-08-12 +08:00 | RELEASED | Codex 复审 PASS（2026-08-12 会话，f554bff 实现审核通过，2.5D 全链路已推送） | 2026-08-13 (Claude，释放过期锁：复审已于 2026-08-12 PASS) |
+| TASK-20260812-120000 | src/backend/Datacenter.Api/Controllers/CableSceneController.cs | Cursor | 2026-08-12 +08:00 | RELEASED | Codex 复审 PASS（2026-08-12 会话，f554bff 实现审核通过，2.5D 全链路已推送） | 2026-08-13 (Claude，释放过期锁：复审已于 2026-08-12 PASS) |
+| TASK-20260812-120000 | src/backend/Datacenter.Api/Controllers/CablesController.cs | Cursor | 2026-08-12 +08:00 | RELEASED | Codex 复审 PASS（2026-08-12 会话，f554bff 实现审核通过，2.5D 全链路已推送） | 2026-08-13 (Claude，释放过期锁：复审已于 2026-08-12 PASS) |
+| TASK-20260812-120000 | src/backend/Datacenter.Api/Migrations/ | Cursor | 2026-08-12 +08:00 | RELEASED | Codex 复审 PASS（2026-08-12 会话，f554bff 实现审核通过，2.5D 全链路已推送） | 2026-08-13 (Claude，释放过期锁：复审已于 2026-08-12 PASS) |
+| TASK-20260812-120000 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RoomTopologyIntegrationTests.cs | Cursor | 2026-08-12 +08:00 | RELEASED | Codex 复审 PASS（2026-08-12 会话，f554bff 实现审核通过，2.5D 全链路已推送） | 2026-08-13 (Claude，释放过期锁：复审已于 2026-08-12 PASS) |
+| TASK-20260812-120000 | scripts/seed-acceptance-data.py | Cursor | 2026-08-12 +08:00 | RELEASED | Codex 复审 PASS（2026-08-12 会话，f554bff 实现审核通过，2.5D 全链路已推送） | 2026-08-13 (Claude，释放过期锁：复审已于 2026-08-12 PASS) |
+| TASK-20260812-120000 | scripts/screenshot-topology.ts | Cursor | 2026-08-12 +08:00 | RELEASED | Codex 复审 PASS（2026-08-12 会话，f554bff 实现审核通过，2.5D 全链路已推送） | 2026-08-13 (Claude，释放过期锁：复审已于 2026-08-12 PASS) |
+| TASK-20260813-085046 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-13 +08:00 | RELEASED | Codex Reviewer 审核 PASS（2026-08-13，提交 875dc11 已推送） | 2026-08-13 (Claude) |
+| TASK-20260813-085046 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-13 +08:00 | RELEASED | Codex Reviewer 审核 PASS（2026-08-13，提交 875dc11 已推送） | 2026-08-13 (Claude) |
+| TASK-20260813-230017 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-13 +08:00 | RELEASED | Codex 审核 PASS (Round 3) → 任务 COMPLETED | 2026-08-14 (Claude) |
+| TASK-20260813-230017 | src/frontend/src/composables/useCableScene.ts | Cursor | 2026-08-13 +08:00 | RELEASED | Codex 审核 PASS (Round 3) → 任务 COMPLETED | 2026-08-14 (Claude) |
+| TASK-20260813-230017 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-13 +08:00 | RELEASED | Codex 审核 PASS (Round 3) → 任务 COMPLETED | 2026-08-14 (Claude) |
+| TASK-20260813-170555 | scripts/seed-acceptance-data.py | Cursor | 2026-08-13 +08:00 | RELEASED | Codex 审核 PASS (Round 2) → 任务 COMPLETED | 2026-08-14 (Claude) |
+| TASK-20260813-170555 | scripts/screenshot-topology.ts | Cursor | 2026-08-13 +08:00 | RELEASED | Codex 审核 PASS (Round 2) → 任务 COMPLETED | 2026-08-14 (Claude) |
+| TASK-20260813-164147 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-13 +08:00 | RELEASED | 项目负责人豁免本轮审核（2026-08-13 用户指示）；173/173 tests + 浏览器实测通过 | 2026-08-13 (Claude) |
+| TASK-20260813-164147 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-13 +08:00 | RELEASED | 项目负责人豁免本轮审核（2026-08-13 用户指示）；173/173 tests + 浏览器实测通过 | 2026-08-13 (Claude) |
+| TASK-20260813-153018 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-13 +08:00 | RELEASED | Codex Reviewer 复审 PASS（2026-08-13，无 findings） | 2026-08-13 (Claude) |
+| TASK-20260813-153018 | src/frontend/src/composables/useCableScene.ts | Cursor | 2026-08-13 +08:00 | RELEASED | Codex Reviewer 复审 PASS（2026-08-13，无 findings） | 2026-08-13 (Claude) |
+| TASK-20260813-153018 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-13 +08:00 | RELEASED | Codex Reviewer 复审 PASS（2026-08-13，无 findings） | 2026-08-13 (Claude) |
+| TASK-20260813-133241 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-13 +08:00 | RELEASED | Codex Reviewer 复审 PASS（2026-08-13，无 findings） | 2026-08-13 (Claude) |
+| TASK-20260813-133241 | src/frontend/src/components/CableLayer.vue | Cursor | 2026-08-13 +08:00 | RELEASED | Codex Reviewer 复审 PASS（2026-08-13，无 findings） | 2026-08-13 (Claude) |
+| TASK-20260813-133241 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-13 +08:00 | RELEASED | Codex Reviewer 复审 PASS（2026-08-13，无 findings） | 2026-08-13 (Claude) |
+| TASK-20260813-133241 | src/frontend/src/composables/useCableScene.ts | Cursor | 2026-08-13 +08:00 | RELEASED | Codex Reviewer 复审 PASS（2026-08-13，无 findings） | 2026-08-13 (Claude) |
+| TASK-20260810-000003 | src/backend/Datacenter.Api/Models/Room.cs | Cursor | 2026-08-11 16:43:51 +08:00 | RELEASED | TASK-20260810-000003 COMPLETED（CR-001 设备级拓扑） | 2026-08-11 (Claude) |
+| TASK-20260810-000003 | src/backend/Datacenter.Api/Controllers/RoomsController.cs | Cursor | 2026-08-11 16:43:51 +08:00 | RELEASED | TASK-20260810-000003 COMPLETED（CR-001 设备级拓扑） | 2026-08-11 (Claude) |
+| TASK-20260810-000003 | src/backend/Datacenter.Api/Data/AppDbContext.cs | Cursor | 2026-08-11 16:43:51 +08:00 | RELEASED | TASK-20260810-000003 COMPLETED（CR-001 设备级拓扑） | 2026-08-11 (Claude) |
+| TASK-20260810-000003 | src/backend/Datacenter.Api/Migrations/ | Cursor | 2026-08-11 16:43:51 +08:00 | RELEASED | TASK-20260810-000003 COMPLETED（CR-001 设备级拓扑） | 2026-08-11 (Claude) |
+| TASK-20260810-000003 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RoomIntegrationTests.cs | Cursor | 2026-08-11 16:43:51 +08:00 | RELEASED | TASK-20260810-000003 COMPLETED（CR-001 设备级拓扑） | 2026-08-11 (Claude) |
+| TASK-20260810-000003 | tests/backend/Datacenter.Api.Tests/IntegrationTests/RoomTopologyIntegrationTests.cs | Cursor | 2026-08-11 17:17:50 +08:00 | RELEASED | TASK-20260810-000003 COMPLETED（CR-001 设备级拓扑） | 2026-08-11 (Claude) |
+| TASK-20260810-000003 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-11 17:17:50 +08:00 | RELEASED | TASK-20260810-000003 COMPLETED（CR-001 设备级拓扑） | 2026-08-11 (Claude) |
+| TASK-20260810-000003 | src/frontend/src/composables/useTopology.ts | Cursor | 2026-08-11 16:43:51 +08:00 | RELEASED | TASK-20260810-000003 COMPLETED（CR-001 设备级拓扑） | 2026-08-11 (Claude) |
+| TASK-20260810-000003 | src/frontend/src/router.ts | Cursor | 2026-08-11 16:43:51 +08:00 | RELEASED | TASK-20260810-000003 COMPLETED（CR-001 设备级拓扑） | 2026-08-11 (Claude) |
+| TASK-20260810-000003 | src/frontend/src/App.vue | Cursor | 2026-08-11 16:43:51 +08:00 | RELEASED | TASK-20260810-000003 COMPLETED（CR-001 设备级拓扑） | 2026-08-11 (Claude) |
+| TASK-20260810-000003 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-11 17:17:50 +08:00 | RELEASED | TASK-20260810-000003 COMPLETED（CR-001 设备级拓扑） | 2026-08-11 (Claude) |
+| TASK-20260810-000003 | .ai/IMPLEMENTATION.md | Cursor | 2026-08-11 17:17:50 +08:00 | RELEASED | TASK-20260810-000003 COMPLETED（CR-001 设备级拓扑） | 2026-08-11 (Claude) |
+| TASK-20260810-000003 | src/backend/Datacenter.Api/Controllers/CableSceneController.cs | Cursor | 2026-08-11 17:17:50 +08:00 | RELEASED | TASK-20260810-000003 COMPLETED（CR-001 设备级拓扑） | 2026-08-11 (Claude) |
+| TASK-20260810-000003 | src/frontend/src/composables/useCableScene.ts | Cursor | 2026-08-11 17:17:50 +08:00 | RELEASED | TASK-20260810-000003 COMPLETED（CR-001 设备级拓扑） | 2026-08-11 (Claude) |
+| TASK-20260810-000003 | src/frontend/src/components/CableLayer.vue | Cursor | 2026-08-11 16:43:51 +08:00 | RELEASED | TASK-20260810-000003 COMPLETED（CR-001 设备级拓扑） | 2026-08-11 (Claude) |
+| TASK-20260810-000003 | seed_device_cables.py | Cursor | 2026-08-11 17:17:50 +08:00 | RELEASED | FIX-R1-3：脚本已删除，锁释放 | 2026-08-11 (Claude) |
 | TASK-20260810-000001 | src/backend/Datacenter.Api/Models/Room.cs | Cursor | 2026-08-10 +08:00 | RELEASED | TASK-20260810-000001 COMPLETED | 2026-08-10 (Claude) |
 | TASK-20260810-000001 | src/backend/Datacenter.Api/Models/Rack.cs | Cursor | 2026-08-10 +08:00 | RELEASED | TASK-20260810-000001 COMPLETED | 2026-08-10 (Claude) |
 | TASK-20260810-000001 | src/backend/Datacenter.Api/Controllers/RoomsController.cs | Cursor | 2026-08-10 +08:00 | RELEASED | TASK-20260810-000001 COMPLETED | 2026-08-10 (Claude) |
@@ -310,10 +406,10 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 - 规格锁及 CR 临时锁：三项 TASK-0007 规格锁和全部 CR 临时文档锁继续保持 RELEASED，未重新认领
 - 后续限制：不得继续修改 TASK-0007 实施路径；下一步只能进入独立合并门禁或分支合并流程
 
-| TASK-0021 | src/frontend/src/views/FloorplanView.vue | Cursor Frontend | 2026-08-06 +08:00 | CLAIMED | Reviewer：Codex Reviewer；TASK-0021 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-0021 | src/frontend/src/components/FloorplanCanvas.vue | Cursor Frontend | 2026-08-06 +08:00 | CLAIMED | Reviewer：Codex Reviewer；TASK-0021 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-0021 | src/frontend/src/components/CableLayer.vue | Cursor Frontend | 2026-08-06 +08:00 | CLAIMED | Reviewer：Codex Reviewer；TASK-0021 COMPLETED 或 CANCELLED 时释放 | |
-| TASK-0021 | src/frontend/src/components/CableLegend.vue | Cursor Frontend | 2026-08-06 +08:00 | CLAIMED | Reviewer：Codex Reviewer；TASK-0021 COMPLETED 或 CANCELLED 时释放 | |
+| TASK-0021 | src/frontend/src/views/FloorplanView.vue | Cursor Frontend | 2026-08-06 +08:00 | RELEASED | TASK-0021 过期废弃（无任务文件，2026-08-11 Claude 释放） | 2026-08-11 (Claude) |
+| TASK-0021 | src/frontend/src/components/FloorplanCanvas.vue | Cursor Frontend | 2026-08-06 +08:00 | RELEASED | TASK-0021 过期废弃（无任务文件，2026-08-11 Claude 释放） | 2026-08-11 (Claude) |
+| TASK-0021 | src/frontend/src/components/CableLayer.vue | Cursor Frontend | 2026-08-06 +08:00 | RELEASED | TASK-0021 过期废弃（无任务文件，2026-08-11 Claude 释放） | 2026-08-11 (Claude) |
+| TASK-0021 | src/frontend/src/components/CableLegend.vue | Cursor Frontend | 2026-08-06 +08:00 | RELEASED | TASK-0021 过期废弃（无任务文件，2026-08-11 Claude 释放） | 2026-08-11 (Claude) |
 
 ## 冲突处理示例
 
@@ -323,3 +419,17 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 | TASK-20260810-000002 | src/frontend/src/composables/useDashboard.ts | Cursor Frontend | 2026-08-10 +08:00 | RELEASED | TASK-20260810-000002 COMPLETED | 2026-08-10 (Claude) |
 | TASK-20260810-000002 | src/frontend/src/composables/useFloorplan.ts | Cursor Frontend | 2026-08-10 +08:00 | RELEASED | TASK-20260810-000002 COMPLETED | 2026-08-10 (Claude) |
 | TASK-20260810-000002 | src/frontend/src/composables/useRackDetail.ts | Cursor Frontend | 2026-08-10 +08:00 | RELEASED | TASK-20260810-000002 COMPLETED | 2026-08-10 (Claude) |
+| TASK-20260814-101757 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-14 +08:00 | RELEASED | Codex 审核 PASS (Round 2) → 任务 COMPLETED | 2026-08-14 (Claude) |
+| TASK-20260814-101757 | src/frontend/src/components/CableLayer.vue | Cursor | 2026-08-14 +08:00 | RELEASED | Codex 审核 PASS (Round 2) → 任务 COMPLETED | 2026-08-14 (Claude) |
+| TASK-20260814-101757 | src/frontend/src/composables/useCableScene.ts | Cursor | 2026-08-14 +08:00 | RELEASED | Codex 审核 PASS (Round 2) → 任务 COMPLETED | 2026-08-14 (Claude) |
+| TASK-20260814-101757 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-14 +08:00 | RELEASED | Codex 审核 PASS (Round 2) → 任务 COMPLETED | 2026-08-14 (Claude) |
+| TASK-20260814-120641 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-14 +08:00 | RELEASED | Codex 审核 PASS (Round 1) → 任务 COMPLETED | 2026-08-14 (Claude) |
+| TASK-20260814-120641 | src/frontend/src/components/CableLayer.vue | Cursor | 2026-08-14 +08:00 | RELEASED | Codex 审核 PASS (Round 1) → 任务 COMPLETED | 2026-08-14 (Claude) |
+| TASK-20260814-120641 | src/frontend/src/composables/useCableScene.ts | Cursor | 2026-08-14 +08:00 | RELEASED | Codex 审核 PASS (Round 1) → 任务 COMPLETED | 2026-08-14 (Claude) |
+| TASK-20260814-120641 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-14 +08:00 | RELEASED | Codex 审核 PASS (Round 1) → 任务 COMPLETED | 2026-08-14 (Claude) |
+| TASK-20260814-140520 | src/frontend/src/views/TopologyView.vue | Cursor | 2026-08-14 +08:00 | RELEASED | Codex 审核 PASS（第 5 轮修复 + 交接簿记修复）→ 任务 COMPLETED | 2026-08-14 (Claude) |
+| TASK-20260814-140520 | src/frontend/src/components/CableLayer.vue | Cursor | 2026-08-14 +08:00 | RELEASED | Codex 审核 PASS（第 5 轮修复 + 交接簿记修复）→ 任务 COMPLETED | 2026-08-14 (Claude) |
+| TASK-20260814-140520 | src/frontend/src/composables/useCableScene.ts | Cursor | 2026-08-14 +08:00 | RELEASED | Codex 审核 PASS（第 5 轮修复 + 交接簿记修复）→ 任务 COMPLETED | 2026-08-14 (Claude) |
+| TASK-20260814-140520 | src/frontend/src/__tests__/topology.test.ts | Cursor | 2026-08-14 +08:00 | RELEASED | Codex 审核 PASS（第 5 轮修复 + 交接簿记修复）→ 任务 COMPLETED | 2026-08-14 (Claude) |
+| TASK-20260825-092201 | src/frontend/src/views/TopologyView.vue | Cursor Frontend | 2026-08-25 09:27 +08:00 | RELEASED | Codex Reviewer 最终 PASS；合法 `BLOCKED → READY_FOR_REVIEW → COMPLETED`；实现、文档和最终治理记录均已推送，本地/远端哈希已复核 | 2026-08-25 09:54:22 +08:00（Codex Reviewer；独立 PASS、无源码未提交变更） |
+| TASK-20260825-092201 | src/frontend/src/__tests__/topology.test.ts | Cursor Frontend | 2026-08-25 09:27 +08:00 | RELEASED | Codex Reviewer 最终 PASS；合法 `BLOCKED → READY_FOR_REVIEW → COMPLETED`；实现、文档和最终治理记录均已推送，本地/远端哈希已复核 | 2026-08-25 09:54:22 +08:00（Codex Reviewer；独立 PASS、无源码未提交变更） |

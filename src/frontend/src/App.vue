@@ -30,7 +30,9 @@ async function onLogout(): Promise<void> {
 <template>
   <div v-if="!isLoginPage" class="app-nav">
     <a href="/" class="app-nav__link app-nav__link--brand" @click.prevent="router.push('/')">机房列表</a>
+    <a href="/topology" class="app-nav__link" @click.prevent="router.push('/topology')">拓扑视图</a>
     <a href="/servers" class="app-nav__link" @click.prevent="router.push('/servers')">服务器管理</a>
+    <a href="/audit-records" class="app-nav__link" @click.prevent="router.push('/audit-records')">变更记录</a>
     <a href="/cables" class="app-nav__link" @click.prevent="router.push('/cables')">线缆管理</a>
 
     <span class="app-nav__user">

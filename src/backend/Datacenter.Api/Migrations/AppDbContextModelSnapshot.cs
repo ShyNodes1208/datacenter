@@ -79,6 +79,10 @@ namespace Datacenter.Api.Migrations
                     b.Property<Guid>("SourcePortId")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid>("TargetPortId")
                         .HasColumnType("TEXT");
 
@@ -217,6 +221,16 @@ namespace Datacenter.Api.Migrations
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("TEXT");
+
+                    b.Property<double>("TopologyX")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("REAL")
+                        .HasDefaultValue(0.0);
+
+                    b.Property<double>("TopologyY")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("REAL")
+                        .HasDefaultValue(0.0);
 
                     b.HasKey("Id");
 

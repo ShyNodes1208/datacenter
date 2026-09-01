@@ -21,4 +21,6 @@ public sealed class Cable
     public string? Notes { get; set; }
 
     public string Purpose { get; set; } = "正常";
+
+    public string Status { get; set; } = "正常";
 }
