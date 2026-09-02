@@ -5,16 +5,16 @@ cd /d "%~dp0"
 set ASPNETCORE_ENVIRONMENT=Production
 set DATACENTER_PACKAGE_MODE=1
 
-echo 正在启动机房管理系统...
-echo 请使用本窗口启动，不要直接双击 Datacenter.Api.exe
-echo 浏览器将自动打开 http://127.0.0.1:5142/
-echo 首次登录账号: admin / admin123
-echo 关闭本窗口即可停止服务。
+echo Starting Datacenter...
+echo Use this window only. Do NOT double-click Datacenter.Api.exe.
+echo Browser: http://127.0.0.1:5142/
+echo Login: admin / admin123
+echo Close this window to stop the service.
 echo.
 
 start "" /B Datacenter.Api.exe
 
-set /a retries=0
+set retries=0
 :wait_loop
 set /a retries+=1
 powershell -NoProfile -Command "try { Invoke-WebRequest -UseBasicParsing http://127.0.0.1:5142/api/auth/csrf | Out-Null; exit 0 } catch { exit 1 }" >nul 2>&1
@@ -25,9 +25,9 @@ goto wait_loop
 
 :server_ready
 start "" "http://127.0.0.1:5142/"
-echo 服务已启动。
-echo 若无法登录，请关闭本窗口后删除数据目录并重新启动:
-echo   %%LocalAppData%%\Datacenter
+echo Service is ready.
+echo If login fails, run Reset-Datacenter-Data.bat
+echo Data folder: %LocalAppData%\Datacenter
 echo.
 
 :keepalive

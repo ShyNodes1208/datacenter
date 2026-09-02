@@ -1,6 +1,6 @@
 ## 概述
 
-datacenter **v2.0.3** 补丁：修复便携包 `admin` 已存在但密码错误导致无法登录；新增一键重置数据脚本。
+datacenter **v2.0.4** 补丁：修复中文 Windows 下 bat 启动脚本乱码导致无法运行的问题（bat 改为纯英文 ASCII）。
 
 ---
 
@@ -10,7 +10,7 @@ datacenter **v2.0.3** 补丁：修复便携包 `admin` 已存在但密码错误�
 
 | 项目 | 说明 |
 | --- | --- |
-| 安装包 | **[datacenter-2.0.3-win-x64.zip](https://github.com/ShyNodes1208/datacenter/releases/download/v2.0.3/datacenter-2.0.3-win-x64.zip)** |
+| 安装包 | **[datacenter-2.0.4-win-x64.zip](https://github.com/ShyNodes1208/datacenter/releases/download/v2.0.4/datacenter-2.0.4-win-x64.zip)** |
 | 类型 | 便携版（解压即用，**不是** `.msi` 安装程序） |
 | 平台 | Windows 10 / 11，64 位 |
 
@@ -22,9 +22,9 @@ datacenter **v2.0.3** 补丁：修复便携包 `admin` 已存在但密码错误�
 
 ### 安装步骤
 
-1. 从上方链接下载 `datacenter-2.0.3-win-x64.zip`。
+1. 从上方链接下载 `datacenter-2.0.4-win-x64.zip`。
 2. 将压缩包解压到任意目录（**建议不要**放在 `C:\Program Files` 等需要管理员权限的路径）。
-3. 进入解压后的 `datacenter-2.0.3-win-x64` 文件夹。
+3. 进入解压后的 `datacenter-2.0.4-win-x64` 文件夹。
 4. 双击 **`Start-Datacenter.bat`**。
 5. 等待黑色命令行窗口出现「服务已启动」提示；浏览器会自动打开 **http://127.0.0.1:5142/**。
 6. 若浏览器未自动打开，请手动访问上述地址。
@@ -115,6 +115,10 @@ A：复制解压目录到新电脑；将 `%LocalAppData%\Datacenter\datacenter.d
 
 ---
 
+## 本版本更新（v2.0.4）
+
+- **修复**：中文 Windows 下 `Start-Datacenter.bat` / `Reset-Datacenter-Data.bat` 因 UTF-8 中文乱码无法执行（改为纯 ASCII 英文提示）
+
 ## 本版本更新（v2.0.3）
 
 - **修复**：便携包中 `admin` 用户已存在但密码不是 `admin123` 时无法登录（启动时自动修复）
@@ -149,10 +153,10 @@ A：复制解压目录到新电脑；将 `%LocalAppData%\Datacenter\datacenter.d
 ```bash
 cd src/frontend && npm test && npm run build
 dotnet test tests/backend/Datacenter.Api.Tests/
-./scripts/build-windows-package.sh v2.0.3
+./scripts/build-windows-package.sh v2.0.4
 ```
 
 ## 说明
 
-- 本 Release 基于 v2.0.0 基线，并包含 v2.0.1 拓扑修复与 v2.0.2/v2.0.3 便携包登录修复
+- 本 Release 基于 v2.0.0 基线，并包含 v2.0.1–v2.0.4 便携包修复
 - 更多开发文档见仓库 [README](https://github.com/ShyNodes1208/datacenter)

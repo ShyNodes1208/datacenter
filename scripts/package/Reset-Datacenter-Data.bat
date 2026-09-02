@@ -3,32 +3,33 @@ setlocal
 cd /d "%~dp0"
 
 echo ========================================
-echo  机房管理系统 - 重置本地数据
+echo  Datacenter - Reset local data
 echo ========================================
 echo.
-echo 将删除以下位置的 SQLite 数据库:
-echo   1) %%LocalAppData%%\Datacenter
-echo   2) 当前解压目录中的 datacenter.db*
+echo This will delete SQLite databases at:
+echo   1) %LocalAppData%\Datacenter
+echo   2) datacenter.db* in this folder
 echo.
-echo 业务数据将被清空，下次启动会重建 admin / admin123
+echo All business data will be removed.
+echo Next start recreates login: admin / admin123
 echo.
-set /p confirm=若确认请输入 YES 后回车:
+set /p confirm=Type YES to continue:
 if /I not "%confirm%"=="YES" (
-  echo 已取消。
+  echo Cancelled.
   pause
   exit /b 1
 )
 
 if exist "%LocalAppData%\Datacenter" (
   rmdir /s /q "%LocalAppData%\Datacenter"
-  echo 已删除 %%LocalAppData%%\Datacenter
+  echo Removed %LocalAppData%\Datacenter
 )
 
 del /q "%~dp0datacenter.db" 2>nul
 del /q "%~dp0datacenter.db-wal" 2>nul
 del /q "%~dp0datacenter.db-shm" 2>nul
-echo 已清理当前目录中的 datacenter.db*
+echo Removed datacenter.db* in this folder
 
 echo.
-echo 完成。请双击 Start-Datacenter.bat 重新启动。
+echo Done. Run Start-Datacenter.bat again.
 pause

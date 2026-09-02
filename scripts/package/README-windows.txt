@@ -18,7 +18,7 @@
 3. 或手动删除这两个位置后重启：
    - `%LocalAppData%\Datacenter`
    - 解压目录中的 `datacenter.db`、`datacenter.db-wal`、`datacenter.db-shm`
-4. 建议使用最新版 v2.0.3 便携包（会自动修复损坏的默认管理员密码）。
+4. 建议使用最新版 v2.0.4 便携包。
 
 ## 导入自己的数据
 
