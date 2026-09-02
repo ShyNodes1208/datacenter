@@ -12,8 +12,13 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+var packageSettingsPath = Path.Combine(builder.Environment.ContentRootPath, "appsettings.Package.json");
+if (File.Exists(packageSettingsPath))
+{
+    builder.Configuration.AddJsonFile("appsettings.Package.json", optional: false, reloadOnChange: false);
+}
 
-var dataDirectory = ResolveDataDirectory(builder.Environment);
+var dataDirectory = ResolveDataDirectory(builder.Environment, builder.Configuration);
 var connectionString = NormalizeSqliteConnectionString(
     builder.Configuration.GetConnectionString("DefaultConnection"),
     dataDirectory);
@@ -113,10 +118,10 @@ await InitializeDatabaseAsync(app);
 await app.BootstrapAdminAsync();
 await app.RunAsync();
 
-static string ResolveDataDirectory(IHostEnvironment environment)
+static string ResolveDataDirectory(IHostEnvironment environment, IConfiguration configuration)
 {
     if (environment.IsProduction()
-        || string.Equals(Environment.GetEnvironmentVariable("DATACENTER_PACKAGE_MODE"), "1", StringComparison.Ordinal))
+        || BootstrapExtensions.IsPackageHost(configuration, environment))
     {
         var directory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),

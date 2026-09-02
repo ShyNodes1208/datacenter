@@ -220,6 +220,32 @@ public sealed class AuthIntegrationTests(AuthTestFixture fixture)
     }
 
     [Fact]
+    public async Task PackageConfigurationBootstrapCreatesAdminWithoutEnvironmentVariables()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"datacenter-package-bootstrap-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        var databasePath = Path.Combine(directory, "package.db");
+        var settings = new Dictionary<string, string?>
+        {
+            ["DatacenterPackage"] = "true",
+            ["BootstrapAdmin:Username"] = "package-admin",
+            ["BootstrapAdmin:Password"] = "package-test-password",
+            ["BootstrapAdmin:Role"] = Roles.RoomAdministrator
+        };
+
+        await using var factory = new AuthTestFixture.TestApplicationFactory(databasePath, "Production", settings);
+        using var client = factory.CreateClient(new() { BaseAddress = new Uri("http://localhost") });
+        var csrf = await client.GetAsync("/api/auth/csrf");
+        Assert.Equal(HttpStatusCode.OK, csrf.StatusCode);
+        var token = csrf.Headers.GetValues("X-XSRF-TOKEN").Single();
+        using var login = CreateLoginRequest(token, "package-admin", "package-test-password");
+        using var loginResponse = await client.SendAsync(login);
+        Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
+
+        Directory.Delete(directory, recursive: true);
+    }
+
+    [Fact]
     public async Task DevelopmentBootstrapIsOptionalIdempotentAndProductionSkipsIt()
     {
         var firstDirectory = Path.Combine(Path.GetTempPath(), $"datacenter-bootstrap-{Guid.NewGuid():N}");

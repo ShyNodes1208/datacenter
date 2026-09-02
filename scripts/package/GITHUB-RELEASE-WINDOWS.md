@@ -1,6 +1,6 @@
 ## 概述
 
-datacenter **v2.0.1** 补丁：修复拓扑「设备链接」视图在平移/缩放与点击线缆时意外退回全景的问题；Windows 便携包内置 Excel 导入模板。
+datacenter **v2.0.2** 补丁：修复 Windows 便携包首次启动无法使用 admin/admin123 登录的问题；内置默认管理员配置，无需依赖 bat 环境变量。
 
 ---
 
@@ -10,7 +10,7 @@ datacenter **v2.0.1** 补丁：修复拓扑「设备链接」视图在平移/缩
 
 | 项目 | 说明 |
 | --- | --- |
-| 安装包 | **[datacenter-2.0.1-win-x64.zip](https://github.com/ShyNodes1208/datacenter/releases/download/v2.0.1/datacenter-2.0.1-win-x64.zip)** |
+| 安装包 | **[datacenter-2.0.2-win-x64.zip](https://github.com/ShyNodes1208/datacenter/releases/download/v2.0.2/datacenter-2.0.2-win-x64.zip)** |
 | 类型 | 便携版（解压即用，**不是** `.msi` 安装程序） |
 | 平台 | Windows 10 / 11，64 位 |
 
@@ -22,9 +22,9 @@ datacenter **v2.0.1** 补丁：修复拓扑「设备链接」视图在平移/缩
 
 ### 安装步骤
 
-1. 从上方链接下载 `datacenter-2.0.1-win-x64.zip`。
+1. 从上方链接下载 `datacenter-2.0.2-win-x64.zip`。
 2. 将压缩包解压到任意目录（**建议不要**放在 `C:\Program Files` 等需要管理员权限的路径）。
-3. 进入解压后的 `datacenter-2.0.1-win-x64` 文件夹。
+3. 进入解压后的 `datacenter-2.0.2-win-x64` 文件夹。
 4. 双击 **`Start-Datacenter.bat`**。
 5. 等待黑色命令行窗口出现「服务已启动」提示；浏览器会自动打开 **http://127.0.0.1:5142/**。
 6. 若浏览器未自动打开，请手动访问上述地址。
@@ -115,6 +115,12 @@ A：复制解压目录到新电脑；将 `%LocalAppData%\Datacenter\datacenter.d
 
 ---
 
+## 本版本更新（v2.0.2）
+
+- **修复**：Windows 便携包首次启动时 `admin` / `admin123` 无法登录（默认管理员未创建）
+- **增强**：包内 `appsettings.Package.json` 内置管理员配置；`Start-Datacenter.bat` 等待服务就绪后再打开浏览器
+- **说明**：若仍无法登录，删除 `%LocalAppData%\Datacenter` 后重新启动
+
 ## 本版本更新（v2.0.1）
 
 - **修复**：全景线路图中选中设备后，拖拽平移或滚轮缩放不再丢失链接高亮
@@ -138,10 +144,10 @@ A：复制解压目录到新电脑；将 `%LocalAppData%\Datacenter\datacenter.d
 ```bash
 cd src/frontend && npm test && npm run build
 dotnet test tests/backend/Datacenter.Api.Tests/
-./scripts/build-windows-package.sh v2.0.1
+./scripts/build-windows-package.sh v2.0.2
 ```
 
 ## 说明
 
-- 本 Release 基于 v2.0.0 基线，并包含上述拓扑交互修复
+- 本 Release 基于 v2.0.0 基线，并包含 v2.0.1 拓扑修复与 v2.0.2 登录修复
 - 更多开发文档见仓库 [README](https://github.com/ShyNodes1208/datacenter)

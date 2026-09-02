@@ -7,10 +7,13 @@ namespace Datacenter.Api.Auth;
 
 public static class BootstrapExtensions
 {
+    public static bool IsPackageHost(IConfiguration configuration, IHostEnvironment environment) =>
+        configuration.GetValue<bool>("DatacenterPackage")
+        || string.Equals(Environment.GetEnvironmentVariable("DATACENTER_PACKAGE_MODE"), "1", StringComparison.Ordinal);
+
     public static async Task BootstrapAdminAsync(this WebApplication app)
     {
-        if (!app.Environment.IsDevelopment()
-            && !string.Equals(Environment.GetEnvironmentVariable("DATACENTER_PACKAGE_MODE"), "1", StringComparison.Ordinal))
+        if (!app.Environment.IsDevelopment() && !IsPackageHost(app.Configuration, app.Environment))
         {
             return;
         }
