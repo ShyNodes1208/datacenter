@@ -27,6 +27,7 @@ var cookieSecurePolicy = ResolveCookieSecurePolicy(builder.Configuration, builde
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(connectionString));
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<Datacenter.Api.Services.ConnectionSheet.ConnectionSheetImportService>();
 builder.Services.AddScoped<Microsoft.AspNetCore.Identity.IPasswordHasher<User>, Microsoft.AspNetCore.Identity.PasswordHasher<User>>();
 builder.Services.AddControllers(options => options.Filters.Add(new AuthorizeFilter()))
     .ConfigureApiBehaviorOptions(options =>

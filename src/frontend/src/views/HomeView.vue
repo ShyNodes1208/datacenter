@@ -681,6 +681,149 @@ async function handleServerFileChange(event: Event): Promise<void> {
   serverImportSubmitting.value = false
 }
 
+// ---------- Connection sheet import ----------
+type ConnectionSheetPreview = {
+  totalRows: number
+  validRows: number
+  errorRows: number
+  roomsToCreate: number
+  racksToCreate: number
+  devicesToCreate: number
+  cablesToCreate: number
+  warnings: Array<{ row: number; message: string }>
+  errors: Array<{ row: number; error: string }>
+  errorsTruncated?: boolean
+}
+
+type ConnectionSheetImportResult = {
+  totalRows: number
+  successCount: number
+  errorCount: number
+  roomsCreated: number
+  racksCreated: number
+  devicesCreated: number
+  cablesCreated: number
+  errors: Array<{ row: number; message: string }> | null
+}
+
+const connectionImportVisible = ref(false)
+const connectionImportPreview = ref<ConnectionSheetPreview | null>(null)
+const connectionImportResult = ref<ConnectionSheetImportResult | null>(null)
+const connectionImportError = ref('')
+const connectionImportSubmitting = ref(false)
+const connectionImportFile = ref<File | null>(null)
+
+function openConnectionImport(): void {
+  connectionImportVisible.value = true
+  connectionImportPreview.value = null
+  connectionImportResult.value = null
+  connectionImportError.value = ''
+  connectionImportFile.value = null
+}
+
+function cancelConnectionImport(): void {
+  connectionImportVisible.value = false
+  connectionImportPreview.value = null
+  connectionImportResult.value = null
+  connectionImportError.value = ''
+  connectionImportFile.value = null
+}
+
+function closeConnectionResult(): void {
+  connectionImportVisible.value = false
+  connectionImportPreview.value = null
+  connectionImportResult.value = null
+  connectionImportFile.value = null
+  void refreshDashboard()
+}
+
+async function uploadConnectionPreview(file: File): Promise<void> {
+  const csrfResult = await request('/api/auth/csrf', { method: 'GET' })
+  if (!csrfResult.ok) {
+    connectionImportError.value = csrfResult.error
+    return
+  }
+  const token = csrfResult.headers.get('X-XSRF-TOKEN')
+  if (!token) { connectionImportError.value = 'Request failed.'; return }
+
+  connectionImportError.value = ''
+  connectionImportSubmitting.value = true
+  connectionImportFile.value = file
+
+  const formData = new FormData()
+  formData.append('file', file)
+
+  let response: Response
+  try {
+    response = await fetch('/api/import/connection-sheet/preview', {
+      method: 'POST', credentials: 'include',
+      headers: { 'X-XSRF-TOKEN': token }, body: formData,
+    })
+  } catch {
+    connectionImportError.value = 'Request failed.'
+    connectionImportSubmitting.value = false
+    return
+  }
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({ error: '预览失败' } as Record<string, unknown>))
+    connectionImportError.value = ((body as Record<string, unknown>).error as string) || '预览失败'
+    connectionImportSubmitting.value = false
+    return
+  }
+
+  connectionImportPreview.value = (await response.json()) as ConnectionSheetPreview
+  connectionImportSubmitting.value = false
+}
+
+async function handleConnectionFileChange(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  await uploadConnectionPreview(file)
+}
+
+async function submitConnectionImport(): Promise<void> {
+  if (!connectionImportFile.value || connectionImportSubmitting.value) return
+  connectionImportSubmitting.value = true
+  connectionImportError.value = ''
+
+  const csrfResult = await request('/api/auth/csrf', { method: 'GET' })
+  if (!csrfResult.ok) {
+    connectionImportError.value = csrfResult.error
+    connectionImportSubmitting.value = false
+    return
+  }
+  const token = csrfResult.headers.get('X-XSRF-TOKEN')
+  if (!token) { connectionImportError.value = 'Request failed.'; connectionImportSubmitting.value = false; return }
+
+  const formData = new FormData()
+  formData.append('file', connectionImportFile.value)
+
+  let response: Response
+  try {
+    response = await fetch('/api/import/connection-sheet', {
+      method: 'POST', credentials: 'include',
+      headers: { 'X-XSRF-TOKEN': token }, body: formData,
+    })
+  } catch {
+    connectionImportError.value = 'Request failed.'
+    connectionImportSubmitting.value = false
+    return
+  }
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({ error: '导入失败' } as Record<string, unknown>))
+    connectionImportError.value = ((body as Record<string, unknown>).error as string) || '导入失败'
+    connectionImportSubmitting.value = false
+    return
+  }
+
+  connectionImportResult.value = (await response.json()) as ConnectionSheetImportResult
+  connectionImportPreview.value = null
+  connectionImportSubmitting.value = false
+}
+
 </script>
 
 <template>
@@ -695,6 +838,14 @@ async function handleServerFileChange(event: Event): Promise<void> {
       <button type="button" class="btn btn--icon-import" @click="openImport">Excel 导入机柜</button>
       <button type="button" class="btn btn--icon-import" @click="openBatchImport">批量导入设备</button>
       <button type="button" class="btn btn--icon-import" @click="openServerImport">Excel 导入服务器</button>
+      <button
+        v-if="canDeleteRoom"
+        type="button"
+        class="btn btn--icon-import"
+        @click="openConnectionImport"
+      >
+        导入设备连接信息
+      </button>
       <button
         v-if="isRoomAdmin && !createFormVisible && !editingRoomId"
         type="button"
@@ -739,6 +890,73 @@ async function handleServerFileChange(event: Event): Promise<void> {
       <div v-else>
         <p>导入完成：新增 {{ serverImportResult.created }}，跳过 {{ serverImportResult.skipped }}，已上架 {{ serverImportResult.racked }}</p>
         <button type="button" class="btn" @click="closeServerResult">关闭</button>
+      </div>
+    </RackOperationDrawer>
+
+    <RackOperationDrawer
+      :visible="connectionImportVisible"
+      title="导入设备连接信息"
+      @close="cancelConnectionImport"
+    >
+      <div v-if="!connectionImportPreview && !connectionImportResult">
+        <p>上传《设备连接信息_整理合并》格式的 Excel，系统将自动创建机房、机柜、设备与线缆。</p>
+        <p class="muted">每行一条连接；必填列：本端端口、机房、机柜、U位、对端交换机、对端交换机接口、对端机柜、对端机柜U位、线缆类型。</p>
+        <input type="file" accept=".xlsx" @change="handleConnectionFileChange" />
+        <div v-if="connectionImportError" class="error" role="alert" aria-live="polite">{{ connectionImportError }}</div>
+        <p v-if="connectionImportSubmitting">解析中...</p>
+        <br />
+        <button type="button" class="btn" :disabled="connectionImportSubmitting" @click="cancelConnectionImport">取消</button>
+      </div>
+      <div v-else-if="connectionImportPreview && !connectionImportResult">
+        <p>
+          共 {{ connectionImportPreview.totalRows }} 行，可导入 {{ connectionImportPreview.cablesToCreate }} 条线缆，
+          错误 {{ connectionImportPreview.errorRows }} 行
+        </p>
+        <ul class="muted">
+          <li>新建机房 {{ connectionImportPreview.roomsToCreate }} 个</li>
+          <li>新建机柜 {{ connectionImportPreview.racksToCreate }} 个</li>
+          <li>新建设备 {{ connectionImportPreview.devicesToCreate }} 台</li>
+        </ul>
+        <div v-if="connectionImportPreview.warnings?.length">
+          <p>提示：</p>
+          <p v-for="item in connectionImportPreview.warnings" :key="`w-${item.row}`" class="muted">
+            行 {{ item.row }}：{{ item.message }}
+          </p>
+        </div>
+        <div v-if="connectionImportPreview.errors?.length">
+          <p class="error">错误行：</p>
+          <p v-for="item in connectionImportPreview.errors" :key="`e-${item.row}`" class="error">
+            行 {{ item.row }}：{{ item.error }}
+          </p>
+          <p v-if="connectionImportPreview.errorsTruncated" class="muted">更多错误已省略</p>
+        </div>
+        <button
+          type="button"
+          class="btn btn--primary"
+          :disabled="connectionImportSubmitting || connectionImportPreview.cablesToCreate === 0"
+          @click="submitConnectionImport"
+        >
+          {{ connectionImportSubmitting ? '导入中...' : '确认导入' }}
+        </button>
+        <button type="button" class="btn" :disabled="connectionImportSubmitting" @click="cancelConnectionImport">取消</button>
+        <div v-if="connectionImportError" class="error" role="alert" aria-live="polite">{{ connectionImportError }}</div>
+      </div>
+      <div v-else-if="connectionImportResult">
+        <p>
+          导入完成：线缆成功 {{ connectionImportResult.successCount }} 条，失败 {{ connectionImportResult.errorCount }} 条
+        </p>
+        <ul class="muted">
+          <li>新建机房 {{ connectionImportResult.roomsCreated }} 个</li>
+          <li>新建机柜 {{ connectionImportResult.racksCreated }} 个</li>
+          <li>新建设备 {{ connectionImportResult.devicesCreated }} 台</li>
+          <li>新建线缆 {{ connectionImportResult.cablesCreated }} 条</li>
+        </ul>
+        <div v-if="connectionImportResult.errors?.length">
+          <p v-for="item in connectionImportResult.errors" :key="`r-${item.row}`" class="error">
+            行 {{ item.row }}：{{ item.message }}
+          </p>
+        </div>
+        <button type="button" class="btn btn--primary" @click="closeConnectionResult">关闭</button>
       </div>
     </RackOperationDrawer>
 

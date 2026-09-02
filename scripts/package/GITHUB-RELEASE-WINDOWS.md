@@ -1,6 +1,6 @@
 ## 概述
 
-datacenter **v2.0.4** 补丁：修复中文 Windows 下 bat 启动脚本乱码导致无法运行的问题（bat 改为纯英文 ASCII）。
+datacenter **v2.0.5**：新增「设备连接信息」一站式 Excel 导入（整理合并格式），自动创建机房/机柜/设备/线缆。
 
 ---
 
@@ -10,7 +10,7 @@ datacenter **v2.0.4** 补丁：修复中文 Windows 下 bat 启动脚本乱码�
 
 | 项目 | 说明 |
 | --- | --- |
-| 安装包 | **[datacenter-2.0.4-win-x64.zip](https://github.com/ShyNodes1208/datacenter/releases/download/v2.0.4/datacenter-2.0.4-win-x64.zip)** |
+| 安装包 | **[datacenter-2.0.5-win-x64.zip](https://github.com/ShyNodes1208/datacenter/releases/download/v2.0.5/datacenter-2.0.5-win-x64.zip)** |
 | 类型 | 便携版（解压即用，**不是** `.msi` 安装程序） |
 | 平台 | Windows 10 / 11，64 位 |
 
@@ -22,9 +22,9 @@ datacenter **v2.0.4** 补丁：修复中文 Windows 下 bat 启动脚本乱码�
 
 ### 安装步骤
 
-1. 从上方链接下载 `datacenter-2.0.4-win-x64.zip`。
+1. 从上方链接下载 `datacenter-2.0.5-win-x64.zip`。
 2. 将压缩包解压到任意目录（**建议不要**放在 `C:\Program Files` 等需要管理员权限的路径）。
-3. 进入解压后的 `datacenter-2.0.4-win-x64` 文件夹。
+3. 进入解压后的 `datacenter-2.0.5-win-x64` 文件夹。
 4. 双击 **`Start-Datacenter.bat`**。
 5. 等待黑色命令行窗口出现「服务已启动」提示；浏览器会自动打开 **http://127.0.0.1:5142/**。
 6. 若浏览器未自动打开，请手动访问上述地址。
@@ -68,9 +68,19 @@ datacenter **v2.0.4** 补丁：修复中文 Windows 下 bat 启动脚本乱码�
 | `设备导入模板.xlsx` | 首页 → 批量导入设备；或机柜页 → 导入设备 |
 | `线缆导入模板.xlsx` | 线缆管理 → 导入 Excel |
 
-**推荐导入顺序：**
+**方式 A — 一站式导入（推荐，v2.0.5 新增）**
 
-1. 在首页 **手动新建机房**（系统暂不支持机房 Excel 导入）。
+若你已有「设备连接信息」整理合并格式的 Excel（每行一条线缆，含本端/对端机房、机柜、U 位、端口等）：
+
+1. 首页 → **导入设备连接信息**
+2. 上传 `.xlsx` → 预览统计与错误 → 确认导入
+3. 系统自动创建机房、机柜、设备与线缆（无需分四步导入）
+
+格式说明见压缩包内 `import-templates/导入文件格式说明.md` 第 5 节。空库下约 1800 行可在数秒内完成。
+
+**方式 B — 分步模板导入**
+
+1. 在首页 **手动新建机房**（分步导入时系统暂不支持机房 Excel 导入）。
 2. 修改机柜模板中的「所在机房」为你的机房名称 → 导入机柜。
 3. 修改服务器模板 → 批量导入服务器（可填写「所在机柜」和「起始 U 位」自动上架）。
 4. （可选）导入设备 U 位标签，用于机柜正视图展示。
@@ -115,6 +125,12 @@ A：复制解压目录到新电脑；将 `%LocalAppData%\Datacenter\datacenter.d
 
 ---
 
+## 本版本更新（v2.0.5）
+
+- **新增**：首页「导入设备连接信息」— 支持整理合并格式 Excel 一站式导入机房、机柜、设备与线缆
+- **新增**：导入前预览（行数、待创建资源、错误与警告）与确认后批量写入
+- **说明**：重复导入已有数据时可能因 U 位占用而跳过部分线缆；全新空库可全量导入
+
 ## 本版本更新（v2.0.4）
 
 - **修复**：中文 Windows 下 `Start-Datacenter.bat` / `Reset-Datacenter-Data.bat` 因 UTF-8 中文乱码无法执行（改为纯 ASCII 英文提示）
@@ -153,10 +169,10 @@ A：复制解压目录到新电脑；将 `%LocalAppData%\Datacenter\datacenter.d
 ```bash
 cd src/frontend && npm test && npm run build
 dotnet test tests/backend/Datacenter.Api.Tests/
-./scripts/build-windows-package.sh v2.0.4
+./scripts/build-windows-package.sh v2.0.5
 ```
 
 ## 说明
 
-- 本 Release 基于 v2.0.0 基线，并包含 v2.0.1–v2.0.4 便携包修复
+- 本 Release 基于 v2.0.0 基线，并包含 v2.0.1–v2.0.5 便携包修复与功能更新
 - 更多开发文档见仓库 [README](https://github.com/ShyNodes1208/datacenter)
