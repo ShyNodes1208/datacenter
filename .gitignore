@@ -27,6 +27,7 @@ logs/
 !.env.example
 appsettings.Development.json
 appsettings.*.local.json
+.venv-templates/
 
 # Database
 .data/

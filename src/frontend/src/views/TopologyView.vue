@@ -231,12 +231,10 @@
         :class="{
           'topology-canvas--devices': topology?.mode === 'devices',
           'topology-canvas--panning': isDevicePanning,
+          'topology-canvas--suppress-clicks': suppressViewportInteraction,
         }"
         @wheel.prevent="onDeviceViewportWheel"
         @mousedown="onDeviceViewportMouseDown"
-        @mousemove="onDeviceViewportMouseMove"
-        @mouseup="onDeviceViewportMouseUp"
-        @mouseleave="onDeviceViewportMouseLeave"
       >
         <div ref="konvaContainer" class="konva-stage"></div>
         <div
@@ -617,7 +615,10 @@ let lockedLayoutSnapshotKey: string | null = null
 let semanticZoomLatch: SemanticZoomState | null = null
 let devicePan: { startX: number; startY: number; lastX: number; lastY: number; moved: boolean } | null = null
 const isDevicePanning = ref(false)
-let suppressViewportClick = false
+/** Block hit-target / cable clicks briefly after a pan so mouseup does not clear focus. */
+const suppressViewportInteraction = ref(false)
+let suppressViewportClicksUntil = 0
+let suppressViewportClearTimer: ReturnType<typeof setTimeout> | null = null
 
 const deviceZoomPercent = computed(() => Math.round(stageScale.value * 100))
 
@@ -964,6 +965,16 @@ function onDeviceViewportWheel(event: WheelEvent): void {
   applyDeviceZoom(event.deltaY < 0 ? 1.1 : 1 / 1.1, viewportPointer(event))
 }
 
+function onDocumentDevicePanMove(event: MouseEvent): void {
+  onDeviceViewportMouseMove(event)
+}
+
+function onDocumentDevicePanEnd(event: MouseEvent): void {
+  document.removeEventListener('mousemove', onDocumentDevicePanMove)
+  document.removeEventListener('mouseup', onDocumentDevicePanEnd)
+  endDeviceViewportMouse(event)
+}
+
 function onDeviceViewportMouseDown(event: MouseEvent): void {
   if (topology.value?.mode !== 'devices' || event.button !== 0 || isViewportControlTarget(event.target)) return
   isDevicePanning.value = false
@@ -974,6 +985,8 @@ function onDeviceViewportMouseDown(event: MouseEvent): void {
     lastY: event.clientY,
     moved: false,
   }
+  document.addEventListener('mousemove', onDocumentDevicePanMove)
+  document.addEventListener('mouseup', onDocumentDevicePanEnd)
 }
 
 function onDeviceViewportMouseMove(event: MouseEvent): void {
@@ -997,28 +1010,32 @@ function onDeviceViewportMouseMove(event: MouseEvent): void {
   event.preventDefault()
 }
 
+function armViewportClickSuppression(): void {
+  const durationMs = 250
+  suppressViewportClicksUntil = performance.now() + durationMs
+  suppressViewportInteraction.value = true
+  if (suppressViewportClearTimer !== null) {
+    clearTimeout(suppressViewportClearTimer)
+  }
+  suppressViewportClearTimer = window.setTimeout(() => {
+    suppressViewportInteraction.value = false
+    suppressViewportClearTimer = null
+  }, durationMs)
+}
+
 function endDeviceViewportMouse(event: MouseEvent): void {
+  document.removeEventListener('mousemove', onDocumentDevicePanMove)
+  document.removeEventListener('mouseup', onDocumentDevicePanEnd)
   if (devicePan?.moved) {
-    suppressViewportClick = true
-    window.setTimeout(() => { suppressViewportClick = false }, 0)
+    armViewportClickSuppression()
     event.preventDefault()
   }
   devicePan = null
   isDevicePanning.value = false
 }
 
-function onDeviceViewportMouseUp(event: MouseEvent): void {
-  endDeviceViewportMouse(event)
-}
-
-function onDeviceViewportMouseLeave(event: MouseEvent): void {
-  endDeviceViewportMouse(event)
-}
-
 function consumeSuppressedViewportClick(): boolean {
-  if (!suppressViewportClick) return false
-  suppressViewportClick = false
-  return true
+  return performance.now() < suppressViewportClicksUntil
 }
 
 function applyDeviceViewportMode(enabled: boolean): void {
@@ -1123,7 +1140,6 @@ function clearCableSelection(): void {
 
 function onCableBundleClick(bundleId: string): void {
   if (consumeSuppressedViewportClick()) return
-  focusDeviceId.value = null
   const bundle = deviceCableScene.value?.bundles.find((b) => b.id === bundleId)
   if (bundle?.isAggregated) {
     if (expandedBundleKey.value === bundleId) {
@@ -1143,7 +1159,6 @@ function onCableBundleClick(bundleId: string): void {
 
 function onBundleMemberClick(cableId: string): void {
   selectedCableId.value = cableId
-  focusDeviceId.value = null
 }
 
 function onCableBackgroundClick(): void {
@@ -1158,6 +1173,15 @@ function onCableBackgroundClick(): void {
     focusedRackId.value = null
     selectedCableId.value = null
     selectedBundleId.value = null
+    return
+  }
+  // Keep device link view until Esc; pan/zoom often ends with a spurious background click.
+  if (focusDeviceId.value) {
+    if (selectedCableId.value || selectedBundleId.value || expandedBundleKey.value) {
+      selectedCableId.value = null
+      selectedBundleId.value = null
+      expandedBundleKey.value = null
+    }
     return
   }
   clearDeviceFocus()
@@ -1745,7 +1769,7 @@ function drawPortAnchors(
       labelBundles = [bundle]
       labelCables = [cable]
     }
-  } else if (focusDeviceId.value && semantic.showPortLabels) {
+  } else if (focusDeviceId.value) {
     const focusedId = focusDeviceId.value
     labelCables = snapshot.cables.filter(
       (c) => c.source.deviceId === focusedId || c.target.deviceId === focusedId,
@@ -1767,7 +1791,12 @@ function drawPortAnchors(
     { canvasHeight },
   )
   if (focusDeviceId.value && !selectedId) {
-    placements = placements.filter((p) => p.deviceId === focusDeviceId.value)
+    const relatedIds = new Set<string>([focusDeviceId.value])
+    for (const cable of labelCables) {
+      relatedIds.add(cable.source.deviceId)
+      relatedIds.add(cable.target.deviceId)
+    }
+    placements = placements.filter((p) => relatedIds.has(p.deviceId))
   }
   for (const placement of placements) {
     layer.add(new Konva.Text({
@@ -1979,7 +2008,7 @@ function drawDeviceScene(): void {
   overlayContentSize.value = { width: contentW, height: contentH }
 
   stage.on('click', (event) => {
-    if (event.target === stage) {
+    if (event.target === stage && !consumeSuppressedViewportClick()) {
       onCableBackgroundClick()
     }
   })
@@ -2620,6 +2649,12 @@ watch(() => [route.query.roomId, route.query.view], () => {
 })
 
 onUnmounted(() => {
+  document.removeEventListener('mousemove', onDocumentDevicePanMove)
+  document.removeEventListener('mouseup', onDocumentDevicePanEnd)
+  if (suppressViewportClearTimer !== null) {
+    clearTimeout(suppressViewportClearTimer)
+    suppressViewportClearTimer = null
+  }
   window.removeEventListener('keydown', onDeviceKeydown)
   stopRoomCableAnimation()
   resizeObserver?.disconnect()
@@ -2973,6 +3008,12 @@ onUnmounted(() => {
 .topology-canvas--panning :deep(.bundle-group path) {
   filter: none !important;
   transition: none !important;
+}
+
+.topology-canvas--suppress-clicks .rack-hit-overlay__rack,
+.topology-canvas--suppress-clicks .rack-hit-overlay__device,
+.topology-canvas--suppress-clicks .cable-overlay :deep(.bundle-group) {
+  pointer-events: none !important;
 }
 
 .konva-stage {

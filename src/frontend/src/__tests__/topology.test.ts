@@ -1872,14 +1872,14 @@ describe('TASK-20260813-133241 device UI', () => {
     expect(skipIdx).toBeLessThan(labelCall)
   })
 
-  it('P2 focus device: port labels filtered to that device only', async () => {
+  it('P2 focus device: port labels include focused device and linked peers', async () => {
     const { readFileSync } = await import('node:fs')
     const { resolve } = await import('node:path')
     const source = readFileSync(resolve(__dirname, '../views/TopologyView.vue'), 'utf8')
     const fnStart = source.indexOf('function drawPortAnchors(')
     const fnBody = source.slice(fnStart, source.indexOf('function drawDeviceScene()', fnStart))
     expect(fnBody).toMatch(/focusDeviceId\.value/)
-    expect(fnBody).toMatch(/placements\.filter\(\s*\(?p\)?\s*=>\s*p\.deviceId\s*===\s*focusDeviceId\.value/)
+    expect(fnBody).toMatch(/relatedIds\.has\(p\.deviceId\)/)
     expect(fnBody).toMatch(/source\.deviceId\s*===\s*focusedId|source\.deviceId\s*===\s*focusDeviceId/)
   })
 
@@ -2613,7 +2613,8 @@ describe('TASK-20260814-101757 device topology readability', () => {
     const fnStart = source.indexOf('function drawPortAnchors(')
     const fnBody = source.slice(fnStart, source.indexOf('function drawDeviceScene()', fnStart))
     expect(fnBody).toContain('Selected cable endpoint labels at any scale')
-    expect(fnBody).toContain('semantic.showPortLabels')
+    expect(fnBody).toContain('focusDeviceId.value')
+    expect(fnBody).toContain('relatedIds.has(p.deviceId)')
     expect(source).toContain('showName')
   })
 
@@ -3302,6 +3303,7 @@ describe('TASK-20260814-140520 corridor routing + rack focus', () => {
     expect(source).toContain('expandedBundleKey.value = null')
     expect(source).toContain('focusedRackId.value = null')
     expect(source).toContain('onCableBackgroundClick')
+    expect(source).toMatch(/function onCableBackgroundClick[\s\S]*if \(focusDeviceId\.value\)[\s\S]*selectedCableId\.value = null/)
   })
 
   it('rack/bundle/cable clicks preserve viewport transform', () => {
@@ -3654,14 +3656,14 @@ describe('TASK-20260814-140520 corridor routing + rack focus', () => {
 
     expect(source).toContain('@wheel.prevent="onDeviceViewportWheel"')
     expect(source).toContain('@mousedown="onDeviceViewportMouseDown"')
-    expect(source).toContain('@mousemove="onDeviceViewportMouseMove"')
-    expect(source).toContain('@mouseup="onDeviceViewportMouseUp"')
-    expect(source).toContain('@mouseleave="onDeviceViewportMouseLeave"')
+    expect(source).toContain('document.addEventListener(\'mousemove\', onDocumentDevicePanMove)')
+    expect(source).toContain('document.addEventListener(\'mouseup\', onDocumentDevicePanEnd)')
     expect(source).toMatch(/function onDeviceViewportWheel[\s\S]*applyDeviceZoom/)
     expect(source).toMatch(/function onDeviceViewportMouseDown[\s\S]*devicePan/)
     expect(source).toMatch(/function onDeviceViewportMouseMove[\s\S]*DEVICE_DRAG_THRESHOLD_PX/)
     expect(source).toMatch(/function onDeviceViewportMouseMove[\s\S]*stage\.position/)
     expect(source).toContain('topology-canvas--panning')
+    expect(source).toContain('topology-canvas--suppress-clicks')
     expect(source).toMatch(/const isDevicePanning = ref\(false\)/)
     expect(source).toMatch(/devicePan\.moved = true[\s\S]*isDevicePanning\.value = true/)
     expect(source).toMatch(/devicePan = null[\s\S]*isDevicePanning\.value = false/)
@@ -3670,6 +3672,16 @@ describe('TASK-20260814-140520 corridor routing + rack focus', () => {
     expect(source).toMatch(/function onRackHitClick[\s\S]*consumeSuppressedViewportClick/)
     expect(source).toMatch(/function onDeviceHitClick[\s\S]*consumeSuppressedViewportClick/)
     expect(source).toMatch(/function onCableBundleClick[\s\S]*consumeSuppressedViewportClick/)
+    const bundleClickBody = source.slice(
+      source.indexOf('function onCableBundleClick('),
+      source.indexOf('function onBundleMemberClick(', source.indexOf('function onCableBundleClick(')),
+    )
+    const memberClickBody = source.slice(
+      source.indexOf('function onBundleMemberClick('),
+      source.indexOf('function onCableBackgroundClick(', source.indexOf('function onBundleMemberClick(')),
+    )
+    expect(bundleClickBody).not.toContain('focusDeviceId.value = null')
+    expect(memberClickBody).not.toContain('focusDeviceId.value = null')
   })
 
   it('TASK-20260825-092201: continuous wheel zoom redraws only across semantic thresholds', async () => {
