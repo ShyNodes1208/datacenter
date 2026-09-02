@@ -35,6 +35,7 @@ dotnet publish "$API_DIR/Datacenter.Api.csproj" \
 
 echo "==> Adding launcher and import templates"
 cp "$ROOT/scripts/package/Start-Datacenter.bat" "$STAGING_DIR/"
+cp "$ROOT/scripts/package/Reset-Datacenter-Data.bat" "$STAGING_DIR/"
 cp "$ROOT/scripts/package/README-windows.txt" "$STAGING_DIR/"
 cp "$ROOT/scripts/package/appsettings.Package.json" "$STAGING_DIR/"
 mkdir -p "$STAGING_DIR/import-templates"

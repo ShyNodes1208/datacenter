@@ -13,8 +13,12 @@
 
 ## 无法登录？
 
-1. 确认是通过 **Start-Datacenter.bat** 启动。
-2. 关闭服务后删除 `%LocalAppData%\Datacenter` 文件夹，再重新启动（会清空业务数据并重建管理员账号）。
+1. 确认通过 **Start-Datacenter.bat** 启动（不要直接双击 Datacenter.Api.exe）。
+2. 运行 **Reset-Datacenter-Data.bat**，输入 `YES` 清空本地数据库后重新启动。
+3. 或手动删除这两个位置后重启：
+   - `%LocalAppData%\Datacenter`
+   - 解压目录中的 `datacenter.db`、`datacenter.db-wal`、`datacenter.db-shm`
+4. 建议使用最新版 v2.0.3 便携包（会自动修复损坏的默认管理员密码）。
 
 ## 导入自己的数据
 

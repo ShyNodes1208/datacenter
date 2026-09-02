@@ -246,6 +246,50 @@ public sealed class AuthIntegrationTests(AuthTestFixture fixture)
     }
 
     [Fact]
+    public async Task PackageConfigurationBootstrapRepairsMismatchedBootstrapPassword()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"datacenter-package-repair-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        var databasePath = Path.Combine(directory, "package-repair.db");
+        var settings = new Dictionary<string, string?>
+        {
+            ["DatacenterPackage"] = "true",
+            ["BootstrapAdmin:Username"] = "package-admin",
+            ["BootstrapAdmin:Password"] = "package-test-password",
+            ["BootstrapAdmin:Role"] = Roles.RoomAdministrator
+        };
+
+        await using (var seed = new AuthTestFixture.TestApplicationFactory(databasePath, "Production", settings))
+        {
+            using var client = seed.CreateClient(new() { BaseAddress = new Uri("http://localhost") });
+            await client.GetAsync("/api/auth/csrf");
+        }
+
+        await using (var connection = new SqliteConnection($"Data Source={databasePath}"))
+        {
+            await connection.OpenAsync();
+            await using var update = connection.CreateCommand();
+            update.CommandText = "UPDATE Users SET PasswordHash = $hash WHERE Username = $username";
+            update.Parameters.AddWithValue("$hash", "broken-password-hash");
+            update.Parameters.AddWithValue("$username", "package-admin");
+            Assert.Equal(1, await update.ExecuteNonQueryAsync());
+        }
+
+        await using (var factory = new AuthTestFixture.TestApplicationFactory(databasePath, "Production", settings))
+        {
+            using var client = factory.CreateClient(new() { BaseAddress = new Uri("http://localhost") });
+            var csrf = await client.GetAsync("/api/auth/csrf");
+            Assert.Equal(HttpStatusCode.OK, csrf.StatusCode);
+            var token = csrf.Headers.GetValues("X-XSRF-TOKEN").Single();
+            using var login = CreateLoginRequest(token, "package-admin", "package-test-password");
+            using var loginResponse = await client.SendAsync(login);
+            Assert.Equal(HttpStatusCode.OK, loginResponse.StatusCode);
+        }
+
+        Directory.Delete(directory, recursive: true);
+    }
+
+    [Fact]
     public async Task DevelopmentBootstrapIsOptionalIdempotentAndProductionSkipsIt()
     {
         var firstDirectory = Path.Combine(Path.GetTempPath(), $"datacenter-bootstrap-{Guid.NewGuid():N}");
