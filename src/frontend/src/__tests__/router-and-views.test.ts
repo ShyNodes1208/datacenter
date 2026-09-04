@@ -112,6 +112,8 @@ type HomeViewSetupState = {
   startEdit: (room: RoomFixture) => void
   cancelEdit: () => void
   saveEdit: (room: RoomFixture) => Promise<void>
+  deleteRoom: (room: RoomFixture) => Promise<void>
+  forceDeleteRoom: (room: RoomFixture) => Promise<void>
   openImport: () => void
   cancelImport: () => void
   uploadPreview: (file: File) => Promise<void>
@@ -493,7 +495,7 @@ describe('HomeView protected shell (U14-C)', () => {
 })
 
 describe('HomeView readonly room list (G09-03)', () => {
-  const forbiddenControls = ['创建', '删除', '详情', '搜索', '排序', '筛选', '分页']
+  const forbiddenControls = ['创建', '删除', '强制删除', '详情', '搜索', '排序', '筛选', '分页']
 
   it('shows room names and enabled/disabled status after a successful API response', async () => {
     userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
@@ -1165,6 +1167,124 @@ describe('HomeView edit room', () => {
       await flushUi()
       html = await view.html()
       expect(html).toContain('编辑')
+    } finally {
+      view.unmount()
+    }
+  })
+})
+
+describe('HomeView force delete room', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('shows 强制删除 for rooms with racks and 删除 for empty rooms', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    requestMock.mockResolvedValue(
+      mockRoomsGet([
+        { id: 'room-empty', name: '空机房', status: '启用', location: null, rackCount: 0 },
+        { id: 'room-full', name: '满机房', status: '启用', location: null, rackCount: 3 },
+      ]),
+    )
+
+    const view = await mountSharedHomeView()
+    try {
+      await view.state.loadRooms()
+      await flushUi()
+      const html = await view.html()
+      expect(html).toContain('强制删除')
+      expect(html).toMatch(/空机房[\s\S]*?>\s*删除\s*</)
+      expect(html).toMatch(/满机房[\s\S]*?>\s*强制删除\s*</)
+    } finally {
+      view.unmount()
+    }
+  })
+
+  it('calls DELETE with force=true when room name is confirmed', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    requestMock.mockImplementation(async (path: string, options: { method?: string } = {}) => {
+      if (path === '/api/auth/csrf') {
+        return {
+          ok: true,
+          data: undefined,
+          headers: new Headers({ 'X-XSRF-TOKEN': 'csrf-force-1' }),
+          status: 200,
+        }
+      }
+      if (path === '/api/rooms/room-full' && options.method === 'DELETE') {
+        return { ok: true, data: undefined, headers: new Headers(), status: 204 }
+      }
+      if (path === '/api/dashboard/summary') {
+        return {
+          ok: true,
+          data: {
+            totalServers: 0,
+            rackedServers: 0,
+            availableU: 0,
+            totalU: 0,
+            usagePercent: 0,
+          },
+          headers: new Headers(),
+          status: 200,
+        }
+      }
+      return mockRoomsGet([
+        { id: 'room-full', name: '满机房', status: '启用', location: null, rackCount: 3 },
+      ])
+    })
+
+    const promptSpy = vi.fn().mockReturnValue('满机房')
+    vi.stubGlobal('prompt', promptSpy)
+
+    const view = await mountSharedHomeView()
+    try {
+      await view.state.loadRooms()
+      await view.state.forceDeleteRoom({
+        id: 'room-full',
+        name: '满机房',
+        status: '启用',
+        location: null,
+        rackCount: 3,
+      })
+      await flushUi()
+
+      expect(promptSpy).toHaveBeenCalled()
+      expect(requestMock).toHaveBeenCalledWith('/api/rooms/room-full?force=true', {
+        method: 'DELETE',
+        csrfToken: 'csrf-force-1',
+      })
+    } finally {
+      view.unmount()
+    }
+  })
+
+  it('does not call DELETE when prompt name does not match', async () => {
+    userMock.value = { id: '1', username: 'admin', role: '机房管理员' }
+    requestMock.mockResolvedValue(
+      mockRoomsGet([
+        { id: 'room-full', name: '满机房', status: '启用', location: null, rackCount: 3 },
+      ]),
+    )
+    vi.stubGlobal('prompt', vi.fn().mockReturnValue('写错了'))
+
+    const view = await mountSharedHomeView()
+    try {
+      await view.state.loadRooms()
+      requestMock.mockClear()
+      await view.state.forceDeleteRoom({
+        id: 'room-full',
+        name: '满机房',
+        status: '启用',
+        location: null,
+        rackCount: 3,
+      })
+      await flushUi()
+
+      const deleteCalls = requestMock.mock.calls.filter(
+        (call) => typeof call[0] === 'string' && String(call[0]).includes('/api/rooms/') && call[1]?.method === 'DELETE',
+      )
+      expect(deleteCalls).toHaveLength(0)
     } finally {
       view.unmount()
     }

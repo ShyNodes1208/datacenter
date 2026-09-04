@@ -6,6 +6,10 @@ TASK-0009 跨分支事实：其正式 feature 已在 G01 提交 `2690bdeb9e0ec15
 
 | Task ID | Module or Path | Owner | Claimed At | Status | Release Condition | Released At |
 |---|---|---|---|---|---|---|
+| TASK-20260904-room-force-delete | src/backend/Datacenter.Api/Controllers/RoomsController.cs | Cursor Developer | 2026-09-04 11:08 +08:00 | RELEASED | Reviewer PASS; releasing as v2.0.6 | 2026-09-04 +08:00 |
+| TASK-20260904-room-force-delete | tests/backend/Datacenter.Api.Tests/IntegrationTests/RoomIntegrationTests.cs | Cursor Developer | 2026-09-04 11:08 +08:00 | RELEASED | Reviewer PASS; releasing as v2.0.6 | 2026-09-04 +08:00 |
+| TASK-20260904-room-force-delete | src/frontend/src/views/HomeView.vue | Cursor Developer | 2026-09-04 11:08 +08:00 | RELEASED | Reviewer PASS; releasing as v2.0.6 | 2026-09-04 +08:00 |
+| TASK-20260904-room-force-delete | src/frontend/src/__tests__/router-and-views.test.ts | Cursor Developer | 2026-09-04 11:08 +08:00 | RELEASED | Reviewer PASS; releasing as v2.0.6 | 2026-09-04 +08:00 |
 | TASK-20260831-rack-workspace-network-trace | src/backend/Datacenter.Api/Controllers/NetworkPathController.cs | Cursor Developer | 2026-08-31 10:39 +08:00 | RELEASED | Final Reviewer PASS; pushed `7957b4e`; task completed | 2026-08-31 +08:00 |
 | TASK-20260831-rack-workspace-network-trace | tests/backend/Datacenter.Api.Tests/IntegrationTests/NetworkPathIntegrationTests.cs | Cursor Developer | 2026-08-31 10:39 +08:00 | RELEASED | Final Reviewer PASS; pushed `7957b4e`; task completed | 2026-08-31 +08:00 |
 | TASK-20260831-rack-workspace-network-trace | src/frontend/src/composables/useNetworkTrace.ts | Cursor Developer | 2026-08-31 12:00 +08:00 | RELEASED | Final Reviewer PASS; pushed `7957b4e`; task completed | 2026-08-31 +08:00 |

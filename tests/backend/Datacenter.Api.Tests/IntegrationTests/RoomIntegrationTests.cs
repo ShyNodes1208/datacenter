@@ -451,6 +451,69 @@ public sealed class RoomIntegrationTests(AuthTestFixture fixture)
     }
 
     [Fact]
+    public async Task DeleteRoom_WithoutForce_StillRejectsWhenRacksExist()
+    {
+        var room = new Room { Name = "主机房", Status = "启用" };
+        var rack = new Rack
+        {
+            RoomId = room.Id,
+            Code = "R001",
+            HeightU = 42,
+            X = 0,
+            Y = 0,
+            Z = 0
+        };
+        await ReplaceRoomsAndRacksAsync([room], [rack]);
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.RoomAdministrator);
+
+        using var response = await DeleteRoomAsync(client, room.Id, force: false);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal("机房中存在机柜，不能删除", await ReadErrorAsync(response));
+        Assert.Equal(1, await CountRoomsAsync("主机房", "启用"));
+    }
+
+    [Fact]
+    public async Task DeleteRoom_Force_DeletesRoomWithRacksServersCables()
+    {
+        var seeded = await SeedOccupiedRoomAsync();
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.RoomAdministrator);
+
+        using var response = await DeleteRoomAsync(client, seeded.RoomId, force: true);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        await using var scope = fixture.Factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(0, await db.Rooms.CountAsync(r => r.Id == seeded.RoomId));
+        Assert.Equal(0, await db.Racks.CountAsync(r => r.Id == seeded.RackId));
+        Assert.Equal(0, await db.DevicePositions.CountAsync(dp => dp.RackId == seeded.RackId));
+        Assert.Equal(0, await db.Servers.CountAsync(s => seeded.ServerIds.Contains(s.Id)));
+        Assert.Equal(0, await db.Ports.CountAsync(p => seeded.ServerIds.Contains(p.ServerId)));
+        Assert.Equal(0, await db.Cables.CountAsync(c => c.Id == seeded.CableId));
+        Assert.Equal(0, await db.AuditRecords.CountAsync(a => a.Id == seeded.AuditId));
+        Assert.Equal(0, await db.ServerPositions.CountAsync(sp => sp.RackId == seeded.RackId));
+    }
+
+    [Fact]
+    public async Task DeleteRoom_Force_ReadOnlyReturnsForbidden()
+    {
+        var seeded = await SeedOccupiedRoomAsync();
+        using var client = fixture.CreateClient();
+        await LoginAsRoleAsync(client, Roles.ReadOnlyViewer);
+
+        using var response = await DeleteRoomAsync(client, seeded.RoomId, force: true);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(1, await CountRoomsAsync("强制删除机房", "启用"));
+        await using var scope = fixture.Factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Assert.Equal(1, await db.Racks.CountAsync(r => r.Id == seeded.RackId));
+        Assert.Equal(2, await db.Servers.CountAsync(s => seeded.ServerIds.Contains(s.Id)));
+    }
+
+    [Fact]
     public async Task DeleteRoom_SucceedsWhenNoRacks()
     {
         var room = new Room { Name = "主机房", Status = "启用" };
@@ -528,13 +591,115 @@ public sealed class RoomIntegrationTests(AuthTestFixture fixture)
     {
         await using var scope = fixture.Factory.Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        dbContext.Cables.RemoveRange(await dbContext.Cables.ToListAsync());
+        dbContext.Ports.RemoveRange(await dbContext.Ports.ToListAsync());
+        dbContext.AuditRecords.RemoveRange(await dbContext.AuditRecords.ToListAsync());
         dbContext.ServerPositions.RemoveRange(await dbContext.ServerPositions.ToListAsync());
         dbContext.DevicePositions.RemoveRange(await dbContext.DevicePositions.ToListAsync());
+        dbContext.Servers.RemoveRange(await dbContext.Servers.ToListAsync());
         dbContext.Racks.RemoveRange(await dbContext.Racks.ToListAsync());
         dbContext.Rooms.RemoveRange(await dbContext.Rooms.ToListAsync());
+        await dbContext.SaveChangesAsync();
         dbContext.Rooms.AddRange(rooms);
         dbContext.Racks.AddRange(racks);
         await dbContext.SaveChangesAsync();
+    }
+
+    private async Task<OccupiedRoomSeed> SeedOccupiedRoomAsync()
+    {
+        var room = new Room { Name = "强制删除机房", Status = "启用" };
+        var rack = new Rack
+        {
+            RoomId = room.Id,
+            Code = "F001",
+            HeightU = 42,
+            X = 0,
+            Y = 0,
+            Z = 0
+        };
+        var serverA = new Server
+        {
+            Name = "force-a",
+            ManagementIP = "10.20.0.1",
+            DeviceType = "服务器",
+            DeviceHeight = 1,
+            PositionStatus = "在架"
+        };
+        var serverB = new Server
+        {
+            Name = "force-b",
+            ManagementIP = "10.20.0.2",
+            DeviceType = "交换机",
+            DeviceHeight = 1,
+            PositionStatus = "在架"
+        };
+        var portA = new Port { ServerId = serverA.Id, PortName = "eth0", PortType = "RJ45" };
+        var portB = new Port { ServerId = serverB.Id, PortName = "ge0", PortType = "RJ45" };
+        var cable = new Cable
+        {
+            SourcePortId = portA.Id,
+            TargetPortId = portB.Id,
+            CableType = "铜缆"
+        };
+        var audit = new AuditRecord
+        {
+            ServerId = serverA.Id,
+            OperationType = "上架",
+            OperatorUsername = "admin",
+            ToPosition = "F001/U1"
+        };
+        var devicePosition = new DevicePosition
+        {
+            RackId = rack.Id,
+            UNumber = 10,
+            UHeight = 1,
+            Label = "占位"
+        };
+
+        await using var scope = fixture.Factory.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        dbContext.Cables.RemoveRange(await dbContext.Cables.ToListAsync());
+        dbContext.Ports.RemoveRange(await dbContext.Ports.ToListAsync());
+        dbContext.AuditRecords.RemoveRange(await dbContext.AuditRecords.ToListAsync());
+        dbContext.ServerPositions.RemoveRange(await dbContext.ServerPositions.ToListAsync());
+        dbContext.DevicePositions.RemoveRange(await dbContext.DevicePositions.ToListAsync());
+        dbContext.Servers.RemoveRange(await dbContext.Servers.ToListAsync());
+        dbContext.Racks.RemoveRange(await dbContext.Racks.ToListAsync());
+        dbContext.Rooms.RemoveRange(await dbContext.Rooms.ToListAsync());
+        await dbContext.SaveChangesAsync();
+
+        dbContext.Rooms.Add(room);
+        dbContext.Racks.Add(rack);
+        dbContext.Servers.AddRange(serverA, serverB);
+        dbContext.ServerPositions.AddRange(
+            new ServerPosition
+            {
+                ServerId = serverA.Id,
+                RackId = rack.Id,
+                StartU = 1,
+                EndU = 1,
+                Status = "在架"
+            },
+            new ServerPosition
+            {
+                ServerId = serverB.Id,
+                RackId = rack.Id,
+                StartU = 2,
+                EndU = 2,
+                Status = "在架"
+            });
+        dbContext.Ports.AddRange(portA, portB);
+        dbContext.Cables.Add(cable);
+        dbContext.AuditRecords.Add(audit);
+        dbContext.DevicePositions.Add(devicePosition);
+        await dbContext.SaveChangesAsync();
+
+        return new OccupiedRoomSeed(
+            room.Id,
+            rack.Id,
+            [serverA.Id, serverB.Id],
+            cable.Id,
+            audit.Id);
     }
 
     private async Task<int> CountRoomsAsync(string? name = null, string? status = null)
@@ -592,11 +757,13 @@ public sealed class RoomIntegrationTests(AuthTestFixture fixture)
         return await client.SendAsync(request);
     }
 
-    private static async Task<HttpResponseMessage> DeleteRoomAsync(HttpClient client, Guid id)
+    private static async Task<HttpResponseMessage> DeleteRoomAsync(
+        HttpClient client, Guid id, bool force = false)
     {
         using var csrf = await client.GetAsync("/api/auth/csrf");
         var token = csrf.Headers.GetValues("X-XSRF-TOKEN").Single();
-        using var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/rooms/{id}");
+        var url = force ? $"/api/rooms/{id}?force=true" : $"/api/rooms/{id}";
+        using var request = new HttpRequestMessage(HttpMethod.Delete, url);
         request.Headers.Add("X-XSRF-TOKEN", token);
         return await client.SendAsync(request);
     }
@@ -635,4 +802,11 @@ public sealed class RoomIntegrationTests(AuthTestFixture fixture)
     private sealed record CreateRoomResult(string Name, string Status);
 
     private sealed record UpdateRoomResult(Guid Id, string Name, string Status);
+
+    private sealed record OccupiedRoomSeed(
+        Guid RoomId,
+        Guid RackId,
+        Guid[] ServerIds,
+        Guid CableId,
+        Guid AuditId);
 }

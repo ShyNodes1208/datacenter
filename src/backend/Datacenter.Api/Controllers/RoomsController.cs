@@ -326,7 +326,10 @@ public sealed class RoomsController(AppDbContext dbContext, IAntiforgery antifor
     }
 
     [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> Delete(
+        Guid id,
+        [FromQuery] bool force = false,
+        CancellationToken cancellationToken = default)
     {
         if (!User.IsInRole(Roles.RoomAdministrator) && !User.IsInRole(Roles.Operations))
         {
@@ -348,11 +351,50 @@ public sealed class RoomsController(AppDbContext dbContext, IAntiforgery antifor
             return NotFound(new { error = "机房不存在" });
         }
 
-        if (await dbContext.Racks.AnyAsync(rack => rack.RoomId == id, cancellationToken))
+        if (!force)
         {
-            return Conflict(new { error = "机房中存在机柜，不能删除" });
+            if (await dbContext.Racks.AnyAsync(rack => rack.RoomId == id, cancellationToken))
+            {
+                return Conflict(new { error = "机房中存在机柜，不能删除" });
+            }
+
+            dbContext.Rooms.Remove(room);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return NoContent();
         }
 
+        var rackIds = await dbContext.Racks
+            .Where(rack => rack.RoomId == id)
+            .Select(rack => rack.Id)
+            .ToListAsync(cancellationToken);
+
+        var serverIds = await dbContext.ServerPositions
+            .Where(position => rackIds.Contains(position.RackId))
+            .Select(position => position.ServerId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var portIds = await dbContext.Ports
+            .Where(port => serverIds.Contains(port.ServerId))
+            .Select(port => port.Id)
+            .ToListAsync(cancellationToken);
+
+        dbContext.Cables.RemoveRange(
+            dbContext.Cables.Where(cable =>
+                portIds.Contains(cable.SourcePortId) || portIds.Contains(cable.TargetPortId)));
+        dbContext.Ports.RemoveRange(
+            dbContext.Ports.Where(port => serverIds.Contains(port.ServerId)));
+        dbContext.AuditRecords.RemoveRange(
+            dbContext.AuditRecords.Where(record => serverIds.Contains(record.ServerId)));
+        dbContext.ServerPositions.RemoveRange(
+            dbContext.ServerPositions.Where(position =>
+                rackIds.Contains(position.RackId) || serverIds.Contains(position.ServerId)));
+        dbContext.Servers.RemoveRange(
+            dbContext.Servers.Where(server => serverIds.Contains(server.Id)));
+        dbContext.DevicePositions.RemoveRange(
+            dbContext.DevicePositions.Where(position => rackIds.Contains(position.RackId)));
+        dbContext.Racks.RemoveRange(
+            dbContext.Racks.Where(rack => rack.RoomId == id));
         dbContext.Rooms.Remove(room);
         await dbContext.SaveChangesAsync(cancellationToken);
 

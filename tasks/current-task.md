@@ -1,6 +1,17 @@
 ﻿# Current Task
 
-- Status：COMPLETED（2026-08-29；TASK-20260828-device-topology-performance）
+- Status：REVIEW PASS → READY_FOR_USER_COMMIT（2026-09-04；TASK-20260904-room-force-delete）
+- Branch：`fix/TASK-20260901-floorplan-path-centered-display`
+- Owner：Cursor Developer；Reviewer：Codex Reviewer（PASS）；Orchestrator：Terra
+- Requirement：机房强制删除
+- Spec：`tasks/TASK-20260904-room-force-delete.md`
+- Review：`.ai/REVIEW.md`
+
+---
+
+## 历史：TASK-20260828-device-topology-performance（COMPLETED）
+
+- Status：COMPLETED（2026-08-29）
 - Branch：fix/TASK-20260828-device-topology-performance
 - Owner：Cursor Developer；Reviewer：Codex Reviewer
 - Requirement：设备级拓扑在大规模设备数据下保持可操作响应。

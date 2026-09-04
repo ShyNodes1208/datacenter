@@ -277,6 +277,53 @@ async function deleteRoom(room: RoomItem): Promise<void> {
   expandedRoomIds.value.clear()
 }
 
+async function forceDeleteRoom(room: RoomItem): Promise<void> {
+  if (deleteSubmitting.value) return
+  const typed = globalThis.prompt(
+    `强制删除将永久清除机房「${room.name}」下的机柜、设备、服务器、线缆等数据，不可恢复。\n请输入机房全名以确认：`,
+  )
+  if (typed === null || typed !== room.name) return
+
+  deleteSubmitting.value = true
+  deleteError.value = ''
+  deleteErrorRoomId.value = room.id
+
+  const csrf = await request('/api/auth/csrf', { method: 'GET' })
+  if (!csrf.ok) {
+    deleteError.value = csrf.error
+    deleteSubmitting.value = false
+    return
+  }
+  const token = csrf.headers.get('X-XSRF-TOKEN')
+  if (!token) {
+    deleteError.value = 'Request failed.'
+    deleteSubmitting.value = false
+    return
+  }
+
+  const result = await request(`/api/rooms/${room.id}?force=true`, {
+    method: 'DELETE',
+    csrfToken: token,
+  })
+
+  if (!result.ok) {
+    deleteError.value = result.error
+    deleteSubmitting.value = false
+    return
+  }
+
+  if (expandedRoomIds.value.has(room.id)) {
+    expandedRoomIds.value.delete(room.id)
+  }
+  if (editingRoomId.value === room.id) {
+    cancelEdit()
+  }
+  deleteErrorRoomId.value = null
+  deleteSubmitting.value = false
+  await refreshDashboard()
+  expandedRoomIds.value.clear()
+}
+
 async function fetchCreateCsrfToken(): Promise<string | null> {
   const result = await request('/api/auth/csrf', { method: 'GET' })
   if (!result.ok) {
@@ -1095,13 +1142,22 @@ async function submitConnectionImport(): Promise<void> {
               </button>
             </template>
             <button
-              v-if="canDeleteRoom && editingRoomId !== room.id"
+              v-if="canDeleteRoom && editingRoomId !== room.id && room.rackCount === 0"
               type="button"
               class="btn btn--small btn--danger btn--icon-delete"
               :disabled="deleteSubmitting"
               @click.stop="deleteRoom(room)"
             >
               删除
+            </button>
+            <button
+              v-if="canDeleteRoom && editingRoomId !== room.id && room.rackCount > 0"
+              type="button"
+              class="btn btn--small btn--danger btn--icon-delete"
+              :disabled="deleteSubmitting"
+              @click.stop="forceDeleteRoom(room)"
+            >
+              强制删除
             </button>
             <span v-if="rackSummaryLoading.has(room.id)" class="muted">加载中...</span>
           </div>

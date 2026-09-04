@@ -1,6 +1,6 @@
 ## 概述
 
-datacenter **v2.0.5**：新增「设备连接信息」一站式 Excel 导入（整理合并格式），自动创建机房/机柜/设备/线缆。
+datacenter **v2.0.6**：首页支持机房**强制删除**（级联清除机柜/设备/服务器/线缆），便于导入测试后整机房清空重来。
 
 ---
 
@@ -10,7 +10,7 @@ datacenter **v2.0.5**：新增「设备连接信息」一站式 Excel 导入（�
 
 | 项目 | 说明 |
 | --- | --- |
-| 安装包 | **[datacenter-2.0.5-win-x64.zip](https://github.com/ShyNodes1208/datacenter/releases/download/v2.0.5/datacenter-2.0.5-win-x64.zip)** |
+| 安装包 | **[datacenter-2.0.6-win-x64.zip](https://github.com/ShyNodes1208/datacenter/releases/download/v2.0.6/datacenter-2.0.6-win-x64.zip)** |
 | 类型 | 便携版（解压即用，**不是** `.msi` 安装程序） |
 | 平台 | Windows 10 / 11，64 位 |
 
@@ -22,9 +22,9 @@ datacenter **v2.0.5**：新增「设备连接信息」一站式 Excel 导入（�
 
 ### 安装步骤
 
-1. 从上方链接下载 `datacenter-2.0.5-win-x64.zip`。
+1. 从上方链接下载 `datacenter-2.0.6-win-x64.zip`。
 2. 将压缩包解压到任意目录（**建议不要**放在 `C:\Program Files` 等需要管理员权限的路径）。
-3. 进入解压后的 `datacenter-2.0.5-win-x64` 文件夹。
+3. 进入解压后的 `datacenter-2.0.6-win-x64` 文件夹。
 4. 双击 **`Start-Datacenter.bat`**。
 5. 等待黑色命令行窗口出现「服务已启动」提示；浏览器会自动打开 **http://127.0.0.1:5142/**。
 6. 若浏览器未自动打开，请手动访问上述地址。
@@ -68,7 +68,7 @@ datacenter **v2.0.5**：新增「设备连接信息」一站式 Excel 导入（�
 | `设备导入模板.xlsx` | 首页 → 批量导入设备；或机柜页 → 导入设备 |
 | `线缆导入模板.xlsx` | 线缆管理 → 导入 Excel |
 
-**方式 A — 一站式导入（推荐，v2.0.5 新增）**
+**方式 A — 一站式导入（推荐）**
 
 若你已有「设备连接信息」整理合并格式的 Excel（每行一条线缆，含本端/对端机房、机柜、U 位、端口等）：
 
@@ -77,6 +77,12 @@ datacenter **v2.0.5**：新增「设备连接信息」一站式 Excel 导入（�
 3. 系统自动创建机房、机柜、设备与线缆（无需分四步导入）
 
 格式说明见压缩包内 `import-templates/导入文件格式说明.md` 第 5 节。空库下约 1800 行可在数秒内完成。
+
+**清空机房后重新导入（v2.0.6）**
+
+1. 首页对已有机柜的机房点击 **强制删除**，输入机房全名确认。
+2. 该机房及下属机柜、设备、服务器、线缆等永久清除（不可恢复）。
+3. 再执行方式 A 或方式 B 重新导入。
 
 **方式 B — 分步模板导入**
 
@@ -125,6 +131,11 @@ A：复制解压目录到新电脑；将 `%LocalAppData%\Datacenter\datacenter.d
 
 ---
 
+## 本版本更新（v2.0.6）
+
+- **新增**：首页「强制删除」机房 — 级联清除机柜、设备 U 位、服务器、端口、线缆与审计，便于导入测试后整机房清空
+- **安全**：需输入机房全名确认；权限仍限管理员/运维；普通「删除」对非空机房仍拒绝
+
 ## 本版本更新（v2.0.5）
 
 - **新增**：首页「导入设备连接信息」— 支持整理合并格式 Excel 一站式导入机房、机柜、设备与线缆
@@ -158,6 +169,7 @@ A：复制解压目录到新电脑；将 `%LocalAppData%\Datacenter\datacenter.d
 - **端口物理链路追踪**：支持已知目标最短路径与从端口发现可达终点
 - **拓扑设备聚焦**：选中设备后显示物理可达子图并自动居中
 - **机房平面图**：2D 平面图与线缆场景
+- **一站式连接表导入** 与 **机房强制删除**（便于反复导入测试）
 
 ## 技术栈
 
@@ -169,10 +181,10 @@ A：复制解压目录到新电脑；将 `%LocalAppData%\Datacenter\datacenter.d
 ```bash
 cd src/frontend && npm test && npm run build
 dotnet test tests/backend/Datacenter.Api.Tests/
-./scripts/build-windows-package.sh v2.0.5
+./scripts/build-windows-package.sh v2.0.6
 ```
 
 ## 说明
 
-- 本 Release 基于 v2.0.0 基线，并包含 v2.0.1–v2.0.5 便携包修复与功能更新
+- 本 Release 基于 v2.0.0 基线，并包含 v2.0.1–v2.0.6 便携包修复与功能更新
 - 更多开发文档见仓库 [README](https://github.com/ShyNodes1208/datacenter)
